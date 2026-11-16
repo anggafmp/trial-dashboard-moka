@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise POS Analytics Pro</title>
+    <title>Enterprise POS Analytics Pro - Optimized</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -36,7 +36,7 @@
         #loadingOverlay.active { display: flex; }
         
         .progress-bar-wrap { width: 280px; height: 6px; background: #e2e8f0; border-radius: 3px; overflow: hidden; margin-top: 16px; }
-        .progress-bar-fill { height: 100%; background: #002395; width: 0%; transition: width 0.2s linear; will-change: width; }
+        .progress-bar-fill { height: 100%; background: #002395; width: 0%; transition: none; will-change: width; }
         
         th { color: #64748b; font-weight: 600; text-transform: uppercase; font-size: 10px; letter-spacing: 0.05em; border-bottom: 2px solid #e2e8f0; }
         td { color: #0f172a; font-size: 12px; border-bottom: 1px solid #f1f5f9; }
@@ -571,7 +571,18 @@
             setTimeout(() => { toast.classList.add('opacity-0'); setTimeout(() => toast.remove(), 300); }, 4000);
         }
 
-        Chart.defaults.font.family = "'Inter', sans-serif"; Chart.defaults.color = '#64748b'; Chart.defaults.plugins.tooltip.backgroundColor = '#0f172a'; Chart.defaults.plugins.tooltip.titleFont = {family: "'Inter', sans-serif", weight: '600', size: 11}; Chart.defaults.plugins.tooltip.bodyFont = {family: "'Inter', sans-serif", weight: '400', size: 11}; Chart.defaults.plugins.tooltip.padding = 8; Chart.defaults.plugins.tooltip.cornerRadius = 4; Chart.defaults.plugins.tooltip.borderColor = '#334155'; Chart.defaults.plugins.tooltip.borderWidth = 1;
+        Chart.defaults.font.family = "'Inter', sans-serif";
+        Chart.defaults.color = '#64748b';
+        Chart.defaults.animation = false;
+        Chart.defaults.devicePixelRatio = 1;
+        Chart.defaults.transitions = { active: { animation: { duration: 0 } }, resize: { animation: { duration: 0 } }, show: { animation: { duration: 0 } }, hide: { animation: { duration: 0 } } };
+        Chart.defaults.plugins.tooltip.backgroundColor = '#0f172a';
+        Chart.defaults.plugins.tooltip.titleFont = {family: "'Inter', sans-serif", weight: '600', size: 11};
+        Chart.defaults.plugins.tooltip.bodyFont = {family: "'Inter', sans-serif", weight: '400', size: 11};
+        Chart.defaults.plugins.tooltip.padding = 8;
+        Chart.defaults.plugins.tooltip.cornerRadius = 4;
+        Chart.defaults.plugins.tooltip.borderColor = '#334155';
+        Chart.defaults.plugins.tooltip.borderWidth = 1;
 
         let rawData = []; let filteredData = []; let charts = {}; let locationMode = 'area'; let currentAggDate = {}; let trendMode = 'net'; let trendAgg = 'day'; let catMode = 'net'; let rankMode = 'top'; let rankSortBy = 'qty'; let deptChartType = 'bar'; let currentAggArea = {}; let currentAggOutlet = {}; let currentAggDept = {}; let currentAggCat = {}; let showChartLabels = false;
         let trendChartType = 'line';
@@ -896,13 +907,27 @@
                 r.onload = async (e) => {
                     await yieldToMain();
                     try {
-                        const wb = XLSX.read(e.target.result, {type: 'array', cellDates: false});
+                        const buffer = e.target.result;
+                        const wb = XLSX.read(buffer, {
+                            type: 'array',
+                            cellDates: false,
+                            cellStyles: false,
+                            cellNF: false,
+                            cellHTML: false,
+                            cellFormula: false,
+                            cellText: false,
+                            dense: true
+                        });
                         for (let sIdx = 0; sIdx < wb.SheetNames.length; sIdx++) {
                             const sn = wb.SheetNames[sIdx]; const sheet = wb.Sheets[sn]; if (!sheet || !sheet['!ref']) continue;
                             let refRange = XLSX.utils.decode_range(sheet['!ref']); let maxRow = Math.min(refRange.e.r, 50); let searchRange = Object.assign({}, refRange, { e: { c: refRange.e.c, r: maxRow } });
                             const rawSheet = XLSX.utils.sheet_to_json(sheet, {header: 1, range: searchRange, defval: null}); if(rawSheet.length === 0) continue; let headerIdx = -1;
                             for(let j=0; j < rawSheet.length; j++) { let rowStr = (rawSheet[j] || []).join(' '); if(rowStr.includes('Net Sales') && (rowStr.includes('Receipt Number') || rowStr.includes('SKU'))) { headerIdx = j; break; } }
-                            if(headerIdx === -1) continue; let json = XLSX.utils.sheet_to_json(sheet, {defval: null, range: headerIdx}); processParsedJSON(json);
+                            if(headerIdx === -1) { delete wb.Sheets[sn]; continue; }
+                             let json = XLSX.utils.sheet_to_json(sheet, {defval: null, range: headerIdx});
+                             processParsedJSON(json);
+                             json.length = 0;
+                             delete wb.Sheets[sn];
                         }
                         res();
                     } catch(err) { rej(err); }
@@ -952,8 +977,29 @@
             if(nr['DateStr']) { let parts = nr['DateStr'].split('-'); if (parts.length === 3) { let safeDate = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), 12, 0, 0); let dayIdx = safeDate.getDay(); let isoDay = dayIdx === 0 ? 6 : dayIdx - 1; dayStr = DAYS[isoDay]; } }
             nr['ParsedDay'] = dayStr;
             const nCols = ['Net Sales', 'Gross Sales', 'Quantity', 'Tax', 'Gratuity', 'Discounts', 'Refunds', 'Total Collected', 'Total Collected Exc Rounding', 'Discount Applied (Rp)'];
-            nCols.forEach(c => { if(nr[c] !== undefined && typeof nr[c] === 'string') { let s = nr[c].replace(/,/g, '').trim(); nr[c] = parseFloat(s) || 0; } });
-            rawData.push(nr);
+            nCols.forEach(c => {
+                if(nr[c] !== undefined && typeof nr[c] === 'string') {
+                    let s = nr[c].replace(/,/g, '').trim();
+                    nr[c] = parseFloat(s) || 0;
+                }
+            });
+
+            // Keep only fields actually used by the dashboard/export.
+            // This avoids retaining every unused source column in memory.
+            const keepFields = [
+                'DateStr','FormattedDate','ExactTime','ParsedHour','ParsedDay',
+                'Receipt Number','AREA','Outlet','SKU','Items','Category','DEPT',
+                'Quantity','Net Sales','Gross Sales','Total Collected',
+                'Total Collected Exc Rounding','Tax','Gratuity','Discounts','Refunds',
+                'Discount Applied','Discount Applied (Rp)','Payment Method','Sales Type',
+                'Event Type','Collected By','Served By','Customer','Reason of Refund'
+            ];
+            const compact = {};
+            for (let k = 0; k < keepFields.length; k++) {
+                const key = keepFields[k];
+                if (nr[key] !== undefined) compact[key] = nr[key];
+            }
+            rawData.push(compact);
         }
     }
         const getCleanNum = (r, key) => { let val = r[key]; if(typeof val === 'number') return val; if(!val) return 0; let p = parseFloat(val.toString().replace(/,/g, '')); return isNaN(p) ? 0 : p; };
@@ -1368,7 +1414,7 @@
     }
     
     function drawHeatmap(matrix, maxVal) { 
-        const container = document.getElementById('heatmapContainer'); container.innerHTML = ''; const tooltip = els.tooltip; container.appendChild(document.createElement('div')); 
+        const container = document.getElementById('heatmapContainer'); container.innerHTML = ''; const tooltip = els.tooltip; 
         HOURS.forEach(h => { let d = document.createElement('div'); d.className = 'heatmap-label-x'; d.innerText = h + ":00"; container.appendChild(d); }); 
         DAYS.forEach((day, idx) => { 
             let lbl = document.createElement('div'); lbl.className = 'heatmap-label-y'; lbl.innerText = DAYS_ID[idx]; container.appendChild(lbl); 
@@ -1380,6 +1426,19 @@
                 cell.addEventListener('mouseleave', () => { tooltip.style.opacity = 0; }); container.appendChild(cell); 
             }); 
         }); 
+    }
+
+    const heatmapContainer = document.getElementById('heatmapContainer');
+    if (heatmapContainer) {
+        heatmapContainer.addEventListener('mousemove', (e) => {
+            const cell = e.target.closest('.heatmap-cell');
+            if (!cell) { els.tooltip.style.opacity = 0; return; }
+            els.tooltip.style.opacity = 1;
+            els.tooltip.innerHTML = `${cell.dataset.day} ${cell.dataset.hour}:00<br/><strong>${formatRp(Number(cell.dataset.value) || 0)}</strong>`;
+            els.tooltip.style.left = (e.pageX + 10) + 'px';
+            els.tooltip.style.top = (e.pageY + 10) + 'px';
+        });
+        heatmapContainer.addEventListener('mouseleave', () => { els.tooltip.style.opacity = 0; });
     }
 
     let dragStartIndex = -1;
