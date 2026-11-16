@@ -4,7 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Enterprise POS Analytics Pro - Optimized</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com">
+        // Large-data guard: avoid accidental duplicate filtering/export arrays.
+        window.getDashboardMemoryInfo = function() {
+            return {
+                rows: rawData.length,
+                filteredRows: filteredData.length,
+                memory: performance.memory ? {
+                    usedMB: Math.round(performance.memory.usedJSHeapSize / 1048576),
+                    totalMB: Math.round(performance.memory.totalJSHeapSize / 1048576),
+                    limitMB: Math.round(performance.memory.jsHeapSizeLimit / 1048576)
+                } : null
+            };
+        };
+</script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -575,6 +588,9 @@
         Chart.defaults.color = '#64748b';
         Chart.defaults.animation = false;
         Chart.defaults.devicePixelRatio = 1;
+        Chart.defaults.animation = false;
+        Chart.defaults.responsiveAnimationDuration = 0;
+        Chart.defaults.transitions = { active: { animation: { duration: 0 } }, resize: { animation: { duration: 0 } }, show: { animation: { duration: 0 } }, hide: { animation: { duration: 0 } } };
         Chart.defaults.transitions = { active: { animation: { duration: 0 } }, resize: { animation: { duration: 0 } }, show: { animation: { duration: 0 } }, hide: { animation: { duration: 0 } } };
         Chart.defaults.plugins.tooltip.backgroundColor = '#0f172a';
         Chart.defaults.plugins.tooltip.titleFont = {family: "'Inter', sans-serif", weight: '600', size: 11};
@@ -889,23 +905,35 @@
         function processExcel(file) {
         return new Promise((res, rej) => {
             if (file.name.toLowerCase().endsWith('.csv')) {
+                let headerIdx = -1;
+                let headers = null;
                 Papa.parse(file, {
-                    header: false, skipEmptyLines: true, worker: false,
-                    complete: async function(results) {
-                        await yieldToMain(); let rawSheet = results.data; let headerIdx = -1;
-                        for(let j=0; j < Math.min(rawSheet.length, 50); j++) { let rowStr = (rawSheet[j] || []).join(' '); if(rowStr.includes('Net Sales') && (rowStr.includes('Receipt Number') || rowStr.includes('SKU'))) { headerIdx = j; break; } }
-                        if(headerIdx !== -1) {
-                            let headers = rawSheet[headerIdx]; let json = [];
-                            for(let i = headerIdx + 1; i < rawSheet.length; i++) { let obj = {}; for(let c = 0; c < headers.length; c++) { if(headers[c]) obj[headers[c]] = rawSheet[i][c]; } json.push(obj); }
-                            processParsedJSON(json);
+                    header: false,
+                    skipEmptyLines: true,
+                    worker: true,
+                    chunkSize: 1024 * 1024,
+                    chunk: function(results) {
+                        const rows = results.data;
+                        if (headerIdx === -1) {
+                            for (let j = 0; j < Math.min(rows.length, 50); j++) {
+                                const rowStr = (rows[j] || []).join(' ');
+                                if (rowStr.includes('Net Sales') && (rowStr.includes('Receipt Number') || rowStr.includes('SKU'))) {
+                                    headerIdx = j;
+                                    headers = rows[j];
+                                    processParsedRows(rows.slice(j + 1), headers);
+                                    return;
+                                }
+                            }
+                        } else {
+                            processParsedRows(rows, headers);
                         }
-                        res();
-                    }, error: function(err) { console.error(err); rej(err); }
+                    },
+                    complete: function() { res(); },
+                    error: function(err) { console.error(err); rej(err); }
                 });
             } else {
                 const r = new FileReader();
                 r.onload = async (e) => {
-                    await yieldToMain();
                     try {
                         const buffer = e.target.result;
                         const wb = XLSX.read(buffer, {
@@ -918,90 +946,206 @@
                             cellText: false,
                             dense: true
                         });
+
+                        // Release the ArrayBuffer reference as soon as SheetJS has parsed it.
+                        e.target.result = null;
+
                         for (let sIdx = 0; sIdx < wb.SheetNames.length; sIdx++) {
-                            const sn = wb.SheetNames[sIdx]; const sheet = wb.Sheets[sn]; if (!sheet || !sheet['!ref']) continue;
-                            let refRange = XLSX.utils.decode_range(sheet['!ref']); let maxRow = Math.min(refRange.e.r, 50); let searchRange = Object.assign({}, refRange, { e: { c: refRange.e.c, r: maxRow } });
-                            const rawSheet = XLSX.utils.sheet_to_json(sheet, {header: 1, range: searchRange, defval: null}); if(rawSheet.length === 0) continue; let headerIdx = -1;
-                            for(let j=0; j < rawSheet.length; j++) { let rowStr = (rawSheet[j] || []).join(' '); if(rowStr.includes('Net Sales') && (rowStr.includes('Receipt Number') || rowStr.includes('SKU'))) { headerIdx = j; break; } }
-                            if(headerIdx === -1) { delete wb.Sheets[sn]; continue; }
-                             let json = XLSX.utils.sheet_to_json(sheet, {defval: null, range: headerIdx});
-                             processParsedJSON(json);
-                             json.length = 0;
-                             delete wb.Sheets[sn];
+                            const sn = wb.SheetNames[sIdx];
+                            const sheet = wb.Sheets[sn];
+                            if (!sheet || !sheet['!ref']) continue;
+
+                            const refRange = XLSX.utils.decode_range(sheet['!ref']);
+                            const maxRow = Math.min(refRange.e.r, 50);
+                            const searchRange = Object.assign({}, refRange, { e: { c: refRange.e.c, r: maxRow } });
+                            const preview = XLSX.utils.sheet_to_json(sheet, {
+                                header: 1, range: searchRange, defval: null, raw: true
+                            });
+                            if (!preview.length) continue;
+
+                            let headerIdx = -1;
+                            for (let j = 0; j < preview.length; j++) {
+                                const rowStr = (preview[j] || []).join(' ');
+                                if (rowStr.includes('Net Sales') && (rowStr.includes('Receipt Number') || rowStr.includes('SKU'))) {
+                                    headerIdx = j;
+                                    break;
+                                }
+                            }
+                            preview.length = 0;
+                            if (headerIdx === -1) {
+                                delete wb.Sheets[sn];
+                                continue;
+                            }
+
+                            // Array rows are much lighter than sheet_to_json object rows.
+                            const rows = XLSX.utils.sheet_to_json(sheet, {
+                                header: 1, range: headerIdx, defval: null, raw: true
+                            });
+                            if (rows.length) {
+                                const headers = rows[0];
+                                processParsedRows(rows.slice(1), headers);
+                                rows.length = 0;
+                            }
+                            delete wb.Sheets[sn];
+                            await yieldToMain();
                         }
+
+                        wb.Sheets = {};
+                        wb.SheetNames.length = 0;
                         res();
-                    } catch(err) { rej(err); }
+                    } catch(err) {
+                        rej(err);
+                    }
                 };
                 r.readAsArrayBuffer(file);
             }
         });
     }
 
-    function processParsedJSON(json) {
-        for (let i = 0; i < json.length; i++) {
-            let row = json[i]; let nr = {}; for(let k in row) nr[k.trim()] = row[k]; if(!nr['Date'] && !nr['Items'] && !nr['Receipt Number']) continue;
-            let rawOutlet = nr['Outlet'] ? String(nr['Outlet']).trim() : ''; nr['Outlet'] = rawOutlet.split(',')[0].trim();
-            nr['AREA'] = nr['AREA'] ? String(nr['AREA']).trim() : 'Unknown'; nr['DEPT'] = nr['DEPT'] ? String(nr['DEPT']).trim() : 'Unknown';
-            nr['Event Type'] = nr['Event Type'] ? String(nr['Event Type']).trim() : 'Unknown'; nr['Items'] = nr['Items'] ? String(nr['Items']).trim() : 'Unknown';
-            nr['Collected By'] = nr['Collected By'] ? String(nr['Collected By']).trim() : (nr['CollectedBy'] || nr['collected by'] || '-');
-            nr['Served By'] = nr['Served By'] ? String(nr['Served By']).trim() : (nr['ServedBy'] || nr['served by'] || '-');
-            nr['Customer'] = nr['Customer'] ? String(nr['Customer']).trim() : (nr['customer'] || nr['CUSTOMER'] || '-');
-            nr['Reason of Refund'] = nr['Reason of Refund'] ? String(nr['Reason of Refund']).trim() : (nr['Reason Of Refund'] || nr['ReasonofRefund'] || nr['reason of refund'] || '-');
-            
-            let rawDate = nr['Date']; let dateStr = ''; let formattedDate = '';
-            if (typeof rawDate === 'number') {
-                let d = new Date(Math.round((rawDate - 25569) * 86400 * 1000)); let y = d.getUTCFullYear(); let m = String(d.getUTCMonth() + 1).padStart(2, '0'); let day = String(d.getUTCDate()).padStart(2, '0');
-                dateStr = `${y}-${m}-${day}`; formattedDate = `${day}/${m}/${y}`;
-            } else if (typeof rawDate === 'string') {
-                let str = rawDate.split(' ')[0]; let parts = str.split(/[-/]/);
-                if(parts.length === 3) {
-                    if(parts[0].length === 4) { dateStr = `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`; formattedDate = `${parts[2].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[0]}`; }
-                    else if(parts[2].length === 4) { dateStr = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`; formattedDate = `${parts[0].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[2]}`; }
-                    else { dateStr = str; formattedDate = str; }
-                } else { dateStr = str; formattedDate = str; }
-            }
-            nr['DateStr'] = dateStr; nr['FormattedDate'] = formattedDate;
+    function processParsedRows(rows, headers) {
+        if (!rows || !rows.length || !headers) return;
 
-            let hrStr = nr['HOUR'] ? String(nr['HOUR']).trim() : ''; let exactTime = '-'; let rawTime = nr['Time'];
+        const idx = Object.create(null);
+        for (let i = 0; i < headers.length; i++) {
+            const h = headers[i];
+            if (h != null && String(h).trim()) idx[String(h).trim()] = i;
+        }
+        const get = (row, key) => {
+            const i = idx[key];
+            return i === undefined ? undefined : row[i];
+        };
+
+        const numFields = [
+            'Net Sales','Gross Sales','Quantity','Tax','Gratuity','Discounts',
+            'Refunds','Total Collected','Total Collected Exc Rounding','Discount Applied (Rp)'
+        ];
+
+        for (let i = 0; i < rows.length; i++) {
+            const row = rows[i];
+            if (!row) continue;
+
+            const rawDate = get(row, 'Date');
+            const rawItems = get(row, 'Items');
+            const rawReceipt = get(row, 'Receipt Number');
+            if (!rawDate && !rawItems && !rawReceipt) continue;
+
+            const compact = {};
+            const set = (key, value) => { if (value !== undefined && value !== null) compact[key] = value; };
+
+            let outlet = get(row, 'Outlet');
+            outlet = outlet ? String(outlet).trim().split(',')[0].trim() : '';
+            set('Outlet', outlet);
+
+            set('AREA', get(row,'AREA') ? String(get(row,'AREA')).trim() : 'Unknown');
+            set('DEPT', get(row,'DEPT') ? String(get(row,'DEPT')).trim() : 'Unknown');
+            set('Event Type', get(row,'Event Type') ? String(get(row,'Event Type')).trim() : 'Unknown');
+            set('Items', get(row,'Items') ? String(get(row,'Items')).trim() : 'Unknown');
+
+            const collected = get(row,'Collected By') ?? get(row,'CollectedBy') ?? get(row,'collected by') ?? '-';
+            const served = get(row,'Served By') ?? get(row,'ServedBy') ?? get(row,'served by') ?? '-';
+            const customer = get(row,'Customer') ?? get(row,'customer') ?? get(row,'CUSTOMER') ?? '-';
+            const refundReason = get(row,'Reason of Refund') ?? get(row,'Reason Of Refund') ?? get(row,'ReasonofRefund') ?? get(row,'reason of refund') ?? '-';
+            set('Collected By', collected ? String(collected).trim() : '-');
+            set('Served By', served ? String(served).trim() : '-');
+            set('Customer', customer ? String(customer).trim() : '-');
+            set('Reason of Refund', refundReason ? String(refundReason).trim() : '-');
+
+            let dateStr = '', formattedDate = '';
+            if (typeof rawDate === 'number') {
+                const serial = Math.floor(rawDate);
+                const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+                const y = d.getUTCFullYear(), m = String(d.getUTCMonth()+1).padStart(2,'0'), day = String(d.getUTCDate()).padStart(2,'0');
+                dateStr = `${y}-${m}-${day}`;
+                formattedDate = `${day}/${m}/${y}`;
+            } else if (typeof rawDate === 'string') {
+                const str = rawDate.split(' ')[0];
+                const parts = str.split(/[-/]/);
+                if (parts.length === 3) {
+                    if (parts[0].length === 4) {
+                        dateStr = `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
+                        formattedDate = `${parts[2].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[0]}`;
+                    } else if (parts[2].length === 4) {
+                        dateStr = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+                        formattedDate = `${parts[0].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[2]}`;
+                    } else {
+                        dateStr = str; formattedDate = str;
+                    }
+                } else {
+                    dateStr = str; formattedDate = str;
+                }
+            }
+            set('DateStr', dateStr);
+            set('FormattedDate', formattedDate);
+
+            let hrStr = get(row,'HOUR') ? String(get(row,'HOUR')).trim() : '';
+            let exactTime = '-';
+            const rawTime = get(row,'Time');
+
             if (typeof rawDate === 'number' && rawDate % 1 !== 0) {
-                let d = new Date(Math.round((rawDate - 25569) * 86400 * 1000)); hrStr = d.getUTCHours().toString();
+                const d = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
+                hrStr = String(d.getUTCHours());
                 exactTime = String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0');
             } else if (typeof rawTime === 'number') {
-                let totalMins = Math.round((rawTime % 1) * 24 * 60); hrStr = Math.floor(totalMins / 60).toString();
+                const totalMins = Math.round((rawTime % 1) * 24 * 60);
+                hrStr = String(Math.floor(totalMins / 60));
                 exactTime = String(Math.floor(totalMins / 60)).padStart(2,'0') + ':' + String(totalMins % 60).padStart(2,'0');
-            } else if (typeof rawTime === 'string') { hrStr = rawTime.split(':')[0]; exactTime = rawTime; } 
-            else if (hrStr) { exactTime = hrStr.padStart(2, '0') + ':00'; }
-            nr['ParsedHour'] = hrStr.padStart(2, '0'); nr['ExactTime'] = exactTime;
-            
-            let dayStr = nr['DAY OF WEEK'] ? String(nr['DAY OF WEEK']).trim() : '';
-            if(nr['DateStr']) { let parts = nr['DateStr'].split('-'); if (parts.length === 3) { let safeDate = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), 12, 0, 0); let dayIdx = safeDate.getDay(); let isoDay = dayIdx === 0 ? 6 : dayIdx - 1; dayStr = DAYS[isoDay]; } }
-            nr['ParsedDay'] = dayStr;
-            const nCols = ['Net Sales', 'Gross Sales', 'Quantity', 'Tax', 'Gratuity', 'Discounts', 'Refunds', 'Total Collected', 'Total Collected Exc Rounding', 'Discount Applied (Rp)'];
-            nCols.forEach(c => {
-                if(nr[c] !== undefined && typeof nr[c] === 'string') {
-                    let s = nr[c].replace(/,/g, '').trim();
-                    nr[c] = parseFloat(s) || 0;
-                }
-            });
-
-            // Keep only fields actually used by the dashboard/export.
-            // This avoids retaining every unused source column in memory.
-            const keepFields = [
-                'DateStr','FormattedDate','ExactTime','ParsedHour','ParsedDay',
-                'Receipt Number','AREA','Outlet','SKU','Items','Category','DEPT',
-                'Quantity','Net Sales','Gross Sales','Total Collected',
-                'Total Collected Exc Rounding','Tax','Gratuity','Discounts','Refunds',
-                'Discount Applied','Discount Applied (Rp)','Payment Method','Sales Type',
-                'Event Type','Collected By','Served By','Customer','Reason of Refund'
-            ];
-            const compact = {};
-            for (let k = 0; k < keepFields.length; k++) {
-                const key = keepFields[k];
-                if (nr[key] !== undefined) compact[key] = nr[key];
+            } else if (typeof rawTime === 'string') {
+                hrStr = rawTime.split(':')[0];
+                exactTime = rawTime;
+            } else if (hrStr) {
+                exactTime = hrStr.padStart(2, '0') + ':00';
             }
+            set('ParsedHour', String(hrStr || '').padStart(2,'0'));
+            set('ExactTime', exactTime);
+
+            let dayStr = get(row,'DAY OF WEEK') ? String(get(row,'DAY OF WEEK')).trim() : '';
+            if (dateStr) {
+                const parts = dateStr.split('-');
+                if (parts.length === 3) {
+                    const safeDate = new Date(+parts[0], +parts[1]-1, +parts[2], 12, 0, 0);
+                    const dayIdx = safeDate.getDay();
+                    dayStr = DAYS[dayIdx === 0 ? 6 : dayIdx - 1];
+                }
+            }
+            set('ParsedDay', dayStr);
+
+            // Keep only fields required by the dashboard/export.
+            const keep = [
+                'Receipt Number','SKU','Category','Quantity','Net Sales','Gross Sales',
+                'Total Collected','Total Collected Exc Rounding','Tax','Gratuity','Discounts',
+                'Refunds','Discount Applied','Discount Applied (Rp)','Payment Method',
+                'Sales Type'
+            ];
+            for (let k = 0; k < keep.length; k++) {
+                const key = keep[k];
+                let value = get(row, key);
+                if (value === undefined || value === null) continue;
+                if (numFields.includes(key)) {
+                    if (typeof value === 'string') value = parseFloat(value.replace(/,/g,'').trim()) || 0;
+                    else if (typeof value !== 'number') value = Number(value) || 0;
+                }
+                set(key, value);
+            }
+
             rawData.push(compact);
         }
     }
+
+    // Backward-compatible wrapper for any remaining object-based caller.
+    function processParsedJSON(json) {
+        if (!json || !json.length) return;
+        const headers = Object.keys(json[0] || {});
+        const rows = new Array(json.length);
+        for (let i = 0; i < json.length; i++) {
+            const obj = json[i], row = new Array(headers.length);
+            for (let j = 0; j < headers.length; j++) row[j] = obj[headers[j]];
+            rows[i] = row;
+        }
+        processParsedRows(rows, headers);
+        rows.length = 0;
+        json.length = 0;
+    }
+
         const getCleanNum = (r, key) => { let val = r[key]; if(typeof val === 'number') return val; if(!val) return 0; let p = parseFloat(val.toString().replace(/,/g, '')); return isNaN(p) ? 0 : p; };
         function getDiscountValue(r) { let discVal = getCleanNum(r, 'Discounts'); if (discVal === 0) discVal = getCleanNum(r, 'Discount Applied (Rp)'); return Math.abs(discVal); }
         function getGratuityValue(r) { return getCleanNum(r, 'Gratuity'); }
@@ -1307,7 +1451,7 @@
             let cat = r.Category; if(cat && cat !== 'Unknown') { pAggCat[cat] = (pAggCat[cat]||0) + rn; pAggCatQty[cat] = (pAggCatQty[cat]||0) + rq; if(!pAggCatTx[cat]) pAggCatTx[cat] = new Set(); if(rec) pAggCatTx[cat].add(rec); }
             let out = r.Outlet; if(out && out !== 'Unknown') pAggOutlet[out] = (pAggOutlet[out]||0) + rn; let area = r.AREA; if(area && area !== 'Unknown') pAggArea[area] = (pAggArea[area]||0) + rn; let dept = r.DEPT; if(dept && dept !== 'Unknown') pAggDept[dept] = (pAggDept[dept]||0) + rn;
         });
-        window.currentCompareCat = pAggCat; window.currentCompareCatQty = pAggCatQty; window.currentCompareCatTx = pAggCatTx; window.currentCompareOutlet = pAggOutlet; window.currentCompareArea = pAggArea; window.currentCompareDept = pAggDept; window.prevDataExport = prevData; window.currentCompareDateRange = {start: pStartStr, end: pEndStr}; 
+        window.currentCompareCat = pAggCat; window.currentCompareCatQty = pAggCatQty; window.currentCompareCatTx = pAggCatTx; window.currentCompareOutlet = pAggOutlet; window.currentCompareArea = pAggArea; window.currentCompareDept = pAggDept; window.prevDataExport = null; window.currentCompareDateRange = {start: pStartStr, end: pEndStr}; 
         
         let currDatesArr = Object.keys(currentAggDate).sort(); window.currentCompareSeries = { net: [], qty: [], tx: [], dates: [] };
         let vsDatesArr = []; if (pStartStr && pEndStr) { let currD = new Date(pStartStr); let endD = new Date(pEndStr); while(currD <= endD) { vsDatesArr.push(toIsoLocal(currD)); currD.setDate(currD.getDate() + 1); } }
@@ -2260,7 +2404,11 @@
 
             els.loadUI.classList.add('active');
             setLoadingProgress(0, `Memuat ${fileList.length} file CSV...`);
+            // Clear old references before loading a new dataset.
             rawData = [];
+            filteredData = [];
+            txSortedData = [];
+            window.prevDataExport = null;
 
             for (let i = 0; i < fileList.length; i++) {
                 const fileName = fileList[i];
@@ -2269,24 +2417,38 @@
                 try {
                     const res = await fetch(GH_BASE_URL + encodeURIComponent(fileName) + '?t=' + Date.now());
                     if (!res.ok) throw new Error('HTTP ' + res.status);
-                    const csvText = await res.text();
-                    const parsed = Papa.parse(csvText.trim(), { header: false, skipEmptyLines: true, delimiter: "" });
-                    const rawSheet = parsed.data;
+
+                    let csvText = await res.text();
                     let headerIdx = -1;
-                    for (let j = 0; j < Math.min(rawSheet.length, 50); j++) {
-                        const rowStr = (rawSheet[j] || []).join(' ');
-                        if (rowStr.includes('Net Sales') && (rowStr.includes('Receipt Number') || rowStr.includes('SKU'))) { headerIdx = j; break; }
-                    }
-                    if (headerIdx !== -1) {
-                        const headers = rawSheet[headerIdx];
-                        const json = [];
-                        for (let r = headerIdx + 1; r < rawSheet.length; r++) {
-                            const obj = {};
-                            for (let c = 0; c < headers.length; c++) { if (headers[c]) obj[headers[c]] = rawSheet[r][c]; }
-                            json.push(obj);
-                        }
-                        processParsedJSON(json);
-                    }
+                    let headers = null;
+
+                    Papa.parse(csvText, {
+                        header: false,
+                        skipEmptyLines: true,
+                        delimiter: "",
+                        chunkSize: 1024 * 1024,
+                        chunk: function(results) {
+                            const rows = results.data;
+                            if (headerIdx === -1) {
+                                for (let j = 0; j < Math.min(rows.length, 50); j++) {
+                                    const rowStr = (rows[j] || []).join(' ');
+                                    if (rowStr.includes('Net Sales') && (rowStr.includes('Receipt Number') || rowStr.includes('SKU'))) {
+                                        headerIdx = j;
+                                        headers = rows[j];
+                                        processParsedRows(rows.slice(j + 1), headers);
+                                        break;
+                                    }
+                                }
+                            } else {
+                                processParsedRows(rows, headers);
+                            }
+                        },
+                        error: function(err) { throw err; }
+                    });
+
+                    // Drop the large CSV text immediately after parsing.
+                    csvText = '';
+                    await yieldToMain();
                 } catch (err) {
                     console.warn(`Gagal memuat ${fileName}:`, err);
                     showToast(`Gagal memuat ${fileName}`, 'error');
