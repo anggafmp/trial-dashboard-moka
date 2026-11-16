@@ -474,6 +474,94 @@
                 </div>
             </div>
             
+
+            <!-- MTD COMPARISON: GRABFOOD vs GOFOOD -->
+            <section id="mtdPlatformSection" class="space-y-3">
+                <div class="panel p-3 sm:p-4">
+                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
+                        <div>
+                            <h3 class="section-title mb-1">MTD Comparison — GrabFood vs GoFood</h3>
+                            <p id="mtdPlatformSubtitle" class="text-[10px] text-slate-500">Menggunakan tanggal transaksi terbaru yang tersedia sebagai cut-off MTD.</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-[9px] font-bold uppercase text-slate-500">Top Item</span>
+                            <select id="mtdItemPlatformSelect" class="pro-select text-[10px] w-[120px] p-1.5">
+                                <option value="GrabFood">GrabFood</option>
+                                <option value="GoFood">GoFood</option>
+                                <option value="Combined">Combined</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
+                        <div class="rounded border border-slate-200 p-2.5 bg-slate-50">
+                            <div class="kpi-title">Transactions</div>
+                            <div class="grid grid-cols-2 gap-2 mt-1">
+                                <div><div class="text-[9px] text-slate-500">GrabFood</div><div id="mtdGrabTx" class="font-bold text-sm">0</div><div id="mtdGrabTxGrowth" class="text-[9px]"></div></div>
+                                <div><div class="text-[9px] text-slate-500">GoFood</div><div id="mtdGoTx" class="font-bold text-sm">0</div><div id="mtdGoTxGrowth" class="text-[9px]"></div></div>
+                            </div>
+                        </div>
+                        <div class="rounded border border-slate-200 p-2.5 bg-slate-50">
+                            <div class="kpi-title">Sales</div>
+                            <div class="grid grid-cols-2 gap-2 mt-1">
+                                <div><div class="text-[9px] text-slate-500">GrabFood</div><div id="mtdGrabSales" class="font-bold text-sm">Rp0</div><div id="mtdGrabSalesGrowth" class="text-[9px]"></div></div>
+                                <div><div class="text-[9px] text-slate-500">GoFood</div><div id="mtdGoSales" class="font-bold text-sm">Rp0</div><div id="mtdGoSalesGrowth" class="text-[9px]"></div></div>
+                            </div>
+                        </div>
+                        <div class="rounded border border-slate-200 p-2.5 bg-slate-50">
+                            <div class="kpi-title">Qty Sold</div>
+                            <div class="grid grid-cols-2 gap-2 mt-1">
+                                <div><div class="text-[9px] text-slate-500">GrabFood</div><div id="mtdGrabQty" class="font-bold text-sm">0</div><div id="mtdGrabQtyGrowth" class="text-[9px]"></div></div>
+                                <div><div class="text-[9px] text-slate-500">GoFood</div><div id="mtdGoQty" class="font-bold text-sm">0</div><div id="mtdGoQtyGrowth" class="text-[9px]"></div></div>
+                            </div>
+                        </div>
+                        <div class="rounded border border-slate-200 p-2.5 bg-slate-50">
+                            <div class="kpi-title">AOV</div>
+                            <div class="grid grid-cols-2 gap-2 mt-1">
+                                <div><div class="text-[9px] text-slate-500">GrabFood</div><div id="mtdGrabAov" class="font-bold text-sm">Rp0</div><div id="mtdGrabAovGrowth" class="text-[9px]"></div></div>
+                                <div><div class="text-[9px] text-slate-500">GoFood</div><div id="mtdGoAov" class="font-bold text-sm">Rp0</div><div id="mtdGoAovGrowth" class="text-[9px]"></div></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                        <div class="border border-slate-200 rounded p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-[11px] font-bold text-slate-700">Top Performer Outlet</h4>
+                                <select id="mtdOutletMetricSelect" class="pro-select text-[10px] w-[110px] p-1">
+                                    <option value="sales">Sales</option>
+                                    <option value="tx">Transactions</option>
+                                    <option value="qty">Qty</option>
+                                </select>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <div class="text-[9px] font-bold text-emerald-700 mb-1">GRABFOOD</div>
+                                    <div class="overflow-y-auto max-h-52"><table class="min-w-full"><thead><tr><th class="py-1 text-left">Outlet</th><th class="py-1 text-right">Value</th></tr></thead><tbody id="mtdGrabOutletBody"></tbody></table></div>
+                                </div>
+                                <div>
+                                    <div class="text-[9px] font-bold text-orange-700 mb-1">GOFOOD</div>
+                                    <div class="overflow-y-auto max-h-52"><table class="min-w-full"><thead><tr><th class="py-1 text-left">Outlet</th><th class="py-1 text-right">Value</th></tr></thead><tbody id="mtdGoOutletBody"></tbody></table></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="border border-slate-200 rounded p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <h4 class="text-[11px] font-bold text-slate-700">Top 10 Item</h4>
+                                <span class="text-[9px] text-slate-500">Qty • Sales • Contribution</span>
+                            </div>
+                            <div class="overflow-y-auto max-h-60">
+                                <table class="min-w-full">
+                                    <thead><tr><th class="py-1 text-left">Item</th><th class="py-1 text-right">Qty</th><th class="py-1 text-right">Sales</th><th class="py-1 text-right">%</th></tr></thead>
+                                    <tbody id="mtdTopItemBody"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- TRANSACTION TABLE -->
             <div class="panel p-3 sm:p-4 flex flex-col mb-8">
                 <div class="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-4 gap-2">
@@ -600,7 +688,8 @@
         Chart.defaults.plugins.tooltip.borderColor = '#334155';
         Chart.defaults.plugins.tooltip.borderWidth = 1;
 
-        let rawData = []; let filteredData = []; let charts = {}; let locationMode = 'area'; let currentAggDate = {}; let trendMode = 'net'; let trendAgg = 'day'; let catMode = 'net'; let rankMode = 'top'; let rankSortBy = 'qty'; let deptChartType = 'bar'; let currentAggArea = {}; let currentAggOutlet = {}; let currentAggDept = {}; let currentAggCat = {}; let showChartLabels = false;
+        let rawData = []; let filteredData = []; let charts = {}; let locationMode = 'area';
+        let currentSourceFileName = ''; let currentAggDate = {}; let trendMode = 'net'; let trendAgg = 'day'; let catMode = 'net'; let rankMode = 'top'; let rankSortBy = 'qty'; let deptChartType = 'bar'; let currentAggArea = {}; let currentAggOutlet = {}; let currentAggDept = {}; let currentAggCat = {}; let showChartLabels = false;
         let trendChartType = 'line';
         let txSortCol = 'DateStr'; let txSortAsc = true; let txCurrentPage = 1; let txRowsPerPage = 15; let txSortedData = [];
         let colsConfig = [
@@ -879,7 +968,7 @@
             try { 
                 rawData = []; let totalFiles = files.length; 
                 for(let i=0; i<totalFiles; i++) { 
-                    let pct = Math.round(((i)/totalFiles)*100); setLoadingProgress(pct, `Mengunggah file ${i+1} dari ${totalFiles}... (${pct}%)`); await new Promise(r => requestAnimationFrame(() => r())); await processExcel(files[i]); 
+                    let pct = Math.round(((i)/totalFiles)*100); setLoadingProgress(pct, `Mengunggah file ${i+1} dari ${totalFiles}... (${pct}%)`); await new Promise(r => requestAnimationFrame(() => r())); currentSourceFileName = files[i].name || ''; await processExcel(files[i]); 
                 } 
                 setLoadingProgress(95, 'Menyiapkan dasbor...'); await yieldToMain(); 
                 if (rawData.length > 0) { 
@@ -1040,6 +1129,20 @@
             set('DEPT', get(row,'DEPT') ? String(get(row,'DEPT')).trim() : 'Unknown');
             set('Event Type', get(row,'Event Type') ? String(get(row,'Event Type')).trim() : 'Unknown');
             set('Items', get(row,'Items') ? String(get(row,'Items')).trim() : 'Unknown');
+
+            // Platform: gunakan kolom platform bila tersedia; jika tidak, infer dari nama file sumber.
+            const explicitPlatform = get(row,'Platform') ?? get(row,'platform') ?? get(row,'Channel') ?? get(row,'channel') ?? '';
+            const sourceName = String(currentSourceFileName || '').toLowerCase();
+            let platform = explicitPlatform ? String(explicitPlatform).trim() : '';
+            if (!platform) {
+                if (sourceName.includes('grabfood') || sourceName.includes('grab food')) platform = 'GrabFood';
+                else if (sourceName.includes('gofood') || sourceName.includes('go food')) platform = 'GoFood';
+                else platform = 'Other';
+            }
+            const pNorm = platform.toLowerCase().replace(/[\s_-]+/g, '');
+            if (pNorm.includes('grabfood')) platform = 'GrabFood';
+            else if (pNorm.includes('gofood')) platform = 'GoFood';
+            set('Platform', platform);
 
             const collected = get(row,'Collected By') ?? get(row,'CollectedBy') ?? get(row,'collected by') ?? '-';
             const served = get(row,'Served By') ?? get(row,'ServedBy') ?? get(row,'served by') ?? '-';
@@ -1369,6 +1472,121 @@
         }
         
         function populateDropdowns() { const getU = (key) => { let s = new Set(); rawData.forEach(r => { if(r[key] && r[key] !== 'Unknown') s.add(r[key].toString().trim()); }); return Array.from(s).sort(); }; const fill = (el, vals) => { el.innerHTML = '<option value="ALL">All</option>'; vals.forEach(v => { let opt = document.createElement('option'); opt.value = v; opt.innerText = v; el.appendChild(opt); }); }; fill(filters.dept, getU('DEPT')); fill(filters.eventType, getU('Event Type')); populateOutletDropdownUI(); populateDiscountDropdownUI(); populateAreaDropdownUI(); }
+
+
+        // ============================================================
+        // MTD PLATFORM COMPARISON — GRABFOOD vs GOFOOD
+        // Single-pass aggregation to keep browser memory low.
+        // ============================================================
+        function mtdPlatformName(r) {
+            const p = String(r['Platform'] || '').toLowerCase().replace(/[\s_-]+/g,'');
+            if (p.includes('grabfood')) return 'GrabFood';
+            if (p.includes('gofood')) return 'GoFood';
+            return 'Other';
+        }
+
+        function mtdGrowthHtml(curr, prev) {
+            if (!prev) return curr > 0 ? '<span class="text-emerald-600 font-semibold">NEW</span>' : '<span class="text-slate-400">—</span>';
+            const pct = ((curr - prev) / Math.abs(prev)) * 100;
+            const cls = pct >= 0 ? 'text-emerald-600' : 'text-red-600';
+            return `<span class="${cls} font-semibold">${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)}%</span>`;
+        }
+
+        function mtdAggForPeriod(start, end) {
+            const out = {
+                GrabFood: { sales:0, qty:0, tx:0, receipts:new Set(), outlets:new Map(), items:new Map() },
+                GoFood: { sales:0, qty:0, tx:0, receipts:new Set(), outlets:new Map(), items:new Map() }
+            };
+            for (const r of rawData) {
+                const d = r.DateStr;
+                if (!d || d < start || d > end) continue;
+                const p = mtdPlatformName(r);
+                if (p === 'Other') continue;
+                const sales = getCleanNum(r,'Net Sales');
+                const qty = getCleanNum(r,'Quantity');
+                const receipt = String(r['Receipt Number'] || '').trim();
+                const outlet = String(r['Outlet'] || 'Unknown').trim() || 'Unknown';
+                const item = String(r['Items'] || 'Unknown').trim() || 'Unknown';
+                const a = out[p];
+                a.sales += sales;
+                a.qty += qty;
+                if (receipt) a.receipts.add(receipt);
+
+                let o = a.outlets.get(outlet);
+                if (!o) { o = {sales:0, qty:0, receipts:new Set()}; a.outlets.set(outlet,o); }
+                o.sales += sales; o.qty += qty; if (receipt) o.receipts.add(receipt);
+
+                let it = a.items.get(item);
+                if (!it) { it = {sales:0, qty:0}; a.items.set(item,it); }
+                it.sales += sales; it.qty += qty;
+            }
+            out.GrabFood.tx = out.GrabFood.receipts.size;
+            out.GoFood.tx = out.GoFood.receipts.size;
+            return out;
+        }
+
+        function mtdRenderOutletRows(tbodyId, agg, metric) {
+            const tbody = document.getElementById(tbodyId);
+            if (!tbody) return;
+            const rows = Array.from(agg.outlets.entries()).map(([name,v]) => ({
+                name, value: metric === 'sales' ? v.sales : metric === 'qty' ? v.qty : v.receipts.size
+            })).sort((a,b)=>b.value-a.value).slice(0,10);
+            tbody.innerHTML = rows.map((r,i) => `<tr><td class="py-1 pr-2 text-[10px]">${i+1}. ${r.name}</td><td class="py-1 text-right text-[10px] font-semibold">${metric==='sales' ? formatRp(r.value) : formatNum(r.value)}</td></tr>`).join('') || '<tr><td colspan="2" class="py-2 text-center text-[10px] text-slate-400">Tidak ada data</td></tr>';
+        }
+
+        function mtdRenderItems(platform, agg) {
+            const tbody = document.getElementById('mtdTopItemBody');
+            if (!tbody) return;
+            const sources = platform === 'Combined' ? [agg.GrabFood.items, agg.GoFood.items] : [agg[platform].items];
+            const map = new Map();
+            for (const source of sources) for (const [name,v] of source) {
+                const x = map.get(name) || {qty:0,sales:0};
+                x.qty += v.qty; x.sales += v.sales; map.set(name,x);
+            }
+            const totalSales = Array.from(map.values()).reduce((s,v)=>s+v.sales,0);
+            const rows = Array.from(map.entries()).sort((a,b)=>b[1].sales-a[1].sales).slice(0,10);
+            tbody.innerHTML = rows.map(([name,v],i)=>`<tr><td class="py-1 pr-2 text-[10px]">${i+1}. ${name}</td><td class="py-1 text-right text-[10px]">${formatNum(v.qty)}</td><td class="py-1 text-right text-[10px]">${formatRp(v.sales)}</td><td class="py-1 text-right text-[10px]">${totalSales ? (v.sales/totalSales*100).toFixed(1)+'%' : '0.0%'}</td></tr>`).join('') || '<tr><td colspan="4" class="py-2 text-center text-[10px] text-slate-400">Tidak ada data</td></tr>';
+        }
+
+        function renderMtdPlatformComparison() {
+            if (!rawData.length) return;
+            const dates = rawData.map(r=>r.DateStr).filter(Boolean).sort();
+            if (!dates.length) return;
+            const asOf = dates[dates.length-1];
+            const d = new Date(asOf + 'T00:00:00');
+            const year = d.getFullYear(), month = d.getMonth(), day = d.getDate();
+            const start = `${year}-${String(month+1).padStart(2,'0')}-01`;
+            const prevLast = new Date(year, month, 0);
+            const prevDay = Math.min(day, prevLast.getDate());
+            const prevStart = `${prevLast.getFullYear()}-${String(prevLast.getMonth()+1).padStart(2,'0')}-01`;
+            const prevEnd = `${prevLast.getFullYear()}-${String(prevLast.getMonth()+1).padStart(2,'0')}-${String(prevDay).padStart(2,'0')}`;
+
+            const curr = mtdAggForPeriod(start, asOf);
+            const prev = mtdAggForPeriod(prevStart, prevEnd);
+
+            const fmtDate = s => s ? new Date(s+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}) : '-';
+            const subtitle = document.getElementById('mtdPlatformSubtitle');
+            if (subtitle) subtitle.textContent = `MTD ${fmtDate(start)} – ${fmtDate(asOf)} vs ${fmtDate(prevStart)} – ${fmtDate(prevEnd)}.`;
+
+            const set = (id,val) => { const el=document.getElementById(id); if(el) el.innerText=val; };
+            const setg = (id,c,p) => { const el=document.getElementById(id); if(el) el.innerHTML=mtdGrowthHtml(c,p); };
+
+            for (const [prefix,p] of [['Grab',curr.GrabFood],['Go',curr.GoFood]]) {
+                const q = p.qty, tx = p.tx, sales = p.sales, aov = tx ? sales/tx : 0;
+                const pp = prefix === 'Grab' ? prev.GrabFood : prev.GoFood;
+                set(`mtd${prefix}Tx`, formatNum(tx)); set(`mtd${prefix}Sales`, formatRp(sales)); set(`mtd${prefix}Qty`, formatNum(q)); set(`mtd${prefix}Aov`, formatRp(aov));
+                setg(`mtd${prefix}TxGrowth`,tx,pp.tx); setg(`mtd${prefix}SalesGrowth`,sales,pp.sales); setg(`mtd${prefix}QtyGrowth`,q,pp.qty); setg(`mtd${prefix}AovGrowth`,aov,pp.tx ? pp.sales/pp.tx : 0);
+            }
+
+            const metric = document.getElementById('mtdOutletMetricSelect')?.value || 'sales';
+            mtdRenderOutletRows('mtdGrabOutletBody', curr.GrabFood, metric);
+            mtdRenderOutletRows('mtdGoOutletBody', curr.GoFood, metric);
+            const itemPlatform = document.getElementById('mtdItemPlatformSelect')?.value || 'GrabFood';
+            mtdRenderItems(itemPlatform, curr);
+        }
+
+        document.getElementById('mtdOutletMetricSelect')?.addEventListener('change', renderMtdPlatformComparison);
+        document.getElementById('mtdItemPlatformSelect')?.addEventListener('change', renderMtdPlatformComparison);
 
         async function executeFilterAndRender() { 
             const sStart = filters.dStart.value; const sEnd = filters.dEnd.value; const sDept = filters.dept.value; const sEvt = filters.eventType.value; 
@@ -2391,8 +2609,8 @@
     // ============================================================
     // AUTO-LOAD CSV DARI GITHUB
     // ============================================================
-    const GH_USER = 'rohmanfahrudi';
-    const GH_REPO = 'lmdp-b2c-analytic-performance';
+    const GH_USER = 'anggafmp';
+    const GH_REPO = 'trial-dashboard-moka';
     const GH_BASE_URL = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/main/`;
 
     async function loadAllCsvFromGithub() {
@@ -2412,6 +2630,7 @@
 
             for (let i = 0; i < fileList.length; i++) {
                 const fileName = fileList[i];
+                currentSourceFileName = fileName;
                 const pct = Math.round((i / fileList.length) * 100);
                 setLoadingProgress(pct, `Memuat ${fileName} (${i+1}/${fileList.length})...`);
                 try {
