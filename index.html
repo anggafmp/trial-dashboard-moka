@@ -2786,37 +2786,64 @@
                     let headerIdx = -1;
                     let headers = null;
 
+                    // Capture the filename for THIS CSV.
+                    // Do not rely on the mutable global currentSourceFileName
+                    // inside asynchronous Papa.parse callbacks.
+                    const sourceFileName = String(fileName || '');
+                    const sourceLower = sourceFileName.toLowerCase();
+
                     Papa.parse(csvText, {
                         header: false,
                         skipEmptyLines: true,
                         delimiter: "",
                         chunkSize: 1024 * 1024,
                         chunk: function(results) {
+                            // Keep the source filename synchronized with this
+                            // specific CSV while processing its chunks.
+                            currentSourceFileName = sourceFileName;
+
                             const rows = results.data;
+
                             if (headerIdx === -1) {
                                 for (let j = 0; j < Math.min(rows.length, 50); j++) {
-                                    const rowStr = (rows[j] || []).join(' ');
-                                    const sourceLower = String(currentSourceFileName || '').toLowerCase();
+                                    const row = rows[j] || [];
+                                    const rowStr = row.join(' ');
+                                    const rowNorm = rowStr.toLowerCase();
 
                                     const isGrabFoodFile = sourceLower.includes('grabfood');
                                     const isGoFoodFile = sourceLower.includes('gofood');
                                     const isMokaFile = !isGrabFoodFile && !isGoFoodFile;
 
+                                    // Moka header.
                                     const isMokaHeader =
-                                        rowStr.includes('Net Sales') &&
-                                        (rowStr.includes('Receipt Number') || rowStr.includes('SKU'));
+                                        rowNorm.includes('net sales') &&
+                                        (
+                                            rowNorm.includes('receipt number') ||
+                                            rowNorm.includes('sku')
+                                        );
 
+                                    // GrabFood header.
                                     const isGrabFoodHeader =
                                         isGrabFoodFile &&
-                                        rowStr.includes('Transaction ID') &&
-                                        rowStr.includes('Net Sales') &&
-                                        (rowStr.includes('Store Name') || rowStr.includes('Order ID'));
+                                        rowNorm.includes('transaction id') &&
+                                        rowNorm.includes('net sales') &&
+                                        (
+                                            rowNorm.includes('store name') ||
+                                            rowNorm.includes('order id')
+                                        );
 
+                                    // GoFood header.
                                     const isGoFoodHeader =
                                         isGoFoodFile &&
-                                        rowStr.includes('Transaction ID') &&
-                                        (rowStr.includes('Amount') || rowStr.includes('Net Amount')) &&
-                                        (rowStr.includes('Outlet name') || rowStr.includes('Payment Date'));
+                                        rowNorm.includes('transaction id') &&
+                                        (
+                                            rowNorm.includes('amount') ||
+                                            rowNorm.includes('net amount')
+                                        ) &&
+                                        (
+                                            rowNorm.includes('outlet name') ||
+                                            rowNorm.includes('payment date')
+                                        );
 
                                     if (
                                         (isMokaFile && isMokaHeader) ||
@@ -2825,6 +2852,9 @@
                                     ) {
                                         headerIdx = j;
                                         headers = rows[j];
+
+                                        // Process the data immediately after the
+                                        // detected header.
                                         processParsedRows(rows.slice(j + 1), headers);
                                         break;
                                     }
@@ -2833,7 +2863,9 @@
                                 processParsedRows(rows, headers);
                             }
                         },
-                        error: function(err) { throw err; }
+                        error: function(err) {
+                            console.error('Papa.parse error:', sourceFileName, err);
+                        }
                     });
 
                     // Drop the large CSV text immediately after parsing.
