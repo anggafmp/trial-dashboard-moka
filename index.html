@@ -241,6 +241,11 @@
                     <label class="flex items-center gap-1.5 cursor-pointer bg-purple-50 text-purple-700 border border-purple-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input type="checkbox" id="toggleVsLineCheckbox" class="w-3.5 h-3.5 text-purple-700 rounded focus:ring-purple-700 cursor-pointer">Show VS Line</label>
 
                     <button id="openAdvCompareBtn" class="flex items-center gap-1 cursor-pointer bg-blue-50 text-fr-blue border border-blue-200 hover:bg-blue-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0">📊 Adv. Compare</button>
+                    <div class="w-px h-5 bg-gray-300 mx-1"></div>
+                    <button id="platformMenuMoka" class="px-2.5 py-1.5 rounded bg-fr-blue text-white text-[10px] sm:text-[11px] font-bold whitespace-nowrap shrink-0 shadow-sm">Moka</button>
+                    <button id="platformMenuGrab" class="px-2.5 py-1.5 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-[10px] sm:text-[11px] font-bold whitespace-nowrap shrink-0">GrabFood</button>
+                    <button id="platformMenuGo" class="px-2.5 py-1.5 rounded bg-white border border-gray-300 text-gray-700 hover:bg-gray-50 text-[10px] sm:text-[11px] font-bold whitespace-nowrap shrink-0">GoFood</button>
+
                     <button id="openVsTableBtn" class="flex items-center gap-1 cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> VS Table</button>
                 </div>
             </div>
@@ -747,6 +752,95 @@
                 </div>
             </div>
         </div>
+    
+        <!-- PLATFORM DASHBOARDS: GrabFood / GoFood -->
+        <section id="platformDashboard" class="hidden space-y-4">
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div>
+                    <h2 id="platformDashboardTitle" class="text-lg font-bold text-slate-900">GrabFood Dashboard</h2>
+                    <p class="text-[11px] text-slate-500">Perbandingan performa 2025 vs 2026 berdasarkan data platform yang sudah dimuat.</p>
+                </div>
+                <span id="platformDashboardDataInfo" class="text-[10px] font-semibold text-slate-500 bg-white border border-slate-200 rounded px-2.5 py-1.5"></span>
+            </div>
+
+            <!-- KPI SALES -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="panel p-4">
+                    <div class="kpi-title">Sales 2025</div>
+                    <div id="platformSales2025" class="kpi-value">Rp 0</div>
+                </div>
+                <div class="panel p-4">
+                    <div class="kpi-title">Sales 2026</div>
+                    <div id="platformSales2026" class="kpi-value">Rp 0</div>
+                </div>
+                <div class="panel p-4">
+                    <div class="kpi-title">Sales Growth 2026 vs 2025</div>
+                    <div id="platformSalesGrowth" class="kpi-value">0%</div>
+                </div>
+            </div>
+
+            <!-- KPI TRANSACTION -->
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="panel p-4">
+                    <div class="kpi-title">Transaction 2025</div>
+                    <div id="platformTx2025" class="kpi-value">0</div>
+                </div>
+                <div class="panel p-4">
+                    <div class="kpi-title">Transaction 2026</div>
+                    <div id="platformTx2026" class="kpi-value">0</div>
+                </div>
+                <div class="panel p-4">
+                    <div class="kpi-title">Transaction Growth 2026 vs 2025</div>
+                    <div id="platformTxGrowth" class="kpi-value">0%</div>
+                </div>
+            </div>
+
+            <!-- MONTHLY SALES COMPARISON -->
+            <div class="panel p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="section-title mb-0">Sales Comparison by Month</h3>
+                        <p class="text-[10px] text-slate-500 mt-1">2025 vs 2026</p>
+                    </div>
+                </div>
+                <div class="chart-container"><canvas id="platformSalesMonthChart"></canvas></div>
+            </div>
+
+            <!-- MONTHLY TRANSACTION COMPARISON -->
+            <div class="panel p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="section-title mb-0">Transaction Comparison by Month</h3>
+                        <p class="text-[10px] text-slate-500 mt-1">Distinct transaction / receipt</p>
+                    </div>
+                </div>
+                <div class="chart-container"><canvas id="platformTxMonthChart"></canvas></div>
+            </div>
+
+            <!-- PAYMENT METHOD -->
+            <div class="panel p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <h3 class="section-title mb-0">Payment Method</h3>
+                        <p class="text-[10px] text-slate-500 mt-1">Sales dan transaksi berdasarkan metode pembayaran</p>
+                    </div>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full text-left border-collapse">
+                        <thead class="bg-gray-50">
+                            <tr>
+                                <th class="px-3 py-2">Payment Method</th>
+                                <th class="px-3 py-2 text-right">Transaction</th>
+                                <th class="px-3 py-2 text-right">Sales</th>
+                                <th class="px-3 py-2 text-right">Sales %</th>
+                            </tr>
+                        </thead>
+                        <tbody id="platformPaymentBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
     </main>
 
     <!-- Advanced Compare Modal -->
@@ -3215,6 +3309,256 @@ document.getElementById('mtdResetBtn')?.addEventListener(
             setLoadingProgress(0, '');
         }
     }
+
+
+    // ============================================================
+    // GRABFOOD / GOFOOD PLATFORM DASHBOARDS
+    // Independent renderer: does not alter Moka filters or loader.
+    // ============================================================
+    let platformSalesMonthChart = null;
+    let platformTxMonthChart = null;
+    let activePlatformDashboard = 'GrabFood';
+
+    function platformGrowth(current, previous) {
+        if (!previous) return current ? 100 : 0;
+        return ((current - previous) / previous) * 100;
+    }
+
+    function platformSetText(id, value) {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    }
+
+    function platformFormatGrowth(value) {
+        const sign = value > 0 ? '+' : '';
+        return `${sign}${value.toFixed(1)}%`;
+    }
+
+    function platformGetRows(platform) {
+        return rawData.filter(r => String(r['Platform'] || '').trim().toLowerCase() === platform.toLowerCase());
+    }
+
+    function platformAggregate(rows) {
+        const sales = {2025: 0, 2026: 0};
+        const tx = {2025: new Set(), 2026: new Set()};
+        const monthlySales = {
+            2025: Array(12).fill(0),
+            2026: Array(12).fill(0)
+        };
+        const monthlyTx = {
+            2025: Array.from({length: 12}, () => new Set()),
+            2026: Array.from({length: 12}, () => new Set())
+        };
+        const payment = {};
+
+        for (const r of rows) {
+            const dateStr = String(r['DateStr'] || '');
+            const year = parseInt(dateStr.slice(0, 4), 10);
+            const month = parseInt(dateStr.slice(5, 7), 10) - 1;
+            if (year !== 2025 && year !== 2026) continue;
+            if (month < 0 || month > 11) continue;
+
+            const value = typeof r['Net Sales'] === 'number'
+                ? r['Net Sales']
+                : parseFloat(String(r['Net Sales'] || 0).replace(/[^0-9.-]/g, '')) || 0;
+
+            sales[year] += value;
+            monthlySales[year][month] += value;
+
+            const receipt = String(r['Receipt Number'] || '').trim();
+            if (receipt && receipt !== 'Unknown' && receipt !== '-') {
+                tx[year].add(receipt);
+                monthlyTx[year][month].add(receipt);
+            }
+
+            const paymentName = String(r['Payment Method'] || 'Unknown').trim() || 'Unknown';
+            if (!payment[paymentName]) payment[paymentName] = {sales: 0, receipts: new Set()};
+            payment[paymentName].sales += value;
+            if (receipt && receipt !== 'Unknown' && receipt !== '-') {
+                payment[paymentName].receipts.add(receipt);
+            }
+        }
+
+        return {
+            sales,
+            tx: {2025: tx[2025].size, 2026: tx[2026].size},
+            monthlySales,
+            monthlyTx: {
+                2025: monthlyTx[2025].map(s => s.size),
+                2026: monthlyTx[2026].map(s => s.size)
+            },
+            payment
+        };
+    }
+
+    function renderPlatformDashboard(platform) {
+        if (!rawData || !rawData.length) return;
+
+        activePlatformDashboard = platform;
+        const rows = platformGetRows(platform);
+        const agg = platformAggregate(rows);
+
+        platformSetText('platformDashboardTitle', `${platform} Dashboard`);
+        platformSetText(
+            'platformDashboardDataInfo',
+            `${formatNum(rows.length)} data rows • 2025–2026`
+        );
+
+        platformSetText('platformSales2025', `Rp ${formatRp(agg.sales[2025])}`);
+        platformSetText('platformSales2026', `Rp ${formatRp(agg.sales[2026])}`);
+        platformSetText('platformSalesGrowth', platformFormatGrowth(platformGrowth(agg.sales[2026], agg.sales[2025])));
+
+        platformSetText('platformTx2025', formatNum(agg.tx[2025]));
+        platformSetText('platformTx2026', formatNum(agg.tx[2026]));
+        platformSetText('platformTxGrowth', platformFormatGrowth(platformGrowth(agg.tx[2026], agg.tx[2025])));
+
+        const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+        if (platformSalesMonthChart) platformSalesMonthChart.destroy();
+        platformSalesMonthChart = new Chart(document.getElementById('platformSalesMonthChart'), {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [
+                    {label: '2025', data: agg.monthlySales[2025], borderWidth: 1},
+                    {label: '2026', data: agg.monthlySales[2026], borderWidth: 1}
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {mode: 'index', intersect: false},
+                plugins: {
+                    legend: {position: 'top', labels: {font: {size: 10}}},
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.dataset.label}: Rp ${formatRp(ctx.raw)}`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {callback: value => {
+                            if (value >= 1000000000) return (value/1000000000).toFixed(1) + 'B';
+                            if (value >= 1000000) return (value/1000000).toFixed(0) + 'M';
+                            if (value >= 1000) return (value/1000).toFixed(0) + 'K';
+                            return value;
+                        }}
+                    }
+                }
+            }
+        });
+
+        if (platformTxMonthChart) platformTxMonthChart.destroy();
+        platformTxMonthChart = new Chart(document.getElementById('platformTxMonthChart'), {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [
+                    {label: '2025', data: agg.monthlyTx[2025], borderWidth: 1},
+                    {label: '2026', data: agg.monthlyTx[2026], borderWidth: 1}
+                ]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {mode: 'index', intersect: false},
+                plugins: {
+                    legend: {position: 'top', labels: {font: {size: 10}}},
+                    tooltip: {
+                        callbacks: {
+                            label: ctx => `${ctx.dataset.label}: ${formatNum(ctx.raw)} tx`
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {callback: value => formatNum(value)}
+                    }
+                }
+            }
+        });
+
+        const paymentEntries = Object.entries(agg.payment)
+            .map(([name, v]) => ({
+                name,
+                sales: v.sales,
+                tx: v.receipts.size
+            }))
+            .sort((a, b) => b.sales - a.sales);
+
+        const totalPaymentSales = paymentEntries.reduce((sum, x) => sum + x.sales, 0);
+        const tbody = document.getElementById('platformPaymentBody');
+        if (tbody) {
+            tbody.innerHTML = paymentEntries.length
+                ? paymentEntries.map(x => {
+                    const pct = totalPaymentSales ? (x.sales / totalPaymentSales) * 100 : 0;
+                    return `<tr>
+                        <td class="px-3 py-2 font-medium">${x.name}</td>
+                        <td class="px-3 py-2 text-right">${formatNum(x.tx)}</td>
+                        <td class="px-3 py-2 text-right font-semibold">Rp ${formatRp(x.sales)}</td>
+                        <td class="px-3 py-2 text-right">${pct.toFixed(1)}%</td>
+                    </tr>`;
+                }).join('')
+                : `<tr><td colspan="4" class="px-3 py-4 text-center text-gray-500">Tidak ada data payment method.</td></tr>`;
+        }
+    }
+
+    function showPlatformDashboard(platform) {
+        if (!rawData || !rawData.length) return;
+
+        const moka = document.getElementById('dashboardContent');
+        const platformSection = document.getElementById('platformDashboard');
+
+        if (moka) moka.classList.add('hidden');
+        if (platformSection) platformSection.classList.remove('hidden');
+
+        const ids = ['platformMenuMoka', 'platformMenuGrab', 'platformMenuGo'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.remove('bg-fr-blue', 'text-white', 'shadow-sm');
+            el.classList.add('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+        });
+
+        const activeId = platform === 'GrabFood' ? 'platformMenuGrab' : 'platformMenuGo';
+        const active = document.getElementById(activeId);
+        if (active) {
+            active.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+            active.classList.add('bg-fr-blue', 'text-white', 'shadow-sm');
+        }
+
+        renderPlatformDashboard(platform);
+    }
+
+    function showMokaDashboard() {
+        const moka = document.getElementById('dashboardContent');
+        const platformSection = document.getElementById('platformDashboard');
+
+        if (platformSection) platformSection.classList.add('hidden');
+        if (moka) moka.classList.remove('hidden');
+
+        const ids = ['platformMenuMoka', 'platformMenuGrab', 'platformMenuGo'];
+        ids.forEach(id => {
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.remove('bg-fr-blue', 'text-white', 'shadow-sm');
+            el.classList.add('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+        });
+
+        const active = document.getElementById('platformMenuMoka');
+        if (active) {
+            active.classList.remove('bg-white', 'text-gray-700', 'border', 'border-gray-300');
+            active.classList.add('bg-fr-blue', 'text-white', 'shadow-sm');
+        }
+    }
+
+    document.getElementById('platformMenuMoka')?.addEventListener('click', showMokaDashboard);
+    document.getElementById('platformMenuGrab')?.addEventListener('click', () => showPlatformDashboard('GrabFood'));
+    document.getElementById('platformMenuGo')?.addEventListener('click', () => showPlatformDashboard('GoFood'));
+
 
     window.addEventListener('DOMContentLoaded', loadAllCsvFromGithub);
     </script>
