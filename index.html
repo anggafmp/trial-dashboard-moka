@@ -240,7 +240,7 @@
                     <label class="flex items-center gap-1.5 cursor-pointer bg-blue-50 text-fr-blue border border-blue-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input type="checkbox" id="toggleLabelsCheckbox" class="w-3.5 h-3.5 text-fr-blue rounded focus:ring-fr-blue cursor-pointer">Show Values</label>
                     <label class="flex items-center gap-1.5 cursor-pointer bg-purple-50 text-purple-700 border border-purple-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input type="checkbox" id="toggleVsLineCheckbox" class="w-3.5 h-3.5 text-purple-700 rounded focus:ring-purple-700 cursor-pointer">Show VS Line</label>
 
-                    <button id="openAdvCompareBtn" class="flex items-center gap-1 cursor-pointer bg-blue-50 text-fr-blue border border-blue-200 hover:bg-blue-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0">📊 Adv. Compare</button>
+                    <button id="openAdvCompareBtn" class="flex items-center gap-1 cursor-pointer bg-blue-50 text-fr-blue border border-blue-200 hover:bg-blue-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0">📊 Platform Dashboard</button>
                     <button id="openVsTableBtn" class="flex items-center gap-1 cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> VS Table</button>
                 </div>
             </div>
@@ -480,173 +480,47 @@
             </div>
 
 
-            <!-- MTD COMPARISON: GRABFOOD vs GOFOOD -->
+            <!-- PLATFORM DASHBOARD: GRABFOOD vs GOFOOD -->
             <section id="mtdPlatformSection" class="hidden space-y-3">
                 <div class="panel p-3 sm:p-4">
-                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
+                    <div class="flex flex-col lg:flex-row lg:items-end justify-between gap-3 mb-4">
                         <div>
-                            <h3 class="section-title mb-1">MTD Comparison — GrabFood vs GoFood</h3>
-                            <p id="mtdPlatformSubtitle" class="text-[10px] text-slate-500">Menggunakan tanggal transaksi terbaru yang tersedia sebagai cut-off MTD.</p>
-                            <div class="flex flex-wrap items-end gap-2">
-
-    <div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            Start Date
-        </label>
-        <input
-            type="date"
-            id="mtdStartDate"
-            class="pro-select text-[10px] w-[125px] p-1.5"
-        >
-    </div>
-
-    <div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            End Date
-        </label>
-        <input
-            type="date"
-            id="mtdEndDate"
-            class="pro-select text-[10px] w-[125px] p-1.5"
-        >
-    </div>
-
-    <button
-        id="mtdApplyBtn"
-        class="px-3 py-1.5 text-[10px] font-bold rounded border border-blue-200 bg-blue-50 text-blue-700"
-    >
-        Apply
-    </button>
-
-    <button
-        id="mtdResetBtn"
-        class="px-3 py-1.5 text-[10px] font-bold rounded border border-slate-200 bg-white text-slate-600"
-    >
-        Reset
-    </button>
-
-</div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            Start Date
-        </label>
-        <input
-            type="date"
-            id="mtdStartDate"
-            class="pro-select text-[10px] w-[125px] p-1.5"
-        >
-    </div>
-
-    <div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            End Date
-        </label>
-        <input
-            type="date"
-            id="mtdEndDate"
-            class="pro-select text-[10px] w-[125px] p-1.5"
-        >
-    </div>
-
-    <button
-        id="mtdApplyBtn"
-        class="px-3 py-1.5 text-[10px] font-bold rounded border border-blue-200 bg-blue-50 text-blue-700"
-    >
-        Apply
-    </button>
-
-    <button
-        id="mtdResetBtn"
-        class="px-3 py-1.5 text-[10px] font-bold rounded border border-slate-200 bg-white text-slate-600"
-    >
-        Reset
-    </button>
-
-</div>
+                            <h3 class="section-title mb-1">Platform Dashboard — GrabFood vs GoFood</h3>
+                            <p id="mtdPlatformSubtitle" class="text-[10px] text-slate-500">Perbandingan sales dan transaksi berdasarkan periode yang dipilih.</p>
                         </div>
                         <div class="flex flex-wrap items-end gap-2">
-
-    <div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            Start Date
-        </label>
-        <input
-            type="date"
-            id="mtdStartDate"
-            class="pro-select text-[10px] w-[125px] p-1.5"
-        >
-    </div>
-
-    <div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            End Date
-        </label>
-        <input
-            type="date"
-            id="mtdEndDate"
-            class="pro-select text-[10px] w-[125px] p-1.5"
-        >
-    </div>
-
-    <button
-        id="mtdApplyBtn"
-        class="px-3 py-1.5 text-[10px] font-bold rounded border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-    >
-        Apply
-    </button>
-
-    <button
-        id="mtdResetBtn"
-        class="px-3 py-1.5 text-[10px] font-bold rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-    >
-        Reset
-    </button>
-
-    <div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            Top Item
-        </label>
-        <select id="mtdItemPlatformSelect" class="pro-select text-[10px] w-[120px] p-1.5">
-            <option value="GrabFood">GrabFood</option>
-            <option value="GoFood">GoFood</option>
-            <option value="Combined">Combined</option>
-        </select>
-    </div>
-
-</div>
-                                <option value="GrabFood">GrabFood</option>
-                                <option value="GoFood">GoFood</option>
-                                <option value="Combined">Combined</option>
-                            </select>
+                            <div>
+                                <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">Start Date</label>
+                                <input type="date" id="mtdStartDate" class="pro-select text-[10px] w-[125px] p-1.5">
+                            </div>
+                            <div>
+                                <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">End Date</label>
+                                <input type="date" id="mtdEndDate" class="pro-select text-[10px] w-[125px] p-1.5">
+                            </div>
+                            <button id="mtdApplyBtn" class="px-3 py-1.5 text-[10px] font-bold rounded border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100">Apply</button>
+                            <button id="mtdResetBtn" class="px-3 py-1.5 text-[10px] font-bold rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50">Reset</button>
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
-                        <div class="rounded border border-slate-200 p-2.5 bg-slate-50">
-                            <div class="kpi-title">Transactions</div>
-                            <div class="grid grid-cols-2 gap-2 mt-1">
-                                <div><div class="text-[9px] text-slate-500">GrabFood</div><div id="mtdGrabTx" class="font-bold text-sm">0</div><div id="mtdGrabTxGrowth" class="text-[9px]"></div></div>
-                                <div><div class="text-[9px] text-slate-500">GoFood</div><div id="mtdGoTx" class="font-bold text-sm">0</div><div id="mtdGoTxGrowth" class="text-[9px]"></div></div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+                        <div class="rounded border border-green-200 bg-green-50 p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[10px] font-bold text-green-800">GRABFOOD</span>
+                                <span id="mtdGrabShare" class="text-[9px] font-semibold text-green-700">0%</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div><div class="text-[9px] text-slate-500">Sales</div><div id="mtdGrabSales" class="font-bold text-base">Rp0</div><div id="mtdGrabSalesGrowth" class="text-[9px] mt-0.5"></div></div>
+                                <div><div class="text-[9px] text-slate-500">Transactions</div><div id="mtdGrabTx" class="font-bold text-base">0</div><div id="mtdGrabTxGrowth" class="text-[9px] mt-0.5"></div></div>
                             </div>
                         </div>
-                        <div class="rounded border border-slate-200 p-2.5 bg-slate-50">
-                            <div class="kpi-title">Sales</div>
-                            <div class="grid grid-cols-2 gap-2 mt-1">
-                                <div><div class="text-[9px] text-slate-500">GrabFood</div><div id="mtdGrabSales" class="font-bold text-sm">Rp0</div><div id="mtdGrabSalesGrowth" class="text-[9px]"></div></div>
-                                <div><div class="text-[9px] text-slate-500">GoFood</div><div id="mtdGoSales" class="font-bold text-sm">Rp0</div><div id="mtdGoSalesGrowth" class="text-[9px]"></div></div>
+                        <div class="rounded border border-orange-200 bg-orange-50 p-3">
+                            <div class="flex items-center justify-between mb-2">
+                                <span class="text-[10px] font-bold text-orange-800">GOFOOD</span>
+                                <span id="mtdGoShare" class="text-[9px] font-semibold text-orange-700">0%</span>
                             </div>
-                        </div>
-                        <div class="rounded border border-slate-200 p-2.5 bg-slate-50">
-                            <div class="kpi-title">Qty Sold</div>
-                            <div class="grid grid-cols-2 gap-2 mt-1">
-                                <div><div class="text-[9px] text-slate-500">GrabFood</div><div id="mtdGrabQty" class="font-bold text-sm">0</div><div id="mtdGrabQtyGrowth" class="text-[9px]"></div></div>
-                                <div><div class="text-[9px] text-slate-500">GoFood</div><div id="mtdGoQty" class="font-bold text-sm">0</div><div id="mtdGoQtyGrowth" class="text-[9px]"></div></div>
-                            </div>
-                        </div>
-                        <div class="rounded border border-slate-200 p-2.5 bg-slate-50">
-                            <div class="kpi-title">AOV</div>
-                            <div class="grid grid-cols-2 gap-2 mt-1">
-                                <div><div class="text-[9px] text-slate-500">GrabFood</div><div id="mtdGrabAov" class="font-bold text-sm">Rp0</div><div id="mtdGrabAovGrowth" class="text-[9px]"></div></div>
-                                <div><div class="text-[9px] text-slate-500">GoFood</div><div id="mtdGoAov" class="font-bold text-sm">Rp0</div><div id="mtdGoAovGrowth" class="text-[9px]"></div></div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div><div class="text-[9px] text-slate-500">Sales</div><div id="mtdGoSales" class="font-bold text-base">Rp0</div><div id="mtdGoSalesGrowth" class="text-[9px] mt-0.5"></div></div>
+                                <div><div class="text-[9px] text-slate-500">Transactions</div><div id="mtdGoTx" class="font-bold text-base">0</div><div id="mtdGoTxGrowth" class="text-[9px] mt-0.5"></div></div>
                             </div>
                         </div>
                     </div>
@@ -663,26 +537,33 @@
                             </div>
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
-                                    <div class="text-[9px] font-bold text-emerald-700 mb-1">GRABFOOD</div>
-                                    <div class="overflow-y-auto max-h-52"><table class="min-w-full"><thead><tr><th class="py-1 text-left">Outlet</th><th class="py-1 text-right">Value</th></tr></thead><tbody id="mtdGrabOutletBody"></tbody></table></div>
+                                    <div class="text-[9px] font-bold text-green-700 mb-1">GRABFOOD</div>
+                                    <div class="overflow-y-auto max-h-56"><table class="min-w-full"><thead><tr><th class="py-1 text-left">Outlet</th><th class="py-1 text-right">Value</th></tr></thead><tbody id="mtdGrabOutletBody"></tbody></table></div>
                                 </div>
                                 <div>
                                     <div class="text-[9px] font-bold text-orange-700 mb-1">GOFOOD</div>
-                                    <div class="overflow-y-auto max-h-52"><table class="min-w-full"><thead><tr><th class="py-1 text-left">Outlet</th><th class="py-1 text-right">Value</th></tr></thead><tbody id="mtdGoOutletBody"></tbody></table></div>
+                                    <div class="overflow-y-auto max-h-56"><table class="min-w-full"><thead><tr><th class="py-1 text-left">Outlet</th><th class="py-1 text-right">Value</th></tr></thead><tbody id="mtdGoOutletBody"></tbody></table></div>
                                 </div>
                             </div>
                         </div>
 
                         <div class="border border-slate-200 rounded p-3">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-[11px] font-bold text-slate-700">Top 10 Item</h4>
-                                <span class="text-[9px] text-slate-500">Qty • Sales • Contribution</span>
-                            </div>
-                            <div class="overflow-y-auto max-h-60">
-                                <table class="min-w-full">
-                                    <thead><tr><th class="py-1 text-left">Item</th><th class="py-1 text-right">Qty</th><th class="py-1 text-right">Sales</th><th class="py-1 text-right">%</th></tr></thead>
-                                    <tbody id="mtdTopItemBody"></tbody>
-                                </table>
+                            <h4 class="text-[11px] font-bold text-slate-700 mb-2">Platform Comparison</h4>
+                            <div class="space-y-3">
+                                <div>
+                                    <div class="flex justify-between text-[9px] mb-1"><span>Sales</span><span id="mtdSalesWinner" class="font-semibold">-</span></div>
+                                    <div class="space-y-1">
+                                        <div><div class="flex justify-between text-[9px]"><span>GrabFood</span><span id="mtdGrabSalesBarValue">Rp0</span></div><div class="h-2 bg-slate-100 rounded overflow-hidden"><div id="mtdGrabSalesBar" class="h-full bg-green-500 rounded" style="width:0%"></div></div></div>
+                                        <div><div class="flex justify-between text-[9px]"><span>GoFood</span><span id="mtdGoSalesBarValue">Rp0</span></div><div class="h-2 bg-slate-100 rounded overflow-hidden"><div id="mtdGoSalesBar" class="h-full bg-orange-500 rounded" style="width:0%"></div></div></div>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="flex justify-between text-[9px] mb-1"><span>Transactions</span><span id="mtdTxWinner" class="font-semibold">-</span></div>
+                                    <div class="space-y-1">
+                                        <div><div class="flex justify-between text-[9px]"><span>GrabFood</span><span id="mtdGrabTxBarValue">0</span></div><div class="h-2 bg-slate-100 rounded overflow-hidden"><div id="mtdGrabTxBar" class="h-full bg-green-500 rounded" style="width:0%"></div></div></div>
+                                        <div><div class="flex justify-between text-[9px]"><span>GoFood</span><span id="mtdGoTxBarValue">0</span></div><div class="h-2 bg-slate-100 rounded overflow-hidden"><div id="mtdGoTxBar" class="h-full bg-orange-500 rounded" style="width:0%"></div></div></div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -754,7 +635,7 @@
         <div class="bg-white rounded shadow-xl w-full max-w-6xl flex flex-col max-h-[95vh] h-full sm:h-[800px]">
             <div class="px-3 sm:px-5 py-3 border-b border-gray-200 bg-gray-50 rounded-t">
                 <div class="flex justify-between items-center">
-                    <h3 id="advCompareModalTitle" class="font-bold text-fr-text text-sm">Advanced Compare</h3>
+                    <h3 id="advCompareModalTitle" class="font-bold text-fr-text text-sm">Platform Dashboard</h3>
                     <button id="closeAdvCompareBtn" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
                 </div>
                 <div class="flex gap-1 mt-2">
@@ -762,7 +643,7 @@
                         Advanced Comparison
                     </button>
                     <button id="advMtdTabBtn" class="px-3 py-1.5 rounded border border-gray-200 bg-white text-gray-500 text-[10px] font-bold hover:bg-gray-100">
-                        MTD GrabFood vs GoFood
+                        Platform Dashboard — GrabFood vs GoFood
                     </button>
                 </div>
             </div>
@@ -1708,8 +1589,8 @@
 
         function mtdAggForPeriod(start, end) {
             const out = {
-                GrabFood: { sales:0, qty:0, tx:0, receipts:new Set(), outlets:new Map(), items:new Map() },
-                GoFood: { sales:0, qty:0, tx:0, receipts:new Set(), outlets:new Map(), items:new Map() }
+                GrabFood: { sales:0, qty:0, tx:0, receipts:new Set(), outlets:new Map() },
+                GoFood: { sales:0, qty:0, tx:0, receipts:new Set(), outlets:new Map() }
             };
             for (const r of rawData) {
                 const d = r.DateStr;
@@ -1720,7 +1601,6 @@
                 const qty = getCleanNum(r,'Quantity');
                 const receipt = String(r['Receipt Number'] || '').trim();
                 const outlet = String(r['Outlet'] || 'Unknown').trim() || 'Unknown';
-                const item = String(r['Items'] || 'Unknown').trim() || 'Unknown';
                 const a = out[p];
                 a.sales += sales;
                 a.qty += qty;
@@ -1730,9 +1610,6 @@
                 if (!o) { o = {sales:0, qty:0, receipts:new Set()}; a.outlets.set(outlet,o); }
                 o.sales += sales; o.qty += qty; if (receipt) o.receipts.add(receipt);
 
-                let it = a.items.get(item);
-                if (!it) { it = {sales:0, qty:0}; a.items.set(item,it); }
-                it.sales += sales; it.qty += qty;
             }
             out.GrabFood.tx = out.GrabFood.receipts.size;
             out.GoFood.tx = out.GoFood.receipts.size;
@@ -1746,20 +1623,6 @@
                 name, value: metric === 'sales' ? v.sales : metric === 'qty' ? v.qty : v.receipts.size
             })).sort((a,b)=>b.value-a.value).slice(0,10);
             tbody.innerHTML = rows.map((r,i) => `<tr><td class="py-1 pr-2 text-[10px]">${i+1}. ${r.name}</td><td class="py-1 text-right text-[10px] font-semibold">${metric==='sales' ? formatRp(r.value) : formatNum(r.value)}</td></tr>`).join('') || '<tr><td colspan="2" class="py-2 text-center text-[10px] text-slate-400">Tidak ada data</td></tr>';
-        }
-
-        function mtdRenderItems(platform, agg) {
-            const tbody = document.getElementById('mtdTopItemBody');
-            if (!tbody) return;
-            const sources = platform === 'Combined' ? [agg.GrabFood.items, agg.GoFood.items] : [agg[platform].items];
-            const map = new Map();
-            for (const source of sources) for (const [name,v] of source) {
-                const x = map.get(name) || {qty:0,sales:0};
-                x.qty += v.qty; x.sales += v.sales; map.set(name,x);
-            }
-            const totalSales = Array.from(map.values()).reduce((s,v)=>s+v.sales,0);
-            const rows = Array.from(map.entries()).sort((a,b)=>b[1].sales-a[1].sales).slice(0,10);
-            tbody.innerHTML = rows.map(([name,v],i)=>`<tr><td class="py-1 pr-2 text-[10px]">${i+1}. ${name}</td><td class="py-1 text-right text-[10px]">${formatNum(v.qty)}</td><td class="py-1 text-right text-[10px]">${formatRp(v.sales)}</td><td class="py-1 text-right text-[10px]">${totalSales ? (v.sales/totalSales*100).toFixed(1)+'%' : '0.0%'}</td></tr>`).join('') || '<tr><td colspan="4" class="py-2 text-center text-[10px] text-slate-400">Tidak ada data</td></tr>';
         }
 
         function renderMtdPlatformComparison() {
@@ -1909,6 +1772,29 @@
         );
     }
 
+    const totalSales = curr.GrabFood.sales + curr.GoFood.sales;
+    const totalTx = curr.GrabFood.tx + curr.GoFood.tx;
+    const grabSalesPct = totalSales ? (curr.GrabFood.sales / totalSales * 100) : 0;
+    const goSalesPct = totalSales ? (curr.GoFood.sales / totalSales * 100) : 0;
+    set('mtdGrabShare', `${grabSalesPct.toFixed(1)}% sales share`);
+    set('mtdGoShare', `${goSalesPct.toFixed(1)}% sales share`);
+    set('mtdGrabSalesBarValue', formatRp(curr.GrabFood.sales));
+    set('mtdGoSalesBarValue', formatRp(curr.GoFood.sales));
+    set('mtdGrabTxBarValue', formatNum(curr.GrabFood.tx));
+    set('mtdGoTxBarValue', formatNum(curr.GoFood.tx));
+    const salesMax = Math.max(curr.GrabFood.sales, curr.GoFood.sales, 1);
+    const txMax = Math.max(curr.GrabFood.tx, curr.GoFood.tx, 1);
+    const grabSalesBar = document.getElementById('mtdGrabSalesBar');
+    const goSalesBar = document.getElementById('mtdGoSalesBar');
+    const grabTxBar = document.getElementById('mtdGrabTxBar');
+    const goTxBar = document.getElementById('mtdGoTxBar');
+    if (grabSalesBar) grabSalesBar.style.width = `${curr.GrabFood.sales / salesMax * 100}%`;
+    if (goSalesBar) goSalesBar.style.width = `${curr.GoFood.sales / salesMax * 100}%`;
+    if (grabTxBar) grabTxBar.style.width = `${curr.GrabFood.tx / txMax * 100}%`;
+    if (goTxBar) goTxBar.style.width = `${curr.GoFood.tx / txMax * 100}%`;
+    set('mtdSalesWinner', curr.GrabFood.sales === curr.GoFood.sales ? 'Imbang' : (curr.GrabFood.sales > curr.GoFood.sales ? 'GrabFood unggul' : 'GoFood unggul'));
+    set('mtdTxWinner', curr.GrabFood.tx === curr.GoFood.tx ? 'Imbang' : (curr.GrabFood.tx > curr.GoFood.tx ? 'GrabFood unggul' : 'GoFood unggul'));
+
     const metric =
         document.getElementById('mtdOutletMetricSelect')?.value
         || 'sales';
@@ -1925,15 +1811,9 @@
         metric
     );
 
-    const itemPlatform =
-        document.getElementById('mtdItemPlatformSelect')?.value
-        || 'GrabFood';
-
-    mtdRenderItems(itemPlatform, curr);
 }
 
         document.getElementById('mtdOutletMetricSelect')?.addEventListener('change', renderMtdPlatformComparison);
-        document.getElementById('mtdItemPlatformSelect')?.addEventListener('change', renderMtdPlatformComparison);
         document.getElementById('mtdApplyBtn')?.addEventListener(
     'click',
     () => {
@@ -2884,7 +2764,7 @@ document.getElementById('mtdResetBtn')?.addEventListener(
 
         if (advCompareModalTitle) {
             advCompareModalTitle.textContent = isMtd
-                ? 'MTD GrabFood vs GoFood'
+                ? 'Platform Dashboard — GrabFood vs GoFood'
                 : 'Advanced Cohort Comparison';
         }
         if (isMtd) renderMtdPlatformComparison();
