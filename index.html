@@ -1932,13 +1932,6 @@
     mtdRenderItems(itemPlatform, curr);
 }
 
-            const metric = document.getElementById('mtdOutletMetricSelect')?.value || 'sales';
-            mtdRenderOutletRows('mtdGrabOutletBody', curr.GrabFood, metric);
-            mtdRenderOutletRows('mtdGoOutletBody', curr.GoFood, metric);
-            const itemPlatform = document.getElementById('mtdItemPlatformSelect')?.value || 'GrabFood';
-            mtdRenderItems(itemPlatform, curr);
-        }
-
         document.getElementById('mtdOutletMetricSelect')?.addEventListener('change', renderMtdPlatformComparison);
         document.getElementById('mtdItemPlatformSelect')?.addEventListener('change', renderMtdPlatformComparison);
         document.getElementById('mtdApplyBtn')?.addEventListener(
