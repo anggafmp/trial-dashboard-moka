@@ -2796,7 +2796,33 @@
                             if (headerIdx === -1) {
                                 for (let j = 0; j < Math.min(rows.length, 50); j++) {
                                     const rowStr = (rows[j] || []).join(' ');
-                                    if (rowStr.includes('Net Sales') && (rowStr.includes('Receipt Number') || rowStr.includes('SKU'))) {
+                                    const sourceLower = String(currentSourceFileName || '').toLowerCase();
+
+                                    const isGrabFoodFile = sourceLower.includes('grabfood');
+                                    const isGoFoodFile = sourceLower.includes('gofood');
+                                    const isMokaFile = !isGrabFoodFile && !isGoFoodFile;
+
+                                    const isMokaHeader =
+                                        rowStr.includes('Net Sales') &&
+                                        (rowStr.includes('Receipt Number') || rowStr.includes('SKU'));
+
+                                    const isGrabFoodHeader =
+                                        isGrabFoodFile &&
+                                        rowStr.includes('Transaction ID') &&
+                                        rowStr.includes('Net Sales') &&
+                                        (rowStr.includes('Store Name') || rowStr.includes('Order ID'));
+
+                                    const isGoFoodHeader =
+                                        isGoFoodFile &&
+                                        rowStr.includes('Transaction ID') &&
+                                        (rowStr.includes('Amount') || rowStr.includes('Net Amount')) &&
+                                        (rowStr.includes('Outlet name') || rowStr.includes('Payment Date'));
+
+                                    if (
+                                        (isMokaFile && isMokaHeader) ||
+                                        isGrabFoodHeader ||
+                                        isGoFoodHeader
+                                    ) {
                                         headerIdx = j;
                                         headers = rows[j];
                                         processParsedRows(rows.slice(j + 1), headers);
