@@ -486,7 +486,45 @@
                     <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
                         <div>
                             <h3 class="section-title mb-1">MTD Comparison — GrabFood vs GoFood</h3>
-                            <p id="mtdPlatformSubtitle" class="text-[10px] text-slate-500">Menggunakan tanggal transaksi terbaru yang tersedia sebagai cut-off MTD.</p>
+                            <p id="mtdPlatformSubtitle" class="text-[10px] text-slate-500">Menggunakan tanggal transaksi terbaru yang tersedia sebagai cut-off MTD.</p><div class="flex flex-wrap items-end gap-2">
+
+    <div>
+        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
+            Start Date
+        </label>
+        <input
+            type="date"
+            id="mtdStartDate"
+            class="pro-select text-[10px] w-[125px] p-1.5"
+        >
+    </div>
+
+    <div>
+        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
+            End Date
+        </label>
+        <input
+            type="date"
+            id="mtdEndDate"
+            class="pro-select text-[10px] w-[125px] p-1.5"
+        >
+    </div>
+
+    <button
+        id="mtdApplyBtn"
+        class="px-3 py-1.5 text-[10px] font-bold rounded border border-blue-200 bg-blue-50 text-blue-700"
+    >
+        Apply
+    </button>
+
+    <button
+        id="mtdResetBtn"
+        class="px-3 py-1.5 text-[10px] font-bold rounded border border-slate-200 bg-white text-slate-600"
+    >
+        Reset
+    </button>
+
+</div>
                         </div>
                         <div class="flex flex-wrap items-end gap-2">
 
