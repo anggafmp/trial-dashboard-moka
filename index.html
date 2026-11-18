@@ -488,9 +488,56 @@
                             <h3 class="section-title mb-1">MTD Comparison — GrabFood vs GoFood</h3>
                             <p id="mtdPlatformSubtitle" class="text-[10px] text-slate-500">Menggunakan tanggal transaksi terbaru yang tersedia sebagai cut-off MTD.</p>
                         </div>
-                        <div class="flex items-center gap-2">
-                            <span class="text-[9px] font-bold uppercase text-slate-500">Top Item</span>
-                            <select id="mtdItemPlatformSelect" class="pro-select text-[10px] w-[120px] p-1.5">
+                        <div class="flex flex-wrap items-end gap-2">
+
+    <div>
+        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
+            Start Date
+        </label>
+        <input
+            type="date"
+            id="mtdStartDate"
+            class="pro-select text-[10px] w-[125px] p-1.5"
+        >
+    </div>
+
+    <div>
+        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
+            End Date
+        </label>
+        <input
+            type="date"
+            id="mtdEndDate"
+            class="pro-select text-[10px] w-[125px] p-1.5"
+        >
+    </div>
+
+    <button
+        id="mtdApplyBtn"
+        class="px-3 py-1.5 text-[10px] font-bold rounded border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
+    >
+        Apply
+    </button>
+
+    <button
+        id="mtdResetBtn"
+        class="px-3 py-1.5 text-[10px] font-bold rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
+    >
+        Reset
+    </button>
+
+    <div>
+        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
+            Top Item
+        </label>
+        <select id="mtdItemPlatformSelect" class="pro-select text-[10px] w-[120px] p-1.5">
+            <option value="GrabFood">GrabFood</option>
+            <option value="GoFood">GoFood</option>
+            <option value="Combined">Combined</option>
+        </select>
+    </div>
+
+</div>
                                 <option value="GrabFood">GrabFood</option>
                                 <option value="GoFood">GoFood</option>
                                 <option value="Combined">Combined</option>
@@ -1641,34 +1688,174 @@
         }
 
         function renderMtdPlatformComparison() {
-            if (!rawData.length) return;
-            const dates = rawData.map(r=>r.DateStr).filter(Boolean).sort();
-            if (!dates.length) return;
-            const asOf = dates[dates.length-1];
-            const d = new Date(asOf + 'T00:00:00');
-            const year = d.getFullYear(), month = d.getMonth(), day = d.getDate();
-            const start = `${year}-${String(month+1).padStart(2,'0')}-01`;
-            const prevLast = new Date(year, month, 0);
-            const prevDay = Math.min(day, prevLast.getDate());
-            const prevStart = `${prevLast.getFullYear()}-${String(prevLast.getMonth()+1).padStart(2,'0')}-01`;
-            const prevEnd = `${prevLast.getFullYear()}-${String(prevLast.getMonth()+1).padStart(2,'0')}-${String(prevDay).padStart(2,'0')}`;
+    if (!rawData.length) return;
 
-            const curr = mtdAggForPeriod(start, asOf);
-            const prev = mtdAggForPeriod(prevStart, prevEnd);
+    const dates = rawData
+        .map(r => r.DateStr)
+        .filter(Boolean)
+        .sort();
 
-            const fmtDate = s => s ? new Date(s+'T00:00:00').toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'}) : '-';
-            const subtitle = document.getElementById('mtdPlatformSubtitle');
-            if (subtitle) subtitle.textContent = `MTD ${fmtDate(start)} – ${fmtDate(asOf)} vs ${fmtDate(prevStart)} – ${fmtDate(prevEnd)}.`;
+    if (!dates.length) return;
 
-            const set = (id,val) => { const el=document.getElementById(id); if(el) el.innerText=val; };
-            const setg = (id,c,p) => { const el=document.getElementById(id); if(el) el.innerHTML=mtdGrowthHtml(c,p); };
+    const latestDate = dates[dates.length - 1];
 
-            for (const [prefix,p] of [['Grab',curr.GrabFood],['Go',curr.GoFood]]) {
-                const q = p.qty, tx = p.tx, sales = p.sales, aov = tx ? sales/tx : 0;
-                const pp = prefix === 'Grab' ? prev.GrabFood : prev.GoFood;
-                set(`mtd${prefix}Tx`, formatNum(tx)); set(`mtd${prefix}Sales`, formatRp(sales)); set(`mtd${prefix}Qty`, formatNum(q)); set(`mtd${prefix}Aov`, formatRp(aov));
-                setg(`mtd${prefix}TxGrowth`,tx,pp.tx); setg(`mtd${prefix}SalesGrowth`,sales,pp.sales); setg(`mtd${prefix}QtyGrowth`,q,pp.qty); setg(`mtd${prefix}AovGrowth`,aov,pp.tx ? pp.sales/pp.tx : 0);
-            }
+    const startInput = document.getElementById('mtdStartDate');
+    const endInput = document.getElementById('mtdEndDate');
+
+    // Default: MTD terbaru
+    let start = startInput?.value || '';
+    let asOf = endInput?.value || '';
+
+    if (!start || !asOf) {
+        const latest = new Date(latestDate + 'T00:00:00');
+
+        start =
+            `${latest.getFullYear()}-` +
+            `${String(latest.getMonth() + 1).padStart(2, '0')}-01`;
+
+        asOf = latestDate;
+
+        if (startInput) startInput.value = start;
+        if (endInput) endInput.value = asOf;
+    }
+
+    // Validasi
+    if (start > asOf) {
+        const tmp = start;
+        start = asOf;
+        asOf = tmp;
+
+        if (startInput) startInput.value = start;
+        if (endInput) endInput.value = asOf;
+    }
+
+    // Previous period = jumlah hari yang sama sebelum current period
+    const currentStartDate = new Date(start + 'T00:00:00');
+    const currentEndDate = new Date(asOf + 'T00:00:00');
+
+    const diffDays =
+        Math.round(
+            (currentEndDate - currentStartDate) / 86400000
+        ) + 1;
+
+    const prevEndDate = new Date(
+        currentStartDate.getTime() - 86400000
+    );
+
+    const prevStartDate = new Date(
+        prevEndDate.getTime() -
+        (diffDays - 1) * 86400000
+    );
+
+    const toIso = d => {
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
+    };
+
+    const prevStart = toIso(prevStartDate);
+    const prevEnd = toIso(prevEndDate);
+
+    const curr = mtdAggForPeriod(start, asOf);
+    const prev = mtdAggForPeriod(prevStart, prevEnd);
+
+    const fmtDate = s =>
+        s
+            ? new Date(s + 'T00:00:00')
+                .toLocaleDateString('id-ID', {
+                    day: '2-digit',
+                    month: 'short',
+                    year: 'numeric'
+                })
+            : '-';
+
+    const subtitle =
+        document.getElementById('mtdPlatformSubtitle');
+
+    if (subtitle) {
+        subtitle.textContent =
+            `MTD ${fmtDate(start)} – ${fmtDate(asOf)} ` +
+            `vs ${fmtDate(prevStart)} – ${fmtDate(prevEnd)}.`;
+    }
+
+    const set = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.innerText = val;
+    };
+
+    const setg = (id, c, p) => {
+        const el = document.getElementById(id);
+        if (el) el.innerHTML = mtdGrowthHtml(c, p);
+    };
+
+    for (const [prefix, p] of [
+        ['Grab', curr.GrabFood],
+        ['Go', curr.GoFood]
+    ]) {
+
+        const q = p.qty;
+        const tx = p.tx;
+        const sales = p.sales;
+        const aov = tx ? sales / tx : 0;
+
+        const pp =
+            prefix === 'Grab'
+                ? prev.GrabFood
+                : prev.GoFood;
+
+        set(`mtd${prefix}Tx`, formatNum(tx));
+        set(`mtd${prefix}Sales`, formatRp(sales));
+        set(`mtd${prefix}Qty`, formatNum(q));
+        set(`mtd${prefix}Aov`, formatRp(aov));
+
+        setg(
+            `mtd${prefix}TxGrowth`,
+            tx,
+            pp.tx
+        );
+
+        setg(
+            `mtd${prefix}SalesGrowth`,
+            sales,
+            pp.sales
+        );
+
+        setg(
+            `mtd${prefix}QtyGrowth`,
+            q,
+            pp.qty
+        );
+
+        setg(
+            `mtd${prefix}AovGrowth`,
+            aov,
+            pp.tx ? pp.sales / pp.tx : 0
+        );
+    }
+
+    const metric =
+        document.getElementById('mtdOutletMetricSelect')?.value
+        || 'sales';
+
+    mtdRenderOutletRows(
+        'mtdGrabOutletBody',
+        curr.GrabFood,
+        metric
+    );
+
+    mtdRenderOutletRows(
+        'mtdGoOutletBody',
+        curr.GoFood,
+        metric
+    );
+
+    const itemPlatform =
+        document.getElementById('mtdItemPlatformSelect')?.value
+        || 'GrabFood';
+
+    mtdRenderItems(itemPlatform, curr);
+}
 
             const metric = document.getElementById('mtdOutletMetricSelect')?.value || 'sales';
             mtdRenderOutletRows('mtdGrabOutletBody', curr.GrabFood, metric);
@@ -1679,6 +1866,45 @@
 
         document.getElementById('mtdOutletMetricSelect')?.addEventListener('change', renderMtdPlatformComparison);
         document.getElementById('mtdItemPlatformSelect')?.addEventListener('change', renderMtdPlatformComparison);
+        document.getElementById('mtdApplyBtn')?.addEventListener(
+    'click',
+    () => {
+        renderMtdPlatformComparison();
+    }
+);
+
+document.getElementById('mtdResetBtn')?.addEventListener(
+    'click',
+    () => {
+        const dates = rawData
+            .map(r => r.DateStr)
+            .filter(Boolean)
+            .sort();
+
+        if (!dates.length) return;
+
+        const latestDate = dates[dates.length - 1];
+
+        const latest = new Date(
+            latestDate + 'T00:00:00'
+        );
+
+        const start =
+            `${latest.getFullYear()}-` +
+            `${String(latest.getMonth() + 1).padStart(2, '0')}-01`;
+
+        const startInput =
+            document.getElementById('mtdStartDate');
+
+        const endInput =
+            document.getElementById('mtdEndDate');
+
+        if (startInput) startInput.value = start;
+        if (endInput) endInput.value = latestDate;
+
+        renderMtdPlatformComparison();
+    }
+);
 
         async function executeFilterAndRender() {
             const sStart = filters.dStart.value; const sEnd = filters.dEnd.value; const sDept = filters.dept.value; const sEvt = filters.eventType.value;
