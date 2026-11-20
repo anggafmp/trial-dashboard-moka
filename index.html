@@ -3117,43 +3117,23 @@ document.getElementById('mtdResetBtn')?.addEventListener(
             return;
         }
 
-        const keyed = files.map(f => ({ file:f, key:lazyPeriodKey(f), label:lazyPeriodLabel(f) }))
-            .sort((a,b) => b.key - a.key || a.file.localeCompare(b.file));
-
-        // Global mode: load all available files for the selected platform(s).
-        // Monthly options remain available when the user wants a lighter/single-period load.
-        const allOpt = document.createElement('option');
-        allOpt.value = '__ALL__';
-        allOpt.textContent = platform === 'GrabFood+GoFood' ? 'Semua Periode (GrabFood + GoFood)' : `Semua Periode (${platform})`;
-        sel.appendChild(allOpt);
-
-        const monthly = keyed.filter(x => x.key > 0);
-        monthly.forEach(x => {
-            const opt = document.createElement('option');
-            opt.value = x.file;
-            opt.textContent = x.label;
-            sel.appendChild(opt);
-        });
-
-        // Default ke seluruh periode agar date filter/dashboard tidak dibatasi oleh file bulan aktif.
+        // IMPORTANT: the dashboard now uses ALL available files for the selected source.
+        // Date filtering is handled by the dashboard filters after the data is loaded.
+        const opt = document.createElement('option');
+        opt.value = '__ALL__';
+        opt.textContent = platform === 'GrabFood+GoFood'
+            ? `Semua Periode (${files.length} file)`
+            : `Semua Periode (${platform} • ${files.length} file)`;
+        sel.appendChild(opt);
         sel.value = '__ALL__';
     }
 
     function lazySelectedFiles() {
         const platform = document.getElementById('lazyPlatformSelect')?.value || 'Moka';
-        const selected = document.getElementById('lazyMonthSelect')?.value || '';
         const platforms = platform === 'GrabFood+GoFood' ? ['GrabFood','GoFood'] : [platform];
         let files = [];
-
-        for (const p of platforms) {
-            const group = lazyFileGroups[p] || [];
-            if (selected && selected !== '__ALL__' && group.includes(selected)) {
-                files.push(selected);
-            } else if (selected === '__ALL__' || !selected) {
-                files.push(...group);
-            }
-        }
-        return [...new Set(files)];
+        for (const p of platforms) files.push(...(lazyFileGroups[p] || []));
+        return [...new Set(files)].sort((a,b) => lazyPeriodKey(b) - lazyPeriodKey(a) || a.localeCompare(b));
     }
 
     async function processGithubCsvFile(fileName) {
@@ -3242,8 +3222,8 @@ document.getElementById('mtdResetBtn')?.addEventListener(
                     try {
                         await executeFilterAndRender();
                         const platform = document.getElementById('lazyPlatformSelect')?.value || 'Moka';
-                        const period = document.getElementById('lazyMonthSelect')?.selectedOptions?.[0]?.textContent || '';
-                        document.getElementById('lazyStatus').textContent = `${platform} • ${period} • ${formatNum(rawData.length)} rows`;
+                        const period = 'Semua Periode';
+                        document.getElementById('lazyStatus').textContent = `${platform} • ${period} • ${files.length} file • ${formatNum(rawData.length)} rows`;
                         showToast(`Berhasil memuat ${formatNum(rawData.length)} baris.`);
                     } catch (e) {
                         console.error(e);
@@ -3264,7 +3244,7 @@ document.getElementById('mtdResetBtn')?.addEventListener(
         }
     }
 
-    async function loadAllCsvFromGithub() {
+    async async function loadAllCsvFromGithub() {
         try {
             const manifestRes = await fetch(GH_BASE_URL + 'manifest.json?t=' + Date.now());
             if (!manifestRes.ok) throw new Error('manifest.json tidak ditemukan');
@@ -3276,13 +3256,13 @@ document.getElementById('mtdResetBtn')?.addEventListener(
             });
 
             lazyPopulatePeriodOptions();
-            document.getElementById('lazyStatus').textContent = `${lazyManifest.length} file tersedia • default: semua periode`;
+            document.getElementById('lazyStatus').textContent = `${lazyManifest.length} file tersedia • akan memuat semua periode`;
 
             document.getElementById('lazyPlatformSelect')?.addEventListener('change', lazyPopulatePeriodOptions);
             document.getElementById('lazyLoadBtn')?.addEventListener('click', loadSelectedGithubData);
 
-            // Default: load seluruh data untuk platform aktif.
-            // User tetap bisa memilih satu bulan dari dropdown jika ingin menghemat RAM.
+            // Default: selalu load SEMUA file untuk platform yang dipilih.
+            // Filter tanggal di dashboard menentukan periode analisis.
             const monthSel = document.getElementById('lazyMonthSelect');
             if (monthSel) monthSel.value = '__ALL__';
             await loadSelectedGithubData();
