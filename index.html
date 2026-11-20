@@ -3053,27 +3053,8 @@ document.getElementById('mtdResetBtn')?.addEventListener(
     const GH_BASE_URL = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/main/`;
 
     let lazyManifest = [];
-    let lazyFileGroups = { Moka: [], GrabFood: [], GoFood: [] };
-
     const lazyMonthNames = ['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
-    const lazyMonthLabels = ['Januari','Februari','Maret','April','Mei','Juni','Juli','Agustus','September','Oktober','November','Desember'];
 
-    function lazyPlatformOfFile(fileName) {
-        const n = String(fileName || '').toLowerCase().replace(/[\s_-]+/g, '');
-        if (n.includes('grabfood')) return 'GrabFood';
-        if (n.includes('gofood')) return 'GoFood';
-        return 'Moka';
-    }
-
-    function lazyPeriodLabel(fileName) {
-        const n = String(fileName || '').toLowerCase();
-        const year = (n.match(/20\d{2}/) || [])[0] || '';
-        const idx = lazyMonthNames.findIndex(m => n.includes(m));
-        if (idx >= 0) return `${lazyMonthLabels[idx]}${year ? ' ' + year : ''}`;
-        const numeric = n.match(/(?:^|[^0-9])(0?[1-9]|1[0-2])[^0-9]+(20\d{2})(?:[^0-9]|$)/);
-        if (numeric) return `${lazyMonthLabels[Number(numeric[1])-1]} ${numeric[2]}`;
-        return 'All available data';
-    }
 
     function lazyPeriodKey(fileName) {
         const n = String(fileName || '').toLowerCase();
@@ -3082,34 +3063,8 @@ document.getElementById('mtdResetBtn')?.addEventListener(
         return year * 100 + (idx >= 0 ? idx + 1 : 0);
     }
 
-    function lazyPopulatePeriodOptions() {
-        const platform = document.getElementById('lazyPlatformSelect')?.value || 'Moka';
-        const sel = document.getElementById('lazyMonthSelect');
-        if (!sel) return;
-        sel.innerHTML = '';
-
-        const platforms = platform === 'GrabFood+GoFood' ? ['GrabFood','GoFood'] : [platform];
-        let files = platforms.flatMap(p => lazyFileGroups[p] || []);
-        files = [...new Set(files)];
-
-        if (!files.length) {
-            sel.innerHTML = '<option value="">No data file found</option>';
-            return;
-        }
-
-        // IMPORTANT: the dashboard now uses ALL available files for the selected source.
-        // Date filtering is handled by the dashboard filters after the data is loaded.
-        const opt = document.createElement('option');
-        opt.value = '__ALL__';
-        opt.textContent = platform === 'GrabFood+GoFood'
-            ? `Semua Periode (${files.length} file)`
-            : `Semua Periode (${platform} • ${files.length} file)`;
-        sel.appendChild(opt);
-        sel.value = '__ALL__';
-    }
 
     // Semua data dimuat otomatis sekali saat dashboard dibuka.
-    // Tidak ada lagi pilihan platform/periode atau tombol Load Data.
     function lazySelectedFiles() {
         return [...new Set(lazyManifest)]
             .sort((a,b) => lazyPeriodKey(b) - lazyPeriodKey(a) || a.localeCompare(b));
@@ -3164,7 +3119,7 @@ document.getElementById('mtdResetBtn')?.addEventListener(
         await yieldToMain();
     }
 
-    async function loadSelectedGithubData() {
+    async function loadAllGithubData() {
         const files = lazySelectedFiles();
         if (!files.length) {
             showToast('Tidak ada file untuk pilihan ini.', 'error');
@@ -3225,15 +3180,8 @@ document.getElementById('mtdResetBtn')?.addEventListener(
             const manifestRes = await fetch(GH_BASE_URL + 'manifest.json?t=' + Date.now());
             if (!manifestRes.ok) throw new Error('manifest.json tidak ditemukan');
             lazyManifest = await manifestRes.json();
-            lazyFileGroups = { Moka: [], GrabFood: [], GoFood: [] };
-            lazyManifest.forEach(fileName => {
-                const p = lazyPlatformOfFile(fileName);
-                lazyFileGroups[p].push(fileName);
-            });
-
             // Dashboard langsung memuat seluruh file dari manifest.
-            // User tidak perlu memilih platform/periode atau menekan Load Data.
-            await loadSelectedGithubData();
+            await loadAllGithubData();
         } catch (err) {
             console.error(err);
             showToast('Gagal membaca manifest: ' + err.message, 'error');
