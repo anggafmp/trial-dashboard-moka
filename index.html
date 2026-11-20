@@ -1238,12 +1238,17 @@
         if (!rows || !rows.length || !headers) return;
 
         const idx = Object.create(null);
+        const normalizeHeader = value => String(value == null ? '' : value)
+            .replace(/^\uFEFF/, '')
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
         for (let i = 0; i < headers.length; i++) {
             const h = headers[i];
-            if (h != null && String(h).trim()) idx[String(h).trim()] = i;
+            const normalized = normalizeHeader(h);
+            if (normalized) idx[normalized] = i;
         }
         const get = (row, key) => {
-            const i = idx[key];
+            const i = idx[normalizeHeader(key)];
             return i === undefined ? undefined : row[i];
         };
 
@@ -1285,12 +1290,12 @@
             // Platform: gunakan kolom platform bila tersedia; jika tidak, infer dari nama file sumber.
             const explicitPlatform = get(row,'Platform') ?? get(row,'platform') ?? get(row,'Channel') ?? get(row,'channel') ?? '';
             const sourceName = String(currentSourceFileName || '').toLowerCase();
-            let platform = explicitPlatform ? String(explicitPlatform).trim() : '';
-            if (!platform) {
-                if (sourceName.includes('grabfood') || sourceName.includes('grab food')) platform = 'GrabFood';
-                else if (sourceName.includes('gofood') || sourceName.includes('go food')) platform = 'GoFood';
-                else platform = 'Other';
-            }
+            const sourceToken = sourceName.replace(/[^a-z0-9]/g, '');
+            // The dedicated export filename is authoritative for delivery-platform files.
+            // This prevents a generic Channel/Platform cell from relabeling these rows as Other.
+            let platform = sourceToken.includes('grabfood') ? 'GrabFood'
+                : sourceToken.includes('gofood') ? 'GoFood'
+                : (explicitPlatform ? String(explicitPlatform).trim() : 'Other');
             const pNorm = platform.toLowerCase().replace(/[\s_-]+/g, '');
             if (pNorm.includes('grabfood')) platform = 'GrabFood';
             else if (pNorm.includes('gofood')) platform = 'GoFood';
@@ -1367,33 +1372,39 @@
                 dateStr = `${y}-${m}-${day}`;
                 formattedDate = `${day}/${m}/${y}`;
             } else if (typeof rawDate === 'string') {
-                const str = rawDate.split(' ')[0];
+                const str = rawDate.trim().split(/[ T]/)[0];
                 const parts = str.split(/[-/]/);
                 if (parts.length === 3) {
-                    if (parts[0].length === 4) {
+                    if (/^\d{4}$/.test(parts[0])) {
+                        // ISO / year-first: YYYY-MM-DD
                         dateStr = `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
                         formattedDate = `${parts[2].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[0]}`;
-                    } else if (parts[2].length === 4) {
-                        dateStr = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-                        formattedDate = `${parts[0].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[2]}`;
-                    } else {
-                        // 2-digit year: GoFood uses M/D/YY.
-                        // GrabFood normally uses DD/MM/YYYY, handled above.
-                        if (platform === 'GoFood') {
-                            const yy = parseInt(parts[2], 10);
-                            const mm = parseInt(parts[0], 10);
-                            const dd = parseInt(parts[1], 10);
-
-                            if (!isNaN(yy) && !isNaN(mm) && !isNaN(dd)) {
-                                const fullYear = yy >= 50 ? 1900 + yy : 2000 + yy;
-                                dateStr = `${fullYear}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
-                                formattedDate = `${String(dd).padStart(2,'0')}/${String(mm).padStart(2,'0')}/${fullYear}`;
-                            } else {
-                                dateStr = str; formattedDate = str;
-                            }
+                    } else if (platform === 'GoFood') {
+                        // GoFood export uses M/D/YY or M/D/YYYY (US date order).
+                        const yy = parseInt(parts[2], 10);
+                        const mm = parseInt(parts[0], 10);
+                        const dd = parseInt(parts[1], 10);
+                        if (!isNaN(yy) && !isNaN(mm) && !isNaN(dd) && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+                            const fullYear = parts[2].length === 2 ? (yy >= 50 ? 1900 + yy : 2000 + yy) : yy;
+                            dateStr = `${fullYear}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+                            formattedDate = `${String(dd).padStart(2,'0')}/${String(mm).padStart(2,'0')}/${fullYear}`;
                         } else {
                             dateStr = str; formattedDate = str;
                         }
+                    } else if (parts[2].length === 4 || parts[2].length === 2) {
+                        // Moka / GrabFood use day-first dates (DD/MM/YYYY or DD/MM/YY).
+                        const dd = parseInt(parts[0], 10);
+                        const mm = parseInt(parts[1], 10);
+                        const yy = parseInt(parts[2], 10);
+                        if (!isNaN(dd) && !isNaN(mm) && !isNaN(yy) && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+                            const fullYear = parts[2].length === 2 ? (yy >= 50 ? 1900 + yy : 2000 + yy) : yy;
+                            dateStr = `${fullYear}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+                            formattedDate = `${String(dd).padStart(2,'0')}/${String(mm).padStart(2,'0')}/${fullYear}`;
+                        } else {
+                            dateStr = str; formattedDate = str;
+                        }
+                    } else {
+                        dateStr = str; formattedDate = str;
                     }
                 } else {
                     dateStr = str; formattedDate = str;
@@ -1755,6 +1766,20 @@
             return 'Other';
         }
 
+        function getPlatformDateBounds() {
+            let min = '', max = '';
+            for (let i = 0; i < rawData.length; i++) {
+                const row = rawData[i];
+                const platform = mtdPlatformName(row);
+                if (platform !== 'GrabFood' && platform !== 'GoFood') continue;
+                const date = row.DateStr;
+                if (!date) continue;
+                if (!min || date < min) min = date;
+                if (!max || date > max) max = date;
+            }
+            return { min, max };
+        }
+
         function mtdGrowthHtml(curr, prev) {
             if (!prev) return curr > 0 ? '<span class="text-emerald-600 font-semibold">NEW</span>' : '<span class="text-slate-400">—</span>';
             const pct = ((curr - prev) / Math.abs(prev)) * 100;
@@ -1821,7 +1846,9 @@
         function renderMtdPlatformComparison() {
     if (!rawData.length) return;
 
-    const latestDate = getDataDateBounds().max;
+    // MTD comparison follows the latest date in GrabFood/GoFood exports,
+    // not a possibly newer Moka transaction date.
+    const latestDate = getPlatformDateBounds().max || getDataDateBounds().max;
     if (!latestDate) return;
 
     const startInput = document.getElementById('mtdStartDate');
@@ -1994,7 +2021,7 @@
 document.getElementById('mtdResetBtn')?.addEventListener(
     'click',
     () => {
-        const latestDate = getDataDateBounds().max;
+        const latestDate = getPlatformDateBounds().max || getDataDateBounds().max;
         if (!latestDate) return;
 
         const latest = new Date(
@@ -3140,128 +3167,83 @@ document.getElementById('mtdResetBtn')?.addEventListener(
     }
 
     async function processGithubCsvFile(fileName) {
-        let headerFound = false;
-        let headers = null;
-        let csvDelimiter = '';
-        let processedRows = 0;
         const sourceFileName = String(fileName || '');
         const sourceLower = sourceFileName.toLowerCase();
-        const fileUrl = GH_BASE_URL + encodeURIComponent(fileName) + '?v=20261120-stream-reader';
+        const sourceToken = sourceLower.replace(/[^a-z0-9]/g, '');
+        const fileUrl = GH_BASE_URL + encodeURIComponent(fileName) + '?v=20261120-papa-stream-v2';
+        let headerFound = false;
+        let headers = null;
+        let detectedPlatform = sourceToken.includes('grabfood') ? 'GrabFood'
+            : sourceToken.includes('gofood') ? 'GoFood' : 'Moka';
 
-        const response = await fetch(fileUrl, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`${sourceFileName}: HTTP ${response.status}`);
-        if (!response.body || typeof response.body.getReader !== 'function') {
-            throw new Error('Browser tidak mendukung streaming download untuk file ' + sourceFileName);
-        }
+        currentSourceFileName = sourceFileName;
 
-        const reader = response.body.getReader();
-        const decoder = new TextDecoder('utf-8');
-        let buffer = '';
-        let lastUiUpdate = 0;
+        await new Promise((resolve, reject) => {
+            Papa.parse(fileUrl, {
+                download: true,
+                header: false,
+                skipEmptyLines: true,
+                dynamicTyping: false,
+                worker: false,
+                chunkSize: 512 * 1024,
+                chunk: function(results, parser) {
+                    try {
+                        // Pause between chunks so rendering and input stay responsive.
+                        if (parser && typeof parser.pause === 'function') parser.pause();
+                        const rows = results && results.data ? results.data : [];
+                        if (!headerFound) {
+                            const normalize = value => String(value == null ? '' : value)
+                                .replace(/^\uFEFF/, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                            for (let j = 0; j < Math.min(rows.length, 150); j++) {
+                                const row = rows[j] || [];
+                                const tokens = new Set(row.map(normalize).filter(Boolean));
+                                const has = key => tokens.has(key);
+                                const isMokaHeader = has('netsales') && (has('receiptnumber') || has('sku'));
+                                const isGrabFoodHeader = has('transactionid') && (has('netsales') || has('netamount')) && (has('storename') || has('orderid') || has('outletname'));
+                                const isGoFoodHeader = has('transactionid') && (has('amount') || has('netamount')) && (has('outletname') || has('paymentdate'));
 
-        // Ambil baris CSV lengkap tanpa memutus field multiline yang diapit tanda kutip.
-        function lastCompleteRecordBreak(text, scanLimit) {
-            let inQuotes = false;
-            let lastBreak = -1;
-            const limit = Math.min(text.length, scanLimit);
-            for (let i = 0; i < limit; i++) {
-                const ch = text[i];
-                if (ch === '"') {
-                    if (inQuotes && text[i + 1] === '"') { i++; continue; }
-                    inQuotes = !inQuotes;
-                } else if (ch === '\n' && !inQuotes) {
-                    lastBreak = i;
-                }
-            }
-            return lastBreak;
-        }
-
-        function consumeCsvBlock(csvBlock) {
-            if (!csvBlock) return;
-            const config = { header: false, skipEmptyLines: true };
-            if (csvDelimiter) config.delimiter = csvDelimiter;
-            const parsed = Papa.parse(csvBlock, config);
-            if (!csvDelimiter && parsed.meta && parsed.meta.delimiter) csvDelimiter = parsed.meta.delimiter;
-            const rows = parsed.data || [];
-            if (!rows.length) return;
-
-            currentSourceFileName = sourceFileName;
-            if (!headerFound) {
-                for (let j = 0; j < Math.min(rows.length, 100); j++) {
-                    const row = rows[j] || [];
-                    const rowNorm = row.join(' ').toLowerCase();
-                    const isGrabFoodFile = sourceLower.includes('grabfood');
-                    const isGoFoodFile = sourceLower.includes('gofood');
-                    const isMokaFile = !isGrabFoodFile && !isGoFoodFile;
-                    const isMokaHeader = rowNorm.includes('net sales') && (rowNorm.includes('receipt number') || rowNorm.includes('sku'));
-                    const isGrabFoodHeader = isGrabFoodFile && rowNorm.includes('transaction id') && rowNorm.includes('net sales') && (rowNorm.includes('store name') || rowNorm.includes('order id'));
-                    const isGoFoodHeader = isGoFoodFile && rowNorm.includes('transaction id') && (rowNorm.includes('amount') || rowNorm.includes('net amount')) && (rowNorm.includes('outlet name') || rowNorm.includes('payment date'));
-                    if ((isMokaFile && isMokaHeader) || isGrabFoodHeader || isGoFoodHeader) {
-                        headerFound = true;
-                        headers = row;
-                        if (j + 1 < rows.length) {
-                            const payload = rows.slice(j + 1);
-                            processParsedRows(payload, headers);
-                            processedRows += payload.length;
+                                if (isGrabFoodHeader || isGoFoodHeader || (detectedPlatform === 'Moka' && isMokaHeader)) {
+                                    if (isGrabFoodHeader) detectedPlatform = 'GrabFood';
+                                    else if (isGoFoodHeader) detectedPlatform = 'GoFood';
+                                    headerFound = true;
+                                    headers = row;
+                                    currentSourceFileName = sourceFileName;
+                                    const payload = rows.slice(j + 1);
+                                    if (payload.length) processParsedRows(payload, headers);
+                                    break;
+                                }
+                            }
+                        } else if (rows.length) {
+                            currentSourceFileName = sourceFileName;
+                            processParsedRows(rows, headers);
                         }
-                        break;
+
+                        const statusEl = document.getElementById('loadingSubText');
+                        if (statusEl) statusEl.textContent = `STREAM ${sourceFileName} • ${formatNum(rawData.length)} baris tersimpan`;
+                        if (parser && typeof parser.resume === 'function') {
+                            setTimeout(() => parser.resume(), 0);
+                        }
+                    } catch (err) {
+                        if (parser && typeof parser.abort === 'function') parser.abort();
+                        reject(err);
                     }
-                }
-            } else {
-                processParsedRows(rows, headers);
-                processedRows += rows.length;
-            }
-        }
-
-        try {
-            while (true) {
-                const { value, done } = await reader.read();
-                if (done) {
-                    buffer += decoder.decode();
-                    if (buffer) consumeCsvBlock(buffer);
-                    buffer = '';
-                    break;
-                }
-
-                buffer += decoder.decode(value, { stream: true });
-
-                // Proses blok kecil (maksimal 128 KB) agar UI tetap bisa repaint.
-                while (buffer.length >= 128 * 1024) {
-                    let breakAt = lastCompleteRecordBreak(buffer, 128 * 1024);
-                    // Bila satu record lebih panjang dari 128 KB, cari batas record berikutnya.
-                    if (breakAt < 0) breakAt = lastCompleteRecordBreak(buffer, buffer.length);
-                    if (breakAt < 0) break; // record masih belum selesai; tunggu potongan berikutnya
-                    const completeBlock = buffer.slice(0, breakAt + 1);
-                    buffer = buffer.slice(breakAt + 1);
-                    consumeCsvBlock(completeBlock);
-                    await yieldToMain();
-                }
-
-                // Jika potongan network lebih kecil dari 128 KB, tetap keluarkan baris lengkap.
-                let breakAt = lastCompleteRecordBreak(buffer, 128 * 1024);
-                if (breakAt < 0 && buffer.length > 128 * 1024) breakAt = lastCompleteRecordBreak(buffer, buffer.length);
-                if (breakAt >= 0 && buffer.length >= 32 * 1024) {
-                    const completeBlock = buffer.slice(0, breakAt + 1);
-                    buffer = buffer.slice(breakAt + 1);
-                    consumeCsvBlock(completeBlock);
-                }
-
-                const now = Date.now();
-                if (now - lastUiUpdate > 300) {
-                    lastUiUpdate = now;
+                },
+                complete: function() {
+                    if (!headerFound) {
+                        reject(new Error('Header CSV tidak dikenali: ' + sourceFileName));
+                        return;
+                    }
                     const statusEl = document.getElementById('loadingSubText');
-                    if (statusEl) statusEl.textContent = `STREAM ${sourceFileName} • ${formatNum(rawData.length)} baris tersimpan...`;
+                    if (statusEl) statusEl.textContent = `Selesai ${sourceFileName} (${detectedPlatform}) • ${formatNum(rawData.length)} baris tersimpan`;
+                    resolve();
+                },
+                error: function(err) {
+                    reject(new Error(`${sourceFileName}: ${err && err.message ? err.message : 'gagal diunduh'}`));
                 }
-                await yieldToMain();
-            }
-        } catch (err) {
-            try { await reader.cancel(); } catch (_) {}
-            throw err;
-        }
+            });
+        });
 
-        if (!headerFound) throw new Error('Header CSV tidak dikenali: ' + sourceFileName);
-        const statusEl = document.getElementById('loadingSubText');
-        if (statusEl) statusEl.textContent = `Selesai ${sourceFileName} • ${formatNum(rawData.length)} baris tersimpan`;
+        await yieldToMain();
     }
 
     async function loadAllGithubData() {
@@ -3288,7 +3270,13 @@ document.getElementById('mtdResetBtn')?.addEventListener(
                 await yieldToMain();
             }
 
-            setLoadingProgress(95, `Menyiapkan dashboard • ${formatNum(rawData.length)} baris...`);
+            let grabFoodRows = 0, goFoodRows = 0;
+            for (let i = 0; i < rawData.length; i++) {
+                const p = String(rawData[i].Platform || '').toLowerCase().replace(/[\s_-]+/g, '');
+                if (p.includes('grabfood')) grabFoodRows++;
+                else if (p.includes('gofood')) goFoodRows++;
+            }
+            setLoadingProgress(95, `Menyiapkan dashboard • ${formatNum(rawData.length)} baris • GrabFood ${formatNum(grabFoodRows)} • GoFood ${formatNum(goFoodRows)}`);
             await yieldToMain();
             if (rawData.length > 0) {
                 setupDatePickers();
@@ -3304,7 +3292,7 @@ document.getElementById('mtdResetBtn')?.addEventListener(
                 setTimeout(async () => {
                     try {
                         await executeFilterAndRender();
-                        showToast(`AUTO-LOAD STREAM selesai: ${formatNum(rawData.length)} baris dari ${files.length} file.`);
+                        showToast(`Data selesai • ${formatNum(rawData.length)} baris • GrabFood ${formatNum(grabFoodRows)} • GoFood ${formatNum(goFoodRows)}.`);
                     } catch (e) {
                         console.error(e);
                         showToast('Sebagian grafik gagal dirender karena data terlalu besar.', 'error');
