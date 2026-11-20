@@ -247,26 +247,6 @@
         </div>
     </nav>
 
-    <!-- LAZY DATA SOURCE SELECTOR -->
-    <section id="lazyDataSelector" class="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5">
-        <div class="max-w-[1500px] mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-2">
-            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 shrink-0">Data Source</span>
-            <select id="lazyPlatformSelect" class="pro-select text-[11px] w-full sm:w-[170px] p-1.5">
-                <option value="Moka">Moka</option>
-                <option value="GrabFood+GoFood">GrabFood + GoFood</option>
-                <option value="GrabFood">GrabFood</option>
-                <option value="GoFood">GoFood</option>
-            </select>
-            <select id="lazyMonthSelect" class="pro-select text-[11px] w-full sm:w-[220px] p-1.5">
-                <option value="">Loading available periods...</option>
-            </select>
-            <button id="lazyLoadBtn" class="px-3 py-1.5 text-[10px] font-bold rounded border border-blue-200 bg-blue-50 text-fr-blue hover:bg-blue-100 whitespace-nowrap">
-                Load Data
-            </button>
-            <span id="lazyStatus" class="text-[10px] text-slate-400 truncate">Menyiapkan daftar file...</span>
-        </div>
-    </section>
-
     <!-- MAIN CONTENT DISEMBUNYIKAN SEJAK AWAL MENGGUNAKAN INLINE CSS -->
     <main style="display: none;" id="mainContent" class="flex-grow max-w-[1500px] mx-auto w-full px-2 sm:px-4 lg:px-8 py-4 space-y-4">
         <div id="dashboardContent" class="hidden space-y-4">
@@ -3128,12 +3108,11 @@ document.getElementById('mtdResetBtn')?.addEventListener(
         sel.value = '__ALL__';
     }
 
+    // Semua data dimuat otomatis sekali saat dashboard dibuka.
+    // Tidak ada lagi pilihan platform/periode atau tombol Load Data.
     function lazySelectedFiles() {
-        const platform = document.getElementById('lazyPlatformSelect')?.value || 'Moka';
-        const platforms = platform === 'GrabFood+GoFood' ? ['GrabFood','GoFood'] : [platform];
-        let files = [];
-        for (const p of platforms) files.push(...(lazyFileGroups[p] || []));
-        return [...new Set(files)].sort((a,b) => lazyPeriodKey(b) - lazyPeriodKey(a) || a.localeCompare(b));
+        return [...new Set(lazyManifest)]
+            .sort((a,b) => lazyPeriodKey(b) - lazyPeriodKey(a) || a.localeCompare(b));
     }
 
     async function processGithubCsvFile(fileName) {
@@ -3221,10 +3200,7 @@ document.getElementById('mtdResetBtn')?.addEventListener(
                 setTimeout(async () => {
                     try {
                         await executeFilterAndRender();
-                        const platform = document.getElementById('lazyPlatformSelect')?.value || 'Moka';
-                        const period = 'Semua Periode';
-                        document.getElementById('lazyStatus').textContent = `${platform} • ${period} • ${files.length} file • ${formatNum(rawData.length)} rows`;
-                        showToast(`Berhasil memuat ${formatNum(rawData.length)} baris.`);
+                        showToast(`Berhasil memuat ${formatNum(rawData.length)} baris dari ${files.length} file.`);
                     } catch (e) {
                         console.error(e);
                         showToast('Sebagian grafik gagal dirender karena data terlalu besar.', 'error');
@@ -3255,16 +3231,8 @@ document.getElementById('mtdResetBtn')?.addEventListener(
                 lazyFileGroups[p].push(fileName);
             });
 
-            lazyPopulatePeriodOptions();
-            document.getElementById('lazyStatus').textContent = `${lazyManifest.length} file tersedia • akan memuat semua periode`;
-
-            document.getElementById('lazyPlatformSelect')?.addEventListener('change', lazyPopulatePeriodOptions);
-            document.getElementById('lazyLoadBtn')?.addEventListener('click', loadSelectedGithubData);
-
-            // Default: selalu load SEMUA file untuk platform yang dipilih.
-            // Filter tanggal di dashboard menentukan periode analisis.
-            const monthSel = document.getElementById('lazyMonthSelect');
-            if (monthSel) monthSel.value = '__ALL__';
+            // Dashboard langsung memuat seluruh file dari manifest.
+            // User tidak perlu memilih platform/periode atau menekan Load Data.
             await loadSelectedGithubData();
         } catch (err) {
             console.error(err);
