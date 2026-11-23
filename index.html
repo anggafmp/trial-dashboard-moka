@@ -1,11 +1,10 @@
 <!DOCTYPE html>
-
 <html lang="id">
 <head>
-<meta charset="utf-8"/>
-<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>La Maison de Pierre • Online Sales Dashboard</title>
-<script src="https://cdn.tailwindcss.com">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enterprise POS Analytics Pro - Optimized</title>
+    <script src="https://cdn.tailwindcss.com">
         // Large-data guard: avoid accidental duplicate filtering/export arrays.
         window.getDashboardMemoryInfo = function() {
             return {
@@ -19,19 +18,19 @@
             };
         };
 </script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-<link href="https://fonts.googleapis.com" rel="preconnect"/>
-<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
-<script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script>
         tailwind.config = {
             theme: { extend: { colors: { fr: { blue: '#002395', red: '#ED2939', white: '#FFFFFF', bg: '#f1f5f9', border: '#e2e8f0', text: '#0f172a', muted: '#64748b' } }, fontFamily: { sans: ['Inter', 'sans-serif'], } } }
         }
     </script>
-<style>
+    <style>
         body { background-color: #f1f5f9; color: #0f172a; font-size: 13px; }
         .panel { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
         .chart-container { position: relative; height: 300px; width: 100%; }
@@ -73,476 +72,486 @@
         /* Custom Tooltip Global */
         #customMultiTooltip { position: absolute; background: #1e293b; color: white; padding: 8px 12px; border-radius: 6px; font-size: 11px; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 9999; border: 1px solid #334155; max-height: 250px; overflow-y: auto; width: max-content; max-width: 300px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
     </style>
+
 <style>
 </style>
 </head>
 <body class="antialiased min-h-screen flex flex-col">
-<div class="fixed top-2 right-4 z-[10000] flex flex-col gap-1.5 pointer-events-none" id="toastContainer"></div>
-<!-- Loading Overlay - Tampil saat proses -->
-<div id="loadingOverlay">
-<h2 class="text-base font-semibold text-fr-text" id="loadingText">Processing Data...</h2>
-<p class="text-xs text-fr-muted mt-1.5 font-medium" id="loadingSubText">Mengunggah file...</p>
-<div class="progress-bar-wrap"><div class="progress-bar-fill" id="loadingProgressBar"></div></div>
-</div>
-<div class="tooltip" id="customTooltip"></div>
-<div class="hidden absolute bg-slate-800 text-white p-2.5 rounded-md shadow-xl border border-slate-700 z-[9999] max-h-64 overflow-y-auto w-max min-w-[200px] pointer-events-none opacity-0 transition-opacity duration-200" id="customMultiTooltip"></div>
-<!-- File Selection Modal (Hidden, hanya untuk fallback) -->
-<div class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[9999] hidden flex items-center justify-center p-4" id="fileSelectModal">
-<div class="bg-white rounded shadow-xl w-full max-w-2xl flex flex-col max-h-[80vh]">
-<div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center">
-<h3 class="font-bold text-fr-text text-sm">Pilih File untuk Diproses</h3>
-<button class="text-gray-400 hover:text-gray-600 text-lg leading-none" id="closeFileModalBtn">×</button>
-</div>
-<div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center">
-<input checked="" class="rounded text-fr-blue focus:ring-fr-blue h-3.5 w-3.5 cursor-pointer mr-2" id="selectAllFilesCb" type="checkbox"/>
-<label class="text-xs font-semibold text-gray-700 cursor-pointer select-none" for="selectAllFilesCb">Pilih Semua</label>
-</div>
-<div class="p-5 overflow-y-auto overflow-x-auto flex-grow flex flex-col gap-2" id="fileListContainer"></div>
-<div class="px-5 py-4 border-t border-gray-200 flex justify-end gap-2 bg-gray-50 rounded-b">
-<button class="px-4 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50" id="cancelFileModalBtn">Batal</button>
-<button class="px-4 py-2 text-xs font-semibold text-white bg-fr-blue rounded hover:bg-blue-800 shadow-sm" id="processFilesBtn">Proses Data</button>
-</div>
-</div>
-</div>
-<!-- VS Table Modal -->
-<div class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[9999] hidden flex items-center justify-center p-2 sm:p-4" id="vsTableModal">
-<div class="bg-white rounded shadow-xl w-full max-w-6xl flex flex-col max-h-[95vh] transition-all duration-300" id="vsTableModalContent">
-<div class="px-3 sm:px-5 py-3 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 rounded-t gap-2 sm:gap-0">
-<div class="flex items-center gap-3">
-<h3 class="font-bold text-fr-text text-sm">Comparison Data Table</h3>
-<span class="group/tt relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-4 h-4 rounded-full border border-gray-300 hover:border-fr-blue transition-colors text-[11px] font-bold leading-none">
+    <div id="toastContainer" class="fixed top-2 right-4 z-[10000] flex flex-col gap-1.5 pointer-events-none"></div>
+
+    <!-- Loading Overlay - Tampil saat proses -->
+    <div id="loadingOverlay">
+        <h2 class="text-base font-semibold text-fr-text" id="loadingText">Processing Data...</h2>
+        <p class="text-xs text-fr-muted mt-1.5 font-medium" id="loadingSubText">Mengunggah file...</p>
+        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="loadingProgressBar"></div></div>
+    </div>
+
+    <div id="customTooltip" class="tooltip"></div>
+    <div id="customMultiTooltip" class="hidden absolute bg-slate-800 text-white p-2.5 rounded-md shadow-xl border border-slate-700 z-[9999] max-h-64 overflow-y-auto w-max min-w-[200px] pointer-events-none opacity-0 transition-opacity duration-200"></div>
+
+    <!-- File Selection Modal (Hidden, hanya untuk fallback) -->
+    <div id="fileSelectModal" class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[9999] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded shadow-xl w-full max-w-2xl flex flex-col max-h-[80vh]">
+            <div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center">
+                <h3 class="font-bold text-fr-text text-sm">Pilih File untuk Diproses</h3>
+                <button id="closeFileModalBtn" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+            </div>
+            <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center">
+                <input type="checkbox" id="selectAllFilesCb" class="rounded text-fr-blue focus:ring-fr-blue h-3.5 w-3.5 cursor-pointer mr-2" checked>
+                <label for="selectAllFilesCb" class="text-xs font-semibold text-gray-700 cursor-pointer select-none">Pilih Semua</label>
+            </div>
+            <div id="fileListContainer" class="p-5 overflow-y-auto overflow-x-auto flex-grow flex flex-col gap-2"></div>
+            <div class="px-5 py-4 border-t border-gray-200 flex justify-end gap-2 bg-gray-50 rounded-b">
+                <button id="cancelFileModalBtn" class="px-4 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">Batal</button>
+                <button id="processFilesBtn" class="px-4 py-2 text-xs font-semibold text-white bg-fr-blue rounded hover:bg-blue-800 shadow-sm">Proses Data</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- VS Table Modal -->
+    <div id="vsTableModal" class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[9999] hidden flex items-center justify-center p-2 sm:p-4">
+        <div id="vsTableModalContent" class="bg-white rounded shadow-xl w-full max-w-6xl flex flex-col max-h-[95vh] transition-all duration-300">
+            <div class="px-3 sm:px-5 py-3 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 rounded-t gap-2 sm:gap-0">
+                <div class="flex items-center gap-3">
+                    <h3 class="font-bold text-fr-text text-sm">Comparison Data Table</h3>
+                    <span class="group/tt relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-4 h-4 rounded-full border border-gray-300 hover:border-fr-blue transition-colors text-[11px] font-bold leading-none">
                         ?
-                        <div class="hidden group-hover/tt:block absolute top-full left-0 mt-1 z-[100] bg-gray-800 text-white p-2.5 rounded w-max shadow-xl text-[10px] font-normal whitespace-nowrap before:content-[''] before:absolute before:bottom-full before:left-4 before:border-4 before:border-transparent before:border-b-gray-800" id="vsPeriodTooltip"></div>
-</span>
-</div>
-<div class="flex flex-wrap items-center gap-2 sm:gap-3 relative w-full sm:w-auto justify-between sm:justify-end">
-<label class="flex items-center gap-1.5 cursor-pointer bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-bold shadow-sm shrink-0" title="Centang untuk menghitung receipt unik.">
-<input checked="" class="w-3.5 h-3.5 text-fr-blue rounded focus:ring-fr-blue cursor-pointer" id="vsDistinctTxCb" type="checkbox"/> Distinct Tx
+                        <div id="vsPeriodTooltip" class="hidden group-hover/tt:block absolute top-full left-0 mt-1 z-[100] bg-gray-800 text-white p-2.5 rounded w-max shadow-xl text-[10px] font-normal whitespace-nowrap before:content-[''] before:absolute before:bottom-full before:left-4 before:border-4 before:border-transparent before:border-b-gray-800"></div>
+                    </span>
+                </div>
+                <div class="flex flex-wrap items-center gap-2 sm:gap-3 relative w-full sm:w-auto justify-between sm:justify-end">
+                    <label class="flex items-center gap-1.5 cursor-pointer bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-bold shadow-sm shrink-0" title="Centang untuk menghitung receipt unik.">
+                        <input type="checkbox" id="vsDistinctTxCb" class="w-3.5 h-3.5 text-fr-blue rounded focus:ring-fr-blue cursor-pointer" checked> Distinct Tx
                     </label>
-<div class="flex gap-2">
-<button class="px-2 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded text-[10px] sm:text-[11px] font-bold shadow-sm flex items-center gap-1 transition-colors" id="fullscreenVsBtn" title="Toggle Fullscreen">
-<svg class="w-3.5 h-3.5" fill="none" id="fullscreenIcon" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
-</button>
-<button class="px-2 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded text-[10px] sm:text-[11px] font-bold shadow-sm flex items-center gap-1 transition-colors" id="vsTableSettingsBtn">⚙️ Setup</button>
-<button class="px-2 py-1.5 bg-fr-blue border border-fr-blue text-white hover:bg-blue-800 rounded text-[10px] sm:text-[11px] font-bold shadow-sm flex items-center gap-1 transition-colors" id="exportVsTableBtn"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> Export</button>
-<button class="text-gray-400 hover:text-gray-600 text-lg leading-none px-1" id="closeVsTableBtn">×</button>
-</div>
-<div class="hidden absolute top-full right-0 sm:right-[100px] mt-1 w-[300px] sm:w-[500px] bg-white border border-gray-200 shadow-2xl rounded z-[60] text-[11px] flex flex-col sm:flex-row items-start" id="vsSettingsMenu">
-<div class="w-full sm:w-[30%] border-b sm:border-b-0 sm:border-r border-gray-200 flex flex-col max-h-60 sm:max-h-80">
-<div class="p-2 border-b border-gray-200 bg-gray-100 font-bold text-center">Dimensions</div>
-<ul class="overflow-y-auto p-1 bg-gray-50 flex-grow" id="vsDimList"></ul>
-</div>
-<div class="w-full sm:w-[30%] border-b sm:border-b-0 sm:border-r border-gray-200 flex flex-col max-h-60 sm:max-h-80">
-<div class="p-2 border-b border-gray-200 bg-gray-100 font-bold text-center">Metrics</div>
-<ul class="overflow-y-auto p-1 bg-gray-50 flex-grow" id="vsMetricList"></ul>
-</div>
-<div class="w-full sm:w-[40%] flex flex-col max-h-80">
-<div class="p-2 border-b border-gray-200 bg-gray-100 font-bold text-center">Pivot Options</div>
-<div class="p-3 bg-gray-50 flex-grow flex flex-col gap-3 overflow-y-auto">
-<label class="flex items-center gap-2 cursor-pointer font-medium text-gray-700 hover:text-fr-blue">
-<input class="w-3.5 h-3.5 rounded text-fr-blue focus:ring-fr-blue cursor-pointer" id="vsRepeatLabelsCb" type="checkbox"/>
+                    <div class="flex gap-2">
+                        <button id="fullscreenVsBtn" class="px-2 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded text-[10px] sm:text-[11px] font-bold shadow-sm flex items-center gap-1 transition-colors" title="Toggle Fullscreen">
+                            <svg id="fullscreenIcon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
+                        </button>
+                        <button id="vsTableSettingsBtn" class="px-2 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded text-[10px] sm:text-[11px] font-bold shadow-sm flex items-center gap-1 transition-colors">⚙️ Setup</button>
+                        <button id="exportVsTableBtn" class="px-2 py-1.5 bg-fr-blue border border-fr-blue text-white hover:bg-blue-800 rounded text-[10px] sm:text-[11px] font-bold shadow-sm flex items-center gap-1 transition-colors"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Export</button>
+                        <button id="closeVsTableBtn" class="text-gray-400 hover:text-gray-600 text-lg leading-none px-1">&times;</button>
+                    </div>
+
+                    <div id="vsSettingsMenu" class="hidden absolute top-full right-0 sm:right-[100px] mt-1 w-[300px] sm:w-[500px] bg-white border border-gray-200 shadow-2xl rounded z-[60] text-[11px] flex flex-col sm:flex-row items-start">
+                        <div class="w-full sm:w-[30%] border-b sm:border-b-0 sm:border-r border-gray-200 flex flex-col max-h-60 sm:max-h-80">
+                            <div class="p-2 border-b border-gray-200 bg-gray-100 font-bold text-center">Dimensions</div>
+                            <ul id="vsDimList" class="overflow-y-auto p-1 bg-gray-50 flex-grow"></ul>
+                        </div>
+                        <div class="w-full sm:w-[30%] border-b sm:border-b-0 sm:border-r border-gray-200 flex flex-col max-h-60 sm:max-h-80">
+                            <div class="p-2 border-b border-gray-200 bg-gray-100 font-bold text-center">Metrics</div>
+                            <ul id="vsMetricList" class="overflow-y-auto p-1 bg-gray-50 flex-grow"></ul>
+                        </div>
+                        <div class="w-full sm:w-[40%] flex flex-col max-h-80">
+                            <div class="p-2 border-b border-gray-200 bg-gray-100 font-bold text-center">Pivot Options</div>
+                            <div class="p-3 bg-gray-50 flex-grow flex flex-col gap-3 overflow-y-auto">
+                                <label class="flex items-center gap-2 cursor-pointer font-medium text-gray-700 hover:text-fr-blue">
+                                    <input type="checkbox" id="vsRepeatLabelsCb" class="w-3.5 h-3.5 rounded text-fr-blue focus:ring-fr-blue cursor-pointer">
                                     Repeat Labels
                                 </label>
-<div class="flex flex-col gap-1 border-t border-gray-200 pt-2">
-<span class="font-bold text-gray-600 text-[10px] uppercase tracking-wider mb-1">Show Subtotal For:</span>
-<div class="flex flex-col gap-1.5 pl-1" id="vsSubtotalLevelContainer">
-<!-- Checkboxes will be generated here -->
-</div>
-</div>
-<div class="flex flex-col gap-1 border-t border-gray-200 pt-2">
-<span class="font-bold text-gray-600 text-[10px] uppercase tracking-wider mb-1">Grand Total</span>
-<label class="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-fr-blue">
-<input checked="" class="w-3.5 h-3.5 rounded text-fr-blue focus:ring-fr-blue cursor-pointer" id="vsGrandTotalCb" type="checkbox"/>
+                                <div class="flex flex-col gap-1 border-t border-gray-200 pt-2">
+                                    <span class="font-bold text-gray-600 text-[10px] uppercase tracking-wider mb-1">Show Subtotal For:</span>
+                                    <div id="vsSubtotalLevelContainer" class="flex flex-col gap-1.5 pl-1">
+                                        <!-- Checkboxes will be generated here -->
+                                    </div>
+                                </div>
+                                <div class="flex flex-col gap-1 border-t border-gray-200 pt-2">
+                                    <span class="font-bold text-gray-600 text-[10px] uppercase tracking-wider mb-1">Grand Total</span>
+                                    <label class="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-fr-blue">
+                                        <input type="checkbox" id="vsGrandTotalCb" class="w-3.5 h-3.5 rounded text-fr-blue focus:ring-fr-blue cursor-pointer" checked>
                                         Show Grand Total
                                     </label>
-</div>
-</div>
-</div>
-</div>
-</div>
-</div>
-<!-- Date Range picker -->
-<div class="px-3 sm:px-5 py-3 border-b border-gray-200 bg-white flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 flex-wrap">
-<div class="flex flex-wrap items-center gap-2">
-<span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Main Period</span>
-<input class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300" id="vsModalMainStart" type="date"/>
-<span class="text-gray-400 font-bold">-</span>
-<input class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300" id="vsModalMainEnd" type="date"/>
-</div>
-<div class="hidden sm:block w-px h-5 bg-gray-300"></div>
-<div class="flex flex-wrap items-center gap-2">
-<span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Compare VS</span>
-<select class="pro-select text-[11px] w-[110px] p-1.5 text-gray-700 font-semibold cursor-pointer border-gray-300" id="vsModalCompareMode">
-<option value="prev_period">Prev Period</option>
-<option value="prev_year">Prev Year</option>
-<option value="custom">Custom</option>
-</select>
-<div class="hidden items-center gap-1" id="vsModalCustomDateWrapper">
-<input class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300" id="vsModalVsStart" type="date"/>
-<span class="text-gray-400 font-bold">-</span>
-<input class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300" id="vsModalVsEnd" type="date"/>
-</div>
-</div>
-</div>
-<!-- Filter panel untuk dimension terpilih -->
-<div class="px-3 sm:px-5 py-3 border-b border-gray-200 bg-blue-50/30 flex flex-wrap items-end gap-3" id="vsDimFilterPanel"></div>
-<div class="overflow-y-auto overflow-x-auto flex-grow flex flex-col relative border border-gray-200 rounded mx-2 sm:mx-5 mb-2 sm:mb-5 mt-2 sm:mt-4">
-<table class="min-w-full text-left whitespace-nowrap border-collapse" id="vsDataTable">
-<thead class="bg-gray-50 border-b border-gray-200 sticky top-0 shadow-sm z-20" id="vsTableHead"></thead>
-<tbody id="vsTableBody"></tbody>
-</table>
-</div>
-</div>
-</div>
-<!-- Export Settings Modal -->
-<div class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[9999] hidden flex items-center justify-center p-4" id="exportModal">
-<div class="bg-white rounded shadow-xl w-full max-w-sm flex flex-col">
-<div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center"><h3 class="font-bold text-fr-text text-sm">Export Options (CSV)</h3><button class="text-gray-400 hover:text-gray-600 text-lg leading-none" id="closeExportModalBtn">×</button></div>
-<div class="p-5 flex flex-col gap-3 text-sm">
-<label class="flex items-center gap-2 cursor-pointer font-bold border-b border-gray-100 pb-3 text-gray-800"><input checked="" class="rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer" id="exportAllCb" type="checkbox"/> ALL</label>
-<label class="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-fr-blue transition-colors"><input checked="" class="export-cb rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer" id="exportTxCb" type="checkbox"/> 1. Data Transaksi</label>
-<label class="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-fr-blue transition-colors"><input checked="" class="export-cb rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer" id="exportVsCb" type="checkbox"/> 2. Data Periode VS</label>
-<label class="flex items-start gap-2 cursor-pointer text-gray-700 hover:text-fr-blue transition-colors"><input checked="" class="export-cb mt-1 rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer shrink-0" id="exportDateColsCb" type="checkbox"/> <span>3. Include kolom Day, Month, Year untuk pivot (Ditambahkan di paling kanan)</span></label>
-</div>
-<div class="px-5 py-4 border-t border-gray-200 flex justify-end gap-2 bg-gray-50 rounded-b"><button class="px-4 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50" id="cancelExportBtn">Batal</button><button class="px-4 py-2 text-xs font-semibold text-white bg-fr-blue rounded hover:bg-blue-800 shadow-sm flex items-center gap-1" id="proceedExportBtn"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> Download CSV</button></div>
-</div>
-</div>
-<!-- Navigation -->
-<nav class="bg-white border-b border-fr-border px-4 sm:px-6 py-2.5 sticky top-0 z-50">
-<div class="max-w-[1500px] mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-0">
-<!-- Logo & Title -->
-<div class="flex items-center justify-between w-full md:w-auto gap-3">
-<div class="flex items-center gap-3">
-<label class="cursor-pointer flex items-center justify-center shrink-0 hover:opacity-80 transition-opacity" title="Klik untuk Upload Custom Logo">
-<img class="h-8 w-auto object-contain max-w-[150px]" id="brandLogoImg" onerror="this.style.display='none'; document.getElementById('defaultLogo').style.display='flex';" src="logo.jpeg?v=3"/>
-<div class="hidden gap-0.5 border border-gray-200 p-0.5 shadow-sm bg-white" id="defaultLogo"><div class="w-3 h-3 bg-fr-blue"></div><div class="w-3 h-3 bg-fr-white border border-gray-300"></div><div class="w-3 h-3 bg-fr-red"></div></div>
-<input accept="image/*" class="hidden" id="logoInput" type="file"/>
-</label>
-<span class="font-bold text-[10px] sm:text-[11px] xl:text-xs tracking-tight ml-1 sm:ml-2 text-fr-text uppercase whitespace-normal sm:whitespace-nowrap leading-tight">LA MAISON DE PIERRE • ONLINE SALES ANALYTIC PERFORMANCE</span>
-</div>
-</div>
-<!-- Nav Controls (Tombol Upload Manual Dihilangkan) -->
-<div class="flex items-center gap-1.5 whitespace-nowrap overflow-x-auto w-full md:w-auto pb-1 md:pb-0 justify-start md:justify-end">
-<div class="hidden items-center gap-1.5 whitespace-nowrap" id="navDashboardControls">
-<label class="flex items-center gap-1.5 cursor-pointer bg-blue-50 text-fr-blue border border-blue-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input class="w-3.5 h-3.5 text-fr-blue rounded focus:ring-fr-blue cursor-pointer" id="toggleLabelsCheckbox" type="checkbox"/>Show Values</label>
-<label class="flex items-center gap-1.5 cursor-pointer bg-purple-50 text-purple-700 border border-purple-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input class="w-3.5 h-3.5 text-purple-700 rounded focus:ring-purple-700 cursor-pointer" id="toggleVsLineCheckbox" type="checkbox"/>Show VS Line</label>
-<button class="flex items-center gap-1 cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0" id="openVsTableBtn" style="display:none"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> VS Table</button>
-</div>
-</div>
-</div>
-</nav>
-<!-- ONLINE SALES DASHBOARD SELECTOR -->
-<section class="bg-white border-b border-slate-200 px-4 sm:px-6 py-3" id="dashboardSourceBar">
-<div class="max-w-[1500px] mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-3">
-    <div class="flex items-center gap-2 shrink-0">
-        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">ONLINE SALES</span>
-        <span class="text-[10px] text-slate-400">Dashboard Penjualan & Transaksi</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Date Range picker -->
+            <div class="px-3 sm:px-5 py-3 border-b border-gray-200 bg-white flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 flex-wrap">
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Main Period</span>
+                    <input type="date" id="vsModalMainStart" class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300">
+                    <span class="text-gray-400 font-bold">-</span>
+                    <input type="date" id="vsModalMainEnd" class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300">
+                </div>
+                <div class="hidden sm:block w-px h-5 bg-gray-300"></div>
+                <div class="flex flex-wrap items-center gap-2">
+                    <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Compare VS</span>
+                    <select id="vsModalCompareMode" class="pro-select text-[11px] w-[110px] p-1.5 text-gray-700 font-semibold cursor-pointer border-gray-300">
+                        <option value="prev_period">Prev Period</option>
+                        <option value="prev_year">Prev Year</option>
+                        <option value="custom">Custom</option>
+                    </select>
+                    <div id="vsModalCustomDateWrapper" class="hidden items-center gap-1">
+                        <input type="date" id="vsModalVsStart" class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300">
+                        <span class="text-gray-400 font-bold">-</span>
+                        <input type="date" id="vsModalVsEnd" class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filter panel untuk dimension terpilih -->
+            <div id="vsDimFilterPanel" class="px-3 sm:px-5 py-3 border-b border-gray-200 bg-blue-50/30 flex flex-wrap items-end gap-3"></div>
+
+            <div class="overflow-y-auto overflow-x-auto flex-grow flex flex-col relative border border-gray-200 rounded mx-2 sm:mx-5 mb-2 sm:mb-5 mt-2 sm:mt-4">
+                <table class="min-w-full text-left whitespace-nowrap border-collapse" id="vsDataTable">
+                    <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 shadow-sm z-20" id="vsTableHead"></thead>
+                    <tbody id="vsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
     </div>
-    <div class="flex items-center gap-2 w-full sm:w-auto">
-        <button type="button" id="btnGrabFoodDashboard" data-platform="GrabFood"
-            class="px-4 py-2 rounded border border-blue-200 bg-blue-50 text-fr-blue text-[11px] font-bold shadow-sm transition-colors">
-            GrabFood
-        </button>
-        <button type="button" id="btnGoFoodDashboard" data-platform="GoFood"
-            class="px-4 py-2 rounded border border-gray-300 bg-white text-gray-600 text-[11px] font-bold shadow-sm transition-colors">
-            GoFood
-        </button>
+
+    <!-- Export Settings Modal -->
+    <div id="exportModal" class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[9999] hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded shadow-xl w-full max-w-sm flex flex-col">
+            <div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center"><h3 class="font-bold text-fr-text text-sm">Export Options (CSV)</h3><button id="closeExportModalBtn" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button></div>
+            <div class="p-5 flex flex-col gap-3 text-sm">
+                <label class="flex items-center gap-2 cursor-pointer font-bold border-b border-gray-100 pb-3 text-gray-800"><input type="checkbox" id="exportAllCb" class="rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer" checked> ALL</label>
+                <label class="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-fr-blue transition-colors"><input type="checkbox" id="exportTxCb" class="export-cb rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer" checked> 1. Data Transaksi</label>
+                <label class="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-fr-blue transition-colors"><input type="checkbox" id="exportVsCb" class="export-cb rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer" checked> 2. Data Periode VS</label>
+                <label class="flex items-start gap-2 cursor-pointer text-gray-700 hover:text-fr-blue transition-colors"><input type="checkbox" id="exportDateColsCb" class="export-cb mt-1 rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer shrink-0" checked> <span>3. Include kolom Day, Month, Year untuk pivot (Ditambahkan di paling kanan)</span></label>
+            </div>
+            <div class="px-5 py-4 border-t border-gray-200 flex justify-end gap-2 bg-gray-50 rounded-b"><button id="cancelExportBtn" class="px-4 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">Batal</button><button id="proceedExportBtn" class="px-4 py-2 text-xs font-semibold text-white bg-fr-blue rounded hover:bg-blue-800 shadow-sm flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Download CSV</button></div>
+        </div>
     </div>
-    <!-- Hidden state control kept for existing dashboard logic -->
-    <select aria-label="Platform online sales" class="hidden" id="lazyPlatformSelect">
-        <option value="GrabFood" selected>GrabFood</option>
-        <option value="GoFood">GoFood</option>
-    </select>
-    <span class="text-[10px] text-slate-400" id="dashboardSourceStatus">GrabFood • memuat data online sales otomatis...</span>
-</div>
-</section>
-<!-- MAIN CONTENT DISEMBUNYIKAN SEJAK AWAL MENGGUNAKAN INLINE CSS -->
-<main class="flex-grow max-w-[1500px] mx-auto w-full px-2 sm:px-4 lg:px-8 py-4 space-y-4" id="mainContent" style="display: none;">
-<div class="hidden space-y-4" id="dashboardContent">
-<!-- GLOBAL FILTERS -->
-<div class="panel p-3 mb-2">
-<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 pb-2 border-b border-gray-100 relative gap-2">
-<h3 class="text-xs font-bold text-gray-700 uppercase tracking-wider">Data Filters</h3>
-<div class="flex items-center gap-3">
-<button class="text-fr-blue hover:text-blue-800 text-[10px] font-bold flex items-center gap-1 transition-colors" id="toggleFiltersBtn">
-<span class="transform transition-transform" id="filterToggleIcon">▲</span> <span id="filterToggleText">Hide Filters</span>
-</button>
-<div class="w-px h-3 bg-gray-300"></div>
-<button class="text-fr-red hover:text-red-800 text-[10px] font-bold flex items-center gap-1 transition-colors" id="globalClearBtn" title="Clear All Filters">
-<svg class="w-3 h-3" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> Clear
+
+    <!-- Navigation -->
+    <nav class="bg-white border-b border-fr-border px-4 sm:px-6 py-2.5 sticky top-0 z-50">
+        <div class="max-w-[1500px] mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-0">
+            <!-- Logo & Title -->
+            <div class="flex items-center justify-between w-full md:w-auto gap-3">
+                <div class="flex items-center gap-3">
+                    <label class="cursor-pointer flex items-center justify-center shrink-0 hover:opacity-80 transition-opacity" title="Klik untuk Upload Custom Logo">
+                        <img id="brandLogoImg" src="logo.jpeg?v=3" class="h-8 w-auto object-contain max-w-[150px]" onerror="this.style.display='none'; document.getElementById('defaultLogo').style.display='flex';">
+                        <div id="defaultLogo" class="hidden gap-0.5 border border-gray-200 p-0.5 shadow-sm bg-white"><div class="w-3 h-3 bg-fr-blue"></div><div class="w-3 h-3 bg-fr-white border border-gray-300"></div><div class="w-3 h-3 bg-fr-red"></div></div>
+                        <input type="file" id="logoInput" accept="image/*" class="hidden">
+                    </label>
+                    <span class="font-bold text-[10px] sm:text-[11px] xl:text-xs tracking-tight ml-1 sm:ml-2 text-fr-text uppercase whitespace-normal sm:whitespace-nowrap leading-tight">LA MAISON DE PIERRE BOULANGERIE ANALYTIC PERFORMANCE</span>
+                </div>
+            </div>
+
+            <!-- Nav Controls (Tombol Upload Manual Dihilangkan) -->
+            <div class="flex items-center gap-1.5 whitespace-nowrap overflow-x-auto w-full md:w-auto pb-1 md:pb-0 justify-start md:justify-end">
+                <div id="navDashboardControls" class="hidden items-center gap-1.5 whitespace-nowrap">
+                    <label class="flex items-center gap-1.5 cursor-pointer bg-blue-50 text-fr-blue border border-blue-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input type="checkbox" id="toggleLabelsCheckbox" class="w-3.5 h-3.5 text-fr-blue rounded focus:ring-fr-blue cursor-pointer">Show Values</label>
+                    <label class="flex items-center gap-1.5 cursor-pointer bg-purple-50 text-purple-700 border border-purple-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input type="checkbox" id="toggleVsLineCheckbox" class="w-3.5 h-3.5 text-purple-700 rounded focus:ring-purple-700 cursor-pointer">Show VS Line</label>
+                    <button id="openVsTableBtn" class="flex items-center gap-1 cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> VS Table</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- PLATFORM SELECTOR: pilih dataset; setiap pilihan dimuat otomatis -->
+    <section id="lazyDataSelector" class="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5">
+        <div class="max-w-[1500px] mx-auto flex flex-col sm:flex-row items-center gap-2">
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 shrink-0">Dashboard Source</span>
+            <select id="lazyPlatformSelect" class="pro-select text-[11px] w-full sm:w-[240px] p-1.5" aria-label="Pilih dashboard sumber data">
+                <option value="Moka">Moka</option>
+                <option value="GrabFood">GrabFood</option>
+                <option value="GoFood">GoFood</option>
+                <option value="GrabFood+GoFood">Online Sales (GrabFood + GoFood)</option>
+            </select>
+            <span id="lazyStatus" class="text-[10px] text-slate-500">Menyiapkan daftar data...</span>
+        </div>
+    </section>
+    <!-- MAIN CONTENT DISEMBUNYIKAN SEJAK AWAL MENGGUNAKAN INLINE CSS -->
+    <main style="display: none;" id="mainContent" class="flex-grow max-w-[1500px] mx-auto w-full px-2 sm:px-4 lg:px-8 py-4 space-y-4">
+        <div id="dashboardContent" class="hidden space-y-4">
+            <!-- GLOBAL FILTERS -->
+            <div class="panel p-3 mb-2">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 pb-2 border-b border-gray-100 relative gap-2">
+                    <h3 class="text-xs font-bold text-gray-700 uppercase tracking-wider">Data Filters</h3>
+                    <div class="flex items-center gap-3">
+                        <button id="toggleFiltersBtn" class="text-fr-blue hover:text-blue-800 text-[10px] font-bold flex items-center gap-1 transition-colors">
+                            <span id="filterToggleIcon" class="transform transition-transform">▲</span> <span id="filterToggleText">Hide Filters</span>
                         </button>
-<div class="w-px h-3 bg-gray-300"></div>
-<button class="text-gray-600 hover:text-gray-800 text-[10px] font-bold flex items-center gap-1 transition-colors relative" id="filterSettingsBtn">
+                        <div class="w-px h-3 bg-gray-300"></div>
+                        <button id="globalClearBtn" class="text-fr-red hover:text-red-800 text-[10px] font-bold flex items-center gap-1 transition-colors" title="Clear All Filters">
+                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Clear
+                        </button>
+                        <div class="w-px h-3 bg-gray-300"></div>
+                        <button id="filterSettingsBtn" class="text-gray-600 hover:text-gray-800 text-[10px] font-bold flex items-center gap-1 transition-colors relative">
                             ⚙️ Set Filters
                         </button>
-<div class="hidden absolute top-full right-0 mt-1 w-56 bg-white border border-gray-200 shadow-2xl rounded z-[60] text-[11px]" id="filterSettingsMenu">
-<div class="p-2 border-b border-gray-200 font-bold flex justify-between items-center bg-gray-50 rounded-t">
-<div class="flex flex-col">
-<span>Atur Filter (Drag & Drop)</span>
-<button class="text-[9px] text-fr-blue hover:underline text-left mt-0.5 font-normal" id="resetFilterOrderBtn">Reset ke Default</button>
-</div>
-<button class="text-gray-500 hover:text-red-500 text-sm leading-none" id="closeFilterMenu">×</button>
-</div>
-<ul class="max-h-64 overflow-y-auto p-1 bg-gray-50" id="filterSettingsList"></ul>
-</div>
-</div>
-</div>
-<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:flex lg:flex-wrap items-end gap-3 transition-all duration-300 origin-top" id="filterWrapper">
-<div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="daterange" id="dateRangeContainer">
-<label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Date Range</label>
-<div class="flex flex-wrap sm:flex-nowrap items-center gap-1">
-<select class="pro-select text-[11px] w-full sm:w-[110px] p-1.5" id="quickDateSelect">
-<option value="custom">Custom</option>
-<option value="today">Today</option>
-<option value="yesterday">Yesterday</option>
-<option value="this_week">This Week</option>
-<option value="last_week">Last Week</option>
-<option value="7days">Last 7 Days</option>
-<option value="this_month">This Month</option>
-<option value="last_month">Last Month</option>
-<option value="this_year">This Year</option>
-<option value="choose_month">Choose Month ▸</option>
-</select>
-<div class="flex items-center gap-1 w-full sm:w-auto mt-1 sm:mt-0">
-<input class="pro-input text-[11px] p-1.5 w-full sm:w-[110px]" id="filterDateStart" type="date"/>
-<span class="text-fr-muted">-</span>
-<input class="pro-input text-[11px] p-1.5 w-full sm:w-[110px]" id="filterDateEnd" type="date"/>
-</div>
-</div>
-<div class="month-submenu absolute top-full left-0 sm:left-[110px] mt-1 w-48 bg-white border border-gray-200 shadow-2xl rounded z-[70]" id="monthSubmenu">
-<div class="p-2 border-b border-gray-200 bg-gray-50 font-bold text-[10px] text-gray-600 rounded-t">Pilih Bulan</div>
-<div class="p-1 max-h-[350px] overflow-y-auto" id="monthList"></div>
-</div>
-</div>
-<div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="compare" id="compareContainer">
-<label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Compare Vs</label>
-<div class="flex flex-wrap sm:flex-nowrap items-center gap-1">
-<select class="pro-select text-[11px] w-full sm:w-[100px] p-1.5 text-gray-700 border-gray-300 bg-white" id="compareSelect">
-<option value="prev_period">Prev Period</option>
-<option value="prev_year">Prev Year</option>
-<option value="custom">Custom</option>
-</select>
-<div class="hidden items-center gap-1 w-full sm:w-auto mt-1 sm:mt-0" id="customCompareWrapper">
-<input class="pro-input text-[11px] p-1.5 w-full sm:w-[110px] border-gray-300 bg-white" id="compareDateStart" type="date"/>
-<span class="text-fr-muted">-</span>
-<input class="pro-input text-[11px] p-1.5 w-full sm:w-[110px] border-gray-300 bg-white" id="compareDateEnd" type="date"/>
-</div>
-</div>
-</div>
-<div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="search" id="itemSearchContainer">
-<label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Search</label>
-<div class="flex items-center w-full">
-<select class="pro-select text-[11px] p-1.5 w-[85px] rounded-r-none border-r-0 bg-gray-50 text-gray-700 outline-none focus:ring-0" id="searchMode">
-<option value="item">Items</option>
-<option value="receipt">Receipts</option>
-</select>
-<input autocomplete="off" class="pro-input text-[11px] p-1.5 w-full lg:w-[260px] rounded-l-none" id="filterItemSearch" placeholder="Search..." type="text"/>
-</div>
-<div class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1" id="itemDropdown">
-<div id="clearBtnContainer"></div>
-<div id="itemOptionsContainer"></div>
-</div>
-</div>
-<div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="outlet" id="outletSearchContainer">
-<label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Outlet</label>
-<input autocomplete="off" class="pro-input text-[11px] p-1.5 w-full lg:w-[140px] cursor-pointer" id="filterOutletSearch" placeholder="All Outlets..." type="text"/>
-<div class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1" id="outletDropdown">
-<div id="clearOutletBtnContainer"></div>
-<div id="outletOptionsContainer"></div>
-</div>
-</div>
-<div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="area" id="areaSearchContainer">
-<label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Area</label>
-<input autocomplete="off" class="pro-input text-[11px] p-1.5 w-full lg:w-[120px] cursor-pointer" id="filterAreaSearch" placeholder="All Areas..." type="text"/>
-<div class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1" id="areaDropdown">
-<div id="clearAreaBtnContainer"></div>
-<div id="areaOptionsContainer"></div>
-</div>
-</div>
-<div class="filter-item flex flex-col shrink-0 w-full lg:w-auto" data-id="dept"><label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Dept</label><select class="pro-select text-[11px] p-1.5 w-full lg:w-[100px]" id="filterDept"><option value="ALL">All</option></select></div>
-<div class="filter-item flex flex-col shrink-0 w-full lg:w-auto" data-id="event"><label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Event Type</label><select class="pro-select text-[11px] p-1.5 w-full lg:w-[120px]" id="filterEventType"><option value="ALL">All</option></select></div>
-<div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="discount" id="discountSearchContainer">
-<label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Discount Applied</label>
-<input autocomplete="off" class="pro-input text-[11px] p-1.5 w-full lg:w-[200px] cursor-pointer" id="filterDiscountSearch" placeholder="All Discounts..." type="text"/>
-<div class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1" id="discountDropdown">
-<div id="clearDiscountBtnContainer"></div>
-<div id="discountOptionsContainer"></div>
-</div>
-</div>
-</div>
-</div>
-<!-- KPI -->
-<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-<div class="panel p-3 border-l-2 border-l-fr-blue flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Sales</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total penjualan keseluruhan sebelum dikurangi diskon atau refund.</div></div></div><h3 class="kpi-value text-fr-blue text-lg sm:text-xl" id="kpiGrossSales">0</h3></div><div class="mt-2" id="growGrossSales"></div></div>
-<div class="panel p-3 border-l-2 border-l-fr-blue flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Net Sales</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total pendapatan bersih setelah dikurangi diskon dan refund.</div></div></div><h3 class="kpi-value text-fr-blue text-lg sm:text-xl" id="kpiNetSales">0</h3></div><div class="mt-2" id="growNetSales"></div></div>
-<div class="panel p-3 border-l-2 border-l-fr-blue bg-white flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Collected</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total uang yang diterima dari pelanggan (termasuk pajak & layanan).</div></div></div><h3 class="kpi-value text-fr-blue text-lg sm:text-xl" id="kpiTotalCollected">0</h3></div><div class="mt-2" id="growTotalCollected"></div></div>
-<div class="panel p-3 border-l-2 border-l-gray-400 flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Transactions</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Jumlah struk/transaksi unik yang terjadi.</div></div></div><h3 class="kpi-value text-gray-900 text-lg sm:text-xl" id="kpiTransactions">0</h3></div><div class="mt-2" id="growTransactions"></div></div>
-<div class="panel p-3 border-l-2 border-l-gray-400 flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Items Sold</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total kuantitas barang/produk yang terjual.</div></div></div><h3 class="kpi-value text-gray-900 text-lg sm:text-xl" id="kpiItems">0</h3></div><div class="mt-2" id="growItems"></div></div>
-<div class="panel p-3 border-l-2 border-l-fr-red flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Discounts</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total nilai potongan harga/diskon yang diberikan.</div></div></div><h3 class="kpi-value text-fr-red text-lg sm:text-xl" id="kpiDiscounts">0</h3></div><div class="mt-2" id="growDiscounts"></div></div>
-<div class="panel p-3 border-l-2 border-l-fr-red flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Refunds</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total pengembalian dana kepada pelanggan.</div></div></div><h3 class="kpi-value text-fr-red text-lg sm:text-xl" id="kpiRefunds">0</h3></div><div class="mt-2" id="growRefunds"></div></div>
-<div class="panel p-3 border-l-2 border-l-gray-400 flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Tax</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total pajak yang dipungut dari penjualan.</div></div></div><h3 class="kpi-value text-gray-700 text-lg sm:text-xl" id="kpiTax">0</h3></div><div class="mt-2" id="growTax"></div></div>
-<div class="panel p-3 border-l-2 border-l-gray-400 flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Gratuity</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total biaya layanan/gratuity yang dipungut.</div></div></div><h3 class="kpi-value text-gray-700 text-lg sm:text-xl" id="kpiGratuity">0</h3></div><div class="mt-2" id="growGratuity"></div></div>
-<div class="panel p-3 border-l-2 border-l-blue-400 flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Average Transaction</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Rata-rata nilai Net Sales per transaksi.</div></div></div><h3 class="kpi-value text-blue-600 text-lg sm:text-xl" id="kpiAvgTx">0</h3></div><div class="mt-2" id="growAvgTx"></div></div>
-</div>
-<!-- CHARTS ROW 1 -->
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-<div class="panel p-3 sm:p-4 lg:col-span-2 flex flex-col">
-<div class="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
-<h3 class="section-title mb-0" id="trendTitle">Trend (Net Sales)</h3>
-<div class="flex flex-wrap items-center gap-2">
-<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="trendNetBtn">NET SALES</button>
-<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="trendQtyBtn">QTY</button>
-<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="trendTxBtn">TRANSACTIONS</button>
-</div>
-<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="trendDayBtn">DAY</button>
-<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="trendWeekBtn">WEEK</button>
-<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="trendMonthBtn">MONTH</button>
-<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="trendQuarterBtn">QUARTERLY</button>
-</div>
-<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="trendLineBtn">LINE</button>
-<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="trendBarBtn">BAR</button>
-</div>
-</div>
-</div>
-<div class="chart-container flex-grow"><canvas id="trendChart"></canvas></div>
-</div>
-<div class="panel p-3 sm:p-4 flex flex-col">
-<div class="flex justify-between items-start mb-4">
-<h3 class="section-title mb-0">Sales by Category</h3>
-<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-<button class="px-2 py-0.5 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="catNetBtn">NET</button>
-<button class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="catQtyBtn">QTY</button>
-<button class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="catTxBtn">TX</button>
-</div>
-</div>
-<div class="chart-container flex-grow"><canvas id="categoryChart"></canvas></div>
-</div>
-</div>
-<!-- CHARTS ROW 2 -->
-<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-<div class="panel p-3 sm:p-4 flex flex-col">
-<div class="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
-<h3 class="section-title mb-0">Location Mapping</h3>
-<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-<button class="px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="toggleAreaBtn">AREA</button>
-<button class="px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="toggleOutletBtn">OUTLET</button>
-</div>
-</div>
-<div class="chart-container flex-grow relative" style="height: 230px;">
-<canvas id="locationChart"></canvas>
-</div>
-</div>
-<div class="panel p-3 sm:p-4">
-<div class="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
-<h3 class="section-title mb-0">Sales by Dept</h3>
-<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-<button class="px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="deptDoughnutBtn">DOUGHNUT</button>
-<button class="px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="deptBarBtn">BAR</button>
-</div>
-</div>
-<div class="chart-container" style="height: 250px;"><canvas id="deptChart"></canvas></div>
-</div>
-</div>
-<!-- CHARTS ROW 3 -->
-<div class="grid grid-cols-1 lg:grid-cols-5 gap-3 pb-2">
-<div class="panel p-3 sm:p-4 lg:col-span-3 overflow-x-auto">
-<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 min-w-[450px] gap-2">
-<h3 class="section-title mb-0">Activity Heatmap (By Hour & Day)</h3>
-<div class="text-[9px] font-semibold text-fr-muted flex items-center gap-1 uppercase"><span>Low</span><div class="w-2 h-2 bg-gray-100 border border-gray-200"></div><div class="w-2 h-2 bg-fr-blue opacity-40"></div><div class="w-2 h-2 bg-fr-blue opacity-70"></div><div class="w-2 h-2 bg-fr-blue"></div><span>High</span></div>
-</div>
-<div class="min-w-[450px]"><div class="heatmap-grid" id="heatmapContainer"></div></div>
-</div>
-<div class="panel p-3 sm:p-4 lg:col-span-2 flex flex-col h-[320px]">
-<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
-<h3 class="section-title mb-0">Product Ranking</h3>
-<div class="flex gap-1">
-<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-<button class="px-2 py-0.5 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="rankTopBtn">TOP</button>
-<button class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="rankBottomBtn">BOTTOM</button>
-</div>
-<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-<button class="px-2 py-0.5 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="rankSortQtyBtn">QTY</button>
-<button class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="rankSortNetBtn">NET SALES</button>
-</div>
-</div>
-</div>
-<div class="overflow-y-auto flex-grow">
-<table class="min-w-full text-left">
-<thead class="bg-white sticky top-0 shadow-sm">
-<tr>
-<th class="py-2 px-2">Item</th>
-<th class="py-2 px-2 text-right">Qty</th>
-<th class="py-2 px-2 text-right">Net Sales</th>
-</tr>
-</thead>
-<tbody id="topItemsTableBody"></tbody>
-</table>
-</div>
-</div>
-</div>
-<!-- MTD COMPARISON: GRABFOOD vs GOFOOD -->
+                        <div id="filterSettingsMenu" class="hidden absolute top-full right-0 mt-1 w-56 bg-white border border-gray-200 shadow-2xl rounded z-[60] text-[11px]">
+                            <div class="p-2 border-b border-gray-200 font-bold flex justify-between items-center bg-gray-50 rounded-t">
+                                <div class="flex flex-col">
+                                    <span>Atur Filter (Drag & Drop)</span>
+                                    <button id="resetFilterOrderBtn" class="text-[9px] text-fr-blue hover:underline text-left mt-0.5 font-normal">Reset ke Default</button>
+                                </div>
+                                <button id="closeFilterMenu" class="text-gray-500 hover:text-red-500 text-sm leading-none">&times;</button>
+                            </div>
+                            <ul id="filterSettingsList" class="max-h-64 overflow-y-auto p-1 bg-gray-50"></ul>
+                        </div>
+                    </div>
+                </div>
+                <div id="filterWrapper" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:flex lg:flex-wrap items-end gap-3 transition-all duration-300 origin-top">
+                    <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="daterange" id="dateRangeContainer">
+                        <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Date Range</label>
+                        <div class="flex flex-wrap sm:flex-nowrap items-center gap-1">
+                            <select id="quickDateSelect" class="pro-select text-[11px] w-full sm:w-[110px] p-1.5">
+                                <option value="custom">Custom</option>
+                                <option value="today">Today</option>
+                                <option value="yesterday">Yesterday</option>
+                                <option value="this_week">This Week</option>
+                                <option value="last_week">Last Week</option>
+                                <option value="7days">Last 7 Days</option>
+                                <option value="this_month">This Month</option>
+                                <option value="last_month">Last Month</option>
+                                <option value="this_year">This Year</option>
+                                <option value="choose_month">Choose Month ▸</option>
+                            </select>
+                            <div class="flex items-center gap-1 w-full sm:w-auto mt-1 sm:mt-0">
+                                <input type="date" id="filterDateStart" class="pro-input text-[11px] p-1.5 w-full sm:w-[110px]">
+                                <span class="text-fr-muted">-</span>
+                                <input type="date" id="filterDateEnd" class="pro-input text-[11px] p-1.5 w-full sm:w-[110px]">
+                            </div>
+                        </div>
+                        <div id="monthSubmenu" class="month-submenu absolute top-full left-0 sm:left-[110px] mt-1 w-48 bg-white border border-gray-200 shadow-2xl rounded z-[70]">
+                            <div class="p-2 border-b border-gray-200 bg-gray-50 font-bold text-[10px] text-gray-600 rounded-t">Pilih Bulan</div>
+                            <div id="monthList" class="p-1 max-h-[350px] overflow-y-auto"></div>
+                        </div>
+                    </div>
+                    <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="compare" id="compareContainer">
+                        <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Compare Vs</label>
+                        <div class="flex flex-wrap sm:flex-nowrap items-center gap-1">
+                            <select id="compareSelect" class="pro-select text-[11px] w-full sm:w-[100px] p-1.5 text-gray-700 border-gray-300 bg-white">
+                                <option value="prev_period">Prev Period</option>
+                                <option value="prev_year">Prev Year</option>
+                                <option value="custom">Custom</option>
+                            </select>
+                            <div id="customCompareWrapper" class="hidden items-center gap-1 w-full sm:w-auto mt-1 sm:mt-0">
+                                <input type="date" id="compareDateStart" class="pro-input text-[11px] p-1.5 w-full sm:w-[110px] border-gray-300 bg-white">
+                                <span class="text-fr-muted">-</span>
+                                <input type="date" id="compareDateEnd" class="pro-input text-[11px] p-1.5 w-full sm:w-[110px] border-gray-300 bg-white">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="search" id="itemSearchContainer">
+                        <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Search</label>
+                        <div class="flex items-center w-full">
+                            <select id="searchMode" class="pro-select text-[11px] p-1.5 w-[85px] rounded-r-none border-r-0 bg-gray-50 text-gray-700 outline-none focus:ring-0">
+                                <option value="item">Items</option>
+                                <option value="receipt">Receipts</option>
+                            </select>
+                            <input type="text" id="filterItemSearch" placeholder="Search..." class="pro-input text-[11px] p-1.5 w-full lg:w-[260px] rounded-l-none" autocomplete="off">
+                        </div>
 
-<!-- TRANSACTION TABLE -->
-<div class="panel p-3 sm:p-4 flex flex-col mb-8">
-<div class="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-4 gap-2">
-<div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 relative w-full lg:w-auto">
-<h3 class="section-title mb-0">Transaction Details</h3>
-<div class="flex flex-wrap items-center gap-2 mb-0 sm:mb-2">
-<button class="px-3 py-1 bg-fr-blue hover:bg-blue-800 text-white text-[10px] font-bold rounded shadow-sm transition-colors flex items-center gap-1" id="exportTxBtn" title="Download Tabel sebagai File CSV">
-<svg class="w-3 h-3" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> Export
+                        <div id="itemDropdown" class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1">
+                            <div id="clearBtnContainer"></div>
+                            <div id="itemOptionsContainer"></div>
+                        </div>
+                    </div>
+                    <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="outlet" id="outletSearchContainer">
+                        <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Outlet</label>
+                        <input type="text" id="filterOutletSearch" placeholder="All Outlets..." class="pro-input text-[11px] p-1.5 w-full lg:w-[140px] cursor-pointer" autocomplete="off">
+                        <div id="outletDropdown" class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1">
+                            <div id="clearOutletBtnContainer"></div>
+                            <div id="outletOptionsContainer"></div>
+                        </div>
+                    </div>
+
+                    <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="area" id="areaSearchContainer">
+                        <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Area</label>
+                        <input type="text" id="filterAreaSearch" placeholder="All Areas..." class="pro-input text-[11px] p-1.5 w-full lg:w-[120px] cursor-pointer" autocomplete="off">
+                        <div id="areaDropdown" class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1">
+                            <div id="clearAreaBtnContainer"></div>
+                            <div id="areaOptionsContainer"></div>
+                        </div>
+                    </div>
+                    <div class="filter-item flex flex-col shrink-0 w-full lg:w-auto" data-id="dept"><label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Dept</label><select id="filterDept" class="pro-select text-[11px] p-1.5 w-full lg:w-[100px]"><option value="ALL">All</option></select></div>
+                    <div class="filter-item flex flex-col shrink-0 w-full lg:w-auto" data-id="event"><label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Event Type</label><select id="filterEventType" class="pro-select text-[11px] p-1.5 w-full lg:w-[120px]"><option value="ALL">All</option></select></div>
+                    <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="discount" id="discountSearchContainer">
+                        <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Discount Applied</label>
+                        <input type="text" id="filterDiscountSearch" placeholder="All Discounts..." class="pro-input text-[11px] p-1.5 w-full lg:w-[200px] cursor-pointer" autocomplete="off">
+                        <div id="discountDropdown" class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1">
+                            <div id="clearDiscountBtnContainer"></div>
+                            <div id="discountOptionsContainer"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- KPI -->
+            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+                <div class="panel p-3 border-l-2 border-l-fr-blue  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Gross Sales</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total penjualan keseluruhan sebelum dikurangi diskon atau refund.</div></div></div><h3 class="kpi-value text-fr-blue text-lg sm:text-xl" id="kpiGrossSales">0</h3></div><div class="mt-2" id="growGrossSales"></div></div>
+                <div class="panel p-3 border-l-2 border-l-fr-blue  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Net Sales</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total pendapatan bersih setelah dikurangi diskon dan refund.</div></div></div><h3 class="kpi-value text-fr-blue text-lg sm:text-xl" id="kpiNetSales">0</h3></div><div class="mt-2" id="growNetSales"></div></div>
+                <div class="panel p-3 border-l-2 border-l-fr-blue bg-white flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Collected</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total uang yang diterima dari pelanggan (termasuk pajak & layanan).</div></div></div><h3 class="kpi-value text-fr-blue text-lg sm:text-xl" id="kpiTotalCollected">0</h3></div><div class="mt-2" id="growTotalCollected"></div></div>
+                <div class="panel p-3 border-l-2 border-l-gray-400  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Transactions</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Jumlah struk/transaksi unik yang terjadi.</div></div></div><h3 class="kpi-value text-gray-900 text-lg sm:text-xl" id="kpiTransactions">0</h3></div><div class="mt-2" id="growTransactions"></div></div>
+                <div class="panel p-3 border-l-2 border-l-gray-400  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Items Sold</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total kuantitas barang/produk yang terjual.</div></div></div><h3 class="kpi-value text-gray-900 text-lg sm:text-xl" id="kpiItems">0</h3></div><div class="mt-2" id="growItems"></div></div>
+                <div class="panel p-3 border-l-2 border-l-fr-red  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Discounts</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total nilai potongan harga/diskon yang diberikan.</div></div></div><h3 class="kpi-value text-fr-red text-lg sm:text-xl" id="kpiDiscounts">0</h3></div><div class="mt-2" id="growDiscounts"></div></div>
+                <div class="panel p-3 border-l-2 border-l-fr-red  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Refunds</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total pengembalian dana kepada pelanggan.</div></div></div><h3 class="kpi-value text-fr-red text-lg sm:text-xl" id="kpiRefunds">0</h3></div><div class="mt-2" id="growRefunds"></div></div>
+                <div class="panel p-3 border-l-2 border-l-gray-400  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Tax</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total pajak yang dipungut dari penjualan.</div></div></div><h3 class="kpi-value text-gray-700 text-lg sm:text-xl" id="kpiTax">0</h3></div><div class="mt-2" id="growTax"></div></div>
+                <div class="panel p-3 border-l-2 border-l-gray-400  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Gratuity</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total biaya layanan/gratuity yang dipungut.</div></div></div><h3 class="kpi-value text-gray-700 text-lg sm:text-xl" id="kpiGratuity">0</h3></div><div class="mt-2" id="growGratuity"></div></div>
+                <div class="panel p-3 border-l-2 border-l-blue-400  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Avg Transaction Val</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Rata-rata nilai Net Sales per transaksi.</div></div></div><h3 class="kpi-value text-blue-600 text-lg sm:text-xl" id="kpiAvgTx">0</h3></div><div class="mt-2" id="growAvgTx"></div></div>
+            </div>
+
+            <!-- CHARTS ROW 1 -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                <div class="panel p-3 sm:p-4 lg:col-span-2 flex flex-col">
+                    <div class="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
+                        <h3 id="trendTitle" class="section-title mb-0">Trend (Net Sales)</h3>
+                        <div class="flex flex-wrap items-center gap-2">
+                            <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+                                <button id="trendNetBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">NET SALES</button>
+                                <button id="trendQtyBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">QTY</button>
+                                <button id="trendTxBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">TRANSACTIONS</button>
+                            </div>
+                            <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+                                <button id="trendDayBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">DAY</button>
+                                <button id="trendWeekBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">WEEK</button>
+                                <button id="trendMonthBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">MONTH</button>
+                                <button id="trendQuarterBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">QUARTERLY</button>
+                            </div>
+                            <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+                                <button id="trendLineBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">LINE</button>
+                                <button id="trendBarBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">BAR</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chart-container flex-grow"><canvas id="trendChart"></canvas></div>
+                </div>
+                <div class="panel p-3 sm:p-4 flex flex-col">
+                    <div class="flex justify-between items-start mb-4">
+                        <h3 class="section-title mb-0">Sales by Category</h3>
+                        <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+                            <button id="catNetBtn" class="px-2 py-0.5 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">NET</button>
+                            <button id="catQtyBtn" class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">QTY</button>
+                            <button id="catTxBtn" class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">TX</button>
+                        </div>
+                    </div>
+                    <div class="chart-container flex-grow"><canvas id="categoryChart"></canvas></div>
+                </div>
+            </div>
+            <!-- CHARTS ROW 2 -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                <div class="panel p-3 sm:p-4 flex flex-col">
+                    <div class="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
+                        <h3 class="section-title mb-0">Location Mapping</h3>
+                        <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+                            <button id="toggleAreaBtn" class="px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">AREA</button>
+                            <button id="toggleOutletBtn" class="px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">OUTLET</button>
+                        </div>
+                    </div>
+                    <div class="chart-container flex-grow relative" style="height: 230px;">
+                        <canvas id="locationChart"></canvas>
+                    </div>
+                </div>
+                <div class="panel p-3 sm:p-4">
+                    <div class="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
+                        <h3 class="section-title mb-0">Sales by Dept</h3>
+                        <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+                            <button id="deptDoughnutBtn" class="px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">DOUGHNUT</button>
+                            <button id="deptBarBtn" class="px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">BAR</button>
+                        </div>
+                    </div>
+                    <div class="chart-container" style="height: 250px;"><canvas id="deptChart"></canvas></div>
+                </div>
+            </div>
+            <!-- CHARTS ROW 3 -->
+            <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 pb-2">
+                <div class="panel p-3 sm:p-4 lg:col-span-3 overflow-x-auto">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 min-w-[450px] gap-2">
+                        <h3 class="section-title mb-0">Activity Heatmap (By Hour & Day)</h3>
+                        <div class="text-[9px] font-semibold text-fr-muted flex items-center gap-1 uppercase"><span>Low</span><div class="w-2 h-2 bg-gray-100 border border-gray-200"></div><div class="w-2 h-2 bg-fr-blue opacity-40"></div><div class="w-2 h-2 bg-fr-blue opacity-70"></div><div class="w-2 h-2 bg-fr-blue"></div><span>High</span></div>
+                    </div>
+                    <div class="min-w-[450px]"><div id="heatmapContainer" class="heatmap-grid"></div></div>
+                </div>
+                <div class="panel p-3 sm:p-4 lg:col-span-2 flex flex-col h-[320px]">
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
+                        <h3 class="section-title mb-0">Product Ranking</h3>
+                        <div class="flex gap-1">
+                            <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+                                <button id="rankTopBtn" class="px-2 py-0.5 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">TOP</button>
+                                <button id="rankBottomBtn" class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">BOTTOM</button>
+                            </div>
+                            <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+                                <button id="rankSortQtyBtn" class="px-2 py-0.5 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">QTY</button>
+                                <button id="rankSortNetBtn" class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">NET SALES</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="overflow-y-auto flex-grow">
+                        <table class="min-w-full text-left">
+                            <thead class="bg-white sticky top-0 shadow-sm">
+                                <tr>
+                                    <th class="py-2 px-2">Item</th>
+                                    <th class="py-2 px-2 text-right">Qty</th>
+                                    <th class="py-2 px-2 text-right">Net Sales</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topItemsTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+
+
+            <!-- TRANSACTION TABLE -->
+            <div class="panel p-3 sm:p-4 flex flex-col mb-8">
+                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-4 gap-2">
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 relative w-full lg:w-auto">
+                        <h3 class="section-title mb-0">Transaction Details</h3>
+                        <div class="flex flex-wrap items-center gap-2 mb-0 sm:mb-2">
+                            <button id="exportTxBtn" class="px-3 py-1 bg-fr-blue hover:bg-blue-800 text-white text-[10px] font-bold rounded shadow-sm transition-colors flex items-center gap-1" title="Download Tabel sebagai File CSV">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Export
                             </button>
-<button class="px-3 py-1 bg-white hover:bg-red-50 text-fr-red text-[10px] font-bold rounded border border-gray-300 shadow-sm transition-colors flex items-center gap-1" id="clearAllFiltersBtn">
-<svg class="w-3 h-3" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> Clear
+                            <button id="clearAllFiltersBtn" class="px-3 py-1 bg-white hover:bg-red-50 text-fr-red text-[10px] font-bold rounded border border-gray-300 shadow-sm transition-colors flex items-center gap-1">
+                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Clear
                             </button>
-<button class="px-3 py-1 bg-white hover:bg-gray-50 text-gray-700 text-[10px] font-bold rounded border border-gray-300 shadow-sm transition-colors flex items-center gap-1" id="colSettingsBtn">
+                            <button id="colSettingsBtn" class="px-3 py-1 bg-white hover:bg-gray-50 text-gray-700 text-[10px] font-bold rounded border border-gray-300 shadow-sm transition-colors flex items-center gap-1">
                                 ⚙️ Columns
                             </button>
-</div>
-<div class="hidden absolute top-full left-0 sm:left-[140px] mt-1 w-56 bg-white border border-gray-200 shadow-2xl rounded z-[60] text-[11px]" id="colSettingsMenu">
-<div class="p-2 border-b border-gray-200 font-bold flex justify-between items-center bg-gray-50 rounded-t">
-<span>Atur Kolom (Drag & Drop)</span>
-<button class="text-gray-500 hover:text-red-500 text-sm leading-none" id="closeColMenu">×</button>
-</div>
-<ul class="max-h-64 overflow-y-auto p-1 bg-gray-50" id="colList"></ul>
-</div>
-</div>
-<div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-[11px] w-full lg:w-auto mt-2 lg:mt-0">
-<div class="flex items-center gap-1.5 font-semibold text-gray-600">
+                        </div>
+
+                        <div id="colSettingsMenu" class="hidden absolute top-full left-0 sm:left-[140px] mt-1 w-56 bg-white border border-gray-200 shadow-2xl rounded z-[60] text-[11px]">
+                            <div class="p-2 border-b border-gray-200 font-bold flex justify-between items-center bg-gray-50 rounded-t">
+                                <span>Atur Kolom (Drag & Drop)</span>
+                                <button id="closeColMenu" class="text-gray-500 hover:text-red-500 text-sm leading-none">&times;</button>
+                            </div>
+                            <ul id="colList" class="max-h-64 overflow-y-auto p-1 bg-gray-50"></ul>
+                        </div>
+                    </div>
+
+                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-[11px] w-full lg:w-auto mt-2 lg:mt-0">
+                        <div class="flex items-center gap-1.5 font-semibold text-gray-600">
                             Baris:
-                            <select class="border border-gray-300 rounded px-1.5 py-1 text-[11px] bg-white outline-none cursor-pointer focus:border-fr-blue transition-colors" id="rowSelect">
-<option selected="" value="15">15</option>
-<option value="30">30</option>
-<option value="50">50</option>
-<option value="75">75</option>
-<option value="100">100</option>
-</select>
-</div>
-<div class="flex flex-wrap items-center gap-1.5">
-<button class="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors" id="firstPageBtn" title="First Page">«</button>
-<button class="px-2 py-1 sm:px-3 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors" id="prevPageBtn">< Prev</button>
-<button class="px-2 py-1 sm:px-3 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors" id="nextPageBtn">Next ></button>
-<button class="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors" id="lastPageBtn" title="Last Page">»</button>
-<div class="flex items-center gap-1.5 ml-1">
-<span class="font-semibold text-fr-text text-[11px]">Page</span>
-<input class="border border-gray-300 rounded px-1.5 py-1 w-[50px] text-center text-[11px] font-semibold focus:border-fr-blue outline-none" id="pageJumpInput" min="1" type="number" value="1"/>
-<span class="font-semibold text-fr-text text-[11px]" id="totalPagesText">/ 1</span>
-</div>
-</div>
-</div>
-</div>
-<div class="overflow-x-auto rounded border border-gray-200">
-<table class="min-w-full text-left whitespace-nowrap" id="txTable">
-<thead class="bg-gray-50 border-b border-gray-200"><tr id="txTableHeadRow"></tr></thead>
-<tbody id="txTableBody"></tbody>
-</table>
-</div>
-</div>
-</div>
-</main>
-<script>
+                            <select id="rowSelect" class="border border-gray-300 rounded px-1.5 py-1 text-[11px] bg-white outline-none cursor-pointer focus:border-fr-blue transition-colors">
+                                <option value="15" selected>15</option>
+                                <option value="30">30</option>
+                                <option value="50">50</option>
+                                <option value="75">75</option>
+                                <option value="100">100</option>
+                            </select>
+                        </div>
+                        <div class="flex flex-wrap items-center gap-1.5">
+                            <button id="firstPageBtn" class="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors" title="First Page">«</button>
+                            <button id="prevPageBtn" class="px-2 py-1 sm:px-3 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors">&lt; Prev</button>
+                            <button id="nextPageBtn" class="px-2 py-1 sm:px-3 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors">Next &gt;</button>
+                            <button id="lastPageBtn" class="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors" title="Last Page">»</button>
+                            <div class="flex items-center gap-1.5 ml-1">
+                                <span class="font-semibold text-fr-text text-[11px]">Page</span>
+                                <input type="number" id="pageJumpInput" class="border border-gray-300 rounded px-1.5 py-1 w-[50px] text-center text-[11px] font-semibold focus:border-fr-blue outline-none" min="1" value="1">
+                                <span class="font-semibold text-fr-text text-[11px]" id="totalPagesText">/ 1</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="overflow-x-auto rounded border border-gray-200">
+                    <table class="min-w-full text-left whitespace-nowrap" id="txTable">
+                        <thead class="bg-gray-50 border-b border-gray-200"><tr id="txTableHeadRow"></tr></thead>
+                        <tbody id="txTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </main>
+
+
+    <script>
         function showToast(msg, type='info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
@@ -571,17 +580,6 @@
         Chart.defaults.plugins.tooltip.borderWidth = 1;
 
         let rawData = []; let filteredData = []; let charts = {}; let locationMode = 'area';
-        let activeDashboardPlatform = 'GrabFood';
-        function matchesDashboardPlatform(row) {
-            const p = String(row && row.Platform || '').toLowerCase().replace(/[\s_-]+/g, '');
-            const isGrab = p.includes('grabfood');
-            const isGo = p.includes('gofood');
-            if (activeDashboardPlatform === 'GrabFood') return isGrab;
-            if (activeDashboardPlatform === 'GoFood') return isGo;
-            if (activeDashboardPlatform === 'GrabFood+GoFood') return isGrab || isGo;
-            // Baris dari ekspor Moka dapat memiliki Platform seperti Other atau STATIC QR CHANNEL.
-            return !isGrab && !isGo;
-        }
         let currentSourceFileName = ''; let currentAggDate = {}; let trendMode = 'net'; let trendAgg = 'day'; let catMode = 'net'; let rankMode = 'top'; let rankSortBy = 'qty'; let deptChartType = 'bar'; let currentAggArea = {}; let currentAggOutlet = {}; let currentAggDept = {}; let currentAggCat = {}; let showChartLabels = false;
         let trendChartType = 'line';
         let txSortCol = 'DateStr'; let txSortAsc = true; let txCurrentPage = 1; let txRowsPerPage = 15; let txSortedData = [];
@@ -720,11 +718,7 @@
         let allAreasList = []; let selectedAreasSet = new Set();
         const areaSearch = document.getElementById('filterAreaSearch'); const areaDropdown = document.getElementById('areaDropdown'); const areaOptContainer = document.getElementById('areaOptionsContainer'); const clearAreaBtnContainer = document.getElementById('clearAreaBtnContainer');
 
-        function populateAreaDropdownUI() {
-            const values = new Set();
-            for (let i = 0; i < rawData.length; i++) { const r = rawData[i]; if (!matchesDashboardPlatform(r)) continue; const v = r.AREA; if (v && v !== 'Unknown') values.add(String(v)); }
-            allAreasList = Array.from(values).sort(); renderAreaDropdown();
-        }
+        function populateAreaDropdownUI() { allAreasList = Array.from(new Set(rawData.map(r => r.AREA).filter(x => x && x !== 'Unknown'))).sort(); renderAreaDropdown(); }
         function renderAreaDropdown(searchStr = '') {
             areaOptContainer.innerHTML = ''; updateClearAreaButton();
             let filtered = allAreasList.filter(x => x.toLowerCase().includes(searchStr.toLowerCase())).slice(0, 100);
@@ -776,7 +770,6 @@
 
         function getAvailableOptions(targetColumn, excludeSearchMode = false) {
             let tempFiltered = rawData.filter(r => {
-                if (!matchesDashboardPlatform(r)) return false;
                 let m = true; const sv = (v) => v ? v.toString().trim() : '';
                 const sStart = filters.dStart.value; const sEnd = filters.dEnd.value;
 
@@ -992,17 +985,17 @@
     function processParsedRows(rows, headers) {
         if (!rows || !rows.length || !headers) return;
 
-        const normalizeHeader = value => String(value == null ? '' : value)
-            .replace(/^\uFEFF/, '')
-            .toLowerCase()
-            .replace(/[^a-z0-9]/g, '');
         const idx = Object.create(null);
+        const normalizeHeader = value => String(value == null ? '' : value).replace(/^\uFEFF/, '').toLowerCase().replace(/[^a-z0-9]/g, '');
         for (let i = 0; i < headers.length; i++) {
-            const key = normalizeHeader(headers[i]);
-            if (key) idx[key] = i;
+            const h = headers[i];
+            if (h != null && String(h).trim()) {
+                idx[String(h).trim()] = i;
+                idx[normalizeHeader(h)] = i;
+            }
         }
         const get = (row, key) => {
-            const i = idx[normalizeHeader(key)];
+            const i = idx[key] !== undefined ? idx[key] : idx[normalizeHeader(key)];
             return i === undefined ? undefined : row[i];
         };
         const getAny = (row, keys) => {
@@ -1012,31 +1005,7 @@
             }
             return undefined;
         };
-        const parsePlatformNumber = value => {
-            if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
-            if (value === undefined || value === null) return 0;
-            let text = String(value).trim().replace(/[^0-9,.-]/g, '');
-            if (!text) return 0;
-            const comma = text.lastIndexOf(',');
-            const dot = text.lastIndexOf('.');
-            if (comma >= 0 && dot >= 0) {
-                if (comma > dot) text = text.replace(/\./g, '').replace(',', '.');
-                else text = text.replace(/,/g, '');
-            } else if (comma >= 0) {
-                const tail = text.length - comma - 1;
-                text = tail === 1 || tail === 2 ? text.replace(/\./g, '').replace(',', '.') : text.replace(/,/g, '');
-            } else if (dot >= 0) {
-                const pieces = text.split('.');
-                if (pieces.length > 1 && pieces.slice(1).every(part => part.length === 3)) text = pieces.join('');
-            }
-            const parsed = Number(text);
-            return Number.isFinite(parsed) ? parsed : 0;
-        };
-        const itemValue = row => getAny(row, [
-            'Item Name', 'Product Name', 'Menu Item', 'Order Item', 'Items', 'Item',
-            'Product', 'Menu', 'Description', 'Item Description', 'Order Description',
-            'Nama Item', 'Nama Produk', 'Nama Menu'
-        ]);
+
         const numFields = [
             'Net Sales','Gross Sales','Quantity','Tax','Gratuity','Discounts',
             'Refunds','Total Collected','Total Collected Exc Rounding','Discount Applied (Rp)'
@@ -1046,79 +1015,106 @@
             const row = rows[i];
             if (!row) continue;
 
-            const rawDate = getAny(row, [
-                'Date', 'Payment Date', 'Order Date', 'Transaction Date',
-                'Created At', 'Created Date', 'Order Created At'
-            ]);
-            const rawItems = itemValue(row);
-            const rawReceipt = getAny(row, [
-                'Receipt Number', 'Transaction ID', 'Order ID', 'Order Number',
-                'Transaction Number', 'Order Code'
-            ]);
+            const sourceNameForRow = String(currentSourceFileName || '').toLowerCase();
+            const isGrabSource = sourceNameForRow.includes('grabfood') || sourceNameForRow.includes('grab food');
+            const isGoSource = sourceNameForRow.includes('gofood') || sourceNameForRow.includes('go food');
+            const isOnlineSource = isGrabSource || isGoSource;
+            const rawDate = isOnlineSource
+                ? getAny(row, ['Date', 'Payment Date', 'Order Date', 'Transaction Date', 'Created At', 'Created Date'])
+                : get(row, 'Date');
+            const rawItems = isOnlineSource
+                ? getAny(row, ['Items', 'Item', 'Item Name', 'Product Name', 'Menu Item', 'Order Item', 'Description', 'Item Description', 'Nama Item', 'Nama Produk', 'Nama Menu'])
+                : get(row, 'Items');
+            const rawReceipt = isOnlineSource
+                ? getAny(row, ['Receipt Number', 'Transaction ID', 'Order ID', 'Order Number', 'Transaction Number'])
+                : get(row, 'Receipt Number');
             if (!rawDate && !rawItems && !rawReceipt) continue;
 
             const compact = {};
             const set = (key, value) => { if (value !== undefined && value !== null) compact[key] = value; };
 
+            let outlet = get(row, 'Outlet');
+            outlet = outlet ? String(outlet).trim().split(',')[0].trim() : '';
+            set('Outlet', outlet);
+
+            set('AREA', get(row,'AREA') ? String(get(row,'AREA')).trim() : 'Unknown');
+            set('DEPT', get(row,'DEPT') ? String(get(row,'DEPT')).trim() : 'Unknown');
+            set('Event Type', get(row,'Event Type') ? String(get(row,'Event Type')).trim() : 'Unknown');
+            set('Items', get(row,'Items') ? String(get(row,'Items')).trim() : 'Unknown');
+
+            // Platform: gunakan kolom platform bila tersedia; jika tidak, infer dari nama file sumber.
+            const explicitPlatform = getAny(row,['Platform','Channel']) ?? '';
             const sourceName = String(currentSourceFileName || '').toLowerCase();
-            const sourceToken = sourceName.replace(/[^a-z0-9]/g, '');
-            const explicitPlatform = getAny(row, ['Platform', 'Channel']);
-            let platform = sourceToken.includes('grabfood') ? 'GrabFood'
-                : sourceToken.includes('gofood') ? 'GoFood'
-                : (explicitPlatform ? String(explicitPlatform).trim() : 'Other');
-            const platformToken = platform.toLowerCase().replace(/[\s_-]+/g, '');
-            if (platformToken.includes('grabfood')) platform = 'GrabFood';
-            else if (platformToken.includes('gofood')) platform = 'GoFood';
+            let platform = explicitPlatform ? String(explicitPlatform).trim() : '';
+            if (!platform) {
+                if (sourceName.includes('grabfood') || sourceName.includes('grab food')) platform = 'GrabFood';
+                else if (sourceName.includes('gofood') || sourceName.includes('go food')) platform = 'GoFood';
+                else platform = 'Other';
+            }
+            const pNorm = platform.toLowerCase().replace(/[\s_-]+/g, '');
+            if (pNorm.includes('grabfood')) platform = 'GrabFood';
+            else if (pNorm.includes('gofood')) platform = 'GoFood';
             set('Platform', platform);
 
-            // Keep receipt/order ID on the canonical field used by distinct transaction KPIs.
-            if (rawReceipt !== undefined && String(rawReceipt).trim()) {
-                set('Receipt Number', String(rawReceipt).trim());
-            }
+            // Normalize GrabFood / GoFood into dashboard canonical fields.
+            if (platform === 'GoFood' || platform === 'GrabFood') {
+                const isGoFood = platform === 'GoFood';
 
-            const online = platform === 'GrabFood' || platform === 'GoFood';
-            const isGoFood = platform === 'GoFood';
-            if (online) {
-                const outlet = getAny(row, isGoFood
-                    ? ['Outlet Name', 'Outlet name', 'Outlet', 'Store Name', 'Store']
-                    : ['Store Name', 'Store', 'Outlet Name', 'Outlet name', 'Outlet']);
-                if (outlet !== undefined) set('Outlet', String(outlet).trim());
+                // Transaction ID -> Receipt Number
+                const txId = getAny(row, ['Transaction ID', 'Order ID', 'Order Number', 'Transaction Number']);
 
-                if (rawItems !== undefined) set('Items', String(rawItems).trim());
-                else set('Items', 'Unknown');
+                if (txId !== undefined && txId !== null && String(txId).trim()) {
+                    set('Receipt Number', String(txId).trim());
+                }
 
-                const qtyValue = getAny(row, ['Quantity', 'Qty', 'Item Quantity', 'Product Quantity']);
-                set('Quantity', qtyValue !== undefined ? parsePlatformNumber(qtyValue) : 1);
+                // Outlet / Store
+                const outlet = isGoFood
+                    ? getAny(row, ['Outlet name', 'Outlet Name', 'Outlet', 'Store Name', 'Store'])
+                    : getAny(row, ['Store Name', 'Store', 'Outlet name', 'Outlet Name', 'Outlet']);
 
-                // Prefer the platform's net sales amount, then fall back to the alternate export label.
-                const salesValue = getAny(row, isGoFood
-                    ? ['Amount', 'Net Amount', 'Net Sales', 'Sales Amount', 'Total Amount']
-                    : ['Net Sales', 'Net Amount', 'Amount', 'Sales Amount', 'Total Amount']);
-                if (salesValue !== undefined) {
-                    const salesNumber = parsePlatformNumber(salesValue);
+                if (outlet !== undefined && outlet !== null && String(outlet).trim()) {
+                    set('Outlet', String(outlet).trim());
+                }
+
+                // Item description
+                const description = rawItems !== undefined ? rawItems : getAny(row, ['Description', 'Item Description']);
+                if (description !== undefined && description !== null && String(description).trim()) {
+                    set('Items', String(description).trim());
+                }
+
+                // One platform row = one transaction.
+                const onlineQty = getAny(row, ['Quantity', 'Qty', 'Item Quantity']);
+                set('Quantity', onlineQty !== undefined ? (typeof onlineQty === 'number' ? onlineQty : (parseFloat(String(onlineQty).replace(/[^0-9.-]/g, '')) || 0)) : 1);
+
+                // Sales
+                const salesValue = isGoFood
+                    ? getAny(row, ['Amount', 'Net Amount', 'Net Sales', 'Sales Amount', 'Total Amount'])
+                    : getAny(row, ['Net Sales', 'Net Amount', 'Amount', 'Sales Amount', 'Total Amount']);
+
+                if (salesValue !== undefined && salesValue !== null) {
+                    const salesNumber = typeof salesValue === 'number'
+                        ? salesValue
+                        : parseFloat(String(salesValue).replace(/[^0-9.-]/g, '')) || 0;
+
                     set('Net Sales', salesNumber);
                     set('Gross Sales', salesNumber);
                 }
 
-                const payment = getAny(row, isGoFood
-                    ? ['Payment Type', 'Payment Method', 'Payment', 'Payment Channel']
-                    : ['Payment Method', 'Payment Type', 'Payment', 'Payment Channel']);
-                if (payment !== undefined) set('Payment Method', String(payment).trim());
-            } else {
-                set('Outlet', get(row, 'Outlet') ? String(get(row, 'Outlet')).trim().split(',')[0].trim() : '');
-                set('Items', rawItems ? String(rawItems).trim() : 'Unknown');
+                // Payment method
+                const payment = isGoFood
+                    ? getAny(row, ['Payment Type', 'Payment Method', 'Payment', 'Payment Channel'])
+                    : getAny(row, ['Payment Method', 'Payment Type', 'Payment', 'Payment Channel']);
+
+                if (payment !== undefined && payment !== null) {
+                    set('Payment Method', String(payment).trim());
+                }
             }
 
-            set('AREA', get(row, 'AREA') ? String(get(row, 'AREA')).trim() : 'Unknown');
-            set('DEPT', get(row, 'DEPT') ? String(get(row, 'DEPT')).trim() : 'Unknown');
-            set('Event Type', get(row, 'Event Type') ? String(get(row, 'Event Type')).trim() : 'Unknown');
-            set('Category', getAny(row, ['Category', 'Category Name']) || 'Unknown');
-            set('SKU', getAny(row, ['SKU', 'Item ID', 'Product ID']) || '');
 
-            const collected = getAny(row, ['Collected By', 'CollectedBy']) ?? '-';
-            const served = getAny(row, ['Served By', 'ServedBy']) ?? '-';
-            const customer = get(row, 'Customer') ?? '-';
-            const refundReason = getAny(row, ['Reason of Refund', 'Reason Of Refund', 'ReasonofRefund']) ?? '-';
+            const collected = get(row,'Collected By') ?? get(row,'CollectedBy') ?? get(row,'collected by') ?? '-';
+            const served = get(row,'Served By') ?? get(row,'ServedBy') ?? get(row,'served by') ?? '-';
+            const customer = get(row,'Customer') ?? get(row,'customer') ?? get(row,'CUSTOMER') ?? '-';
+            const refundReason = get(row,'Reason of Refund') ?? get(row,'Reason Of Refund') ?? get(row,'ReasonofRefund') ?? get(row,'reason of refund') ?? '-';
             set('Collected By', collected ? String(collected).trim() : '-');
             set('Served By', served ? String(served).trim() : '-');
             set('Customer', customer ? String(customer).trim() : '-');
@@ -1126,32 +1122,39 @@
 
             let dateStr = '', formattedDate = '';
             if (typeof rawDate === 'number') {
-                const d = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
-                const y = d.getUTCFullYear(), m = String(d.getUTCMonth() + 1).padStart(2, '0'), day = String(d.getUTCDate()).padStart(2, '0');
+                const serial = Math.floor(rawDate);
+                const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+                const y = d.getUTCFullYear(), m = String(d.getUTCMonth()+1).padStart(2,'0'), day = String(d.getUTCDate()).padStart(2,'0');
                 dateStr = `${y}-${m}-${day}`;
                 formattedDate = `${day}/${m}/${y}`;
-            } else if (rawDate !== undefined && rawDate !== null) {
-                const str = String(rawDate).trim().split(/[ T]/)[0];
+            } else if (typeof rawDate === 'string') {
+                const str = rawDate.split(' ')[0];
                 const parts = str.split(/[-/]/);
-                if (parts.length === 3 && /^\d{4}$/.test(parts[0])) {
-                    const y = parts[0], m = parts[1].padStart(2, '0'), day = parts[2].padStart(2, '0');
-                    dateStr = `${y}-${m}-${day}`;
-                    formattedDate = `${day}/${m}/${y}`;
-                } else if (parts.length === 3 && (parts[2].length === 4 || parts[2].length === 2)) {
-                    const a = parseInt(parts[0], 10), b = parseInt(parts[1], 10), yy = parseInt(parts[2], 10);
-                    // GoFood defaults to M/D/YY; GrabFood defaults to D/M/YY.
-                    // A component >12 removes ambiguity and overrides that default.
-                    const monthFirst = isGoFood
-                        ? (a <= 12 && b <= 31)
-                        : (a <= 12 && b > 12);
-                    const day = monthFirst ? b : a;
-                    const month = monthFirst ? a : b;
-                    if (Number.isFinite(day) && Number.isFinite(month) && Number.isFinite(yy) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
-                        const year = parts[2].length === 2 ? (yy >= 50 ? 1900 + yy : 2000 + yy) : yy;
-                        dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-                        formattedDate = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
+                if (parts.length === 3) {
+                    if (parts[0].length === 4) {
+                        dateStr = `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
+                        formattedDate = `${parts[2].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[0]}`;
+                    } else if (parts[2].length === 4) {
+                        dateStr = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+                        formattedDate = `${parts[0].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[2]}`;
                     } else {
-                        dateStr = str; formattedDate = str;
+                        // 2-digit year: GoFood uses M/D/YY.
+                        // GrabFood normally uses DD/MM/YYYY, handled above.
+                        if (platform === 'GoFood') {
+                            const yy = parseInt(parts[2], 10);
+                            const mm = parseInt(parts[0], 10);
+                            const dd = parseInt(parts[1], 10);
+
+                            if (!isNaN(yy) && !isNaN(mm) && !isNaN(dd)) {
+                                const fullYear = yy >= 50 ? 1900 + yy : 2000 + yy;
+                                dateStr = `${fullYear}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+                                formattedDate = `${String(dd).padStart(2,'0')}/${String(mm).padStart(2,'0')}/${fullYear}`;
+                            } else {
+                                dateStr = str; formattedDate = str;
+                            }
+                        } else {
+                            dateStr = str; formattedDate = str;
+                        }
                     }
                 } else {
                     dateStr = str; formattedDate = str;
@@ -1160,58 +1163,65 @@
 
             set('DateStr', dateStr);
             set('FormattedDate', formattedDate);
-            const dashboardYear = parseInt(String(dateStr).slice(0, 4), 10);
-            if (!Number.isFinite(dashboardYear) || dashboardYear < 2025 || dashboardYear > 2026) continue;
 
-            let hrStr = getAny(row, ['HOUR', 'Hour']) ? String(getAny(row, ['HOUR', 'Hour'])).trim() : '';
+            // Dashboard hanya menggunakan data tahun 2025-2026.
+            const dashboardYear = parseInt(String(dateStr).slice(0, 4), 10);
+            if (dashboardYear < 2025 || dashboardYear > 2026) continue;
+
+            let hrStr = get(row,'HOUR') ? String(get(row,'HOUR')).trim() : '';
             let exactTime = '-';
-            const rawTime = getAny(row, ['Time', 'Order Time', 'Transaction Time']);
+            const rawTime = get(row,'Time');
+
             if (typeof rawDate === 'number' && rawDate % 1 !== 0) {
                 const d = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
                 hrStr = String(d.getUTCHours());
-                exactTime = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
+                exactTime = String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0');
             } else if (typeof rawTime === 'number') {
                 const totalMins = Math.round((rawTime % 1) * 24 * 60);
                 hrStr = String(Math.floor(totalMins / 60));
-                exactTime = `${String(Math.floor(totalMins / 60)).padStart(2, '0')}:${String(totalMins % 60).padStart(2, '0')}`;
+                exactTime = String(Math.floor(totalMins / 60)).padStart(2,'0') + ':' + String(totalMins % 60).padStart(2,'0');
             } else if (typeof rawTime === 'string') {
                 hrStr = rawTime.split(':')[0];
                 exactTime = rawTime;
             } else if (hrStr) {
-                exactTime = `${hrStr.padStart(2, '0')}:00`;
+                exactTime = hrStr.padStart(2, '0') + ':00';
             }
-            set('ParsedHour', String(hrStr || '').padStart(2, '0'));
+            set('ParsedHour', String(hrStr || '').padStart(2,'0'));
             set('ExactTime', exactTime);
 
-            let dayStr = getAny(row, ['DAY OF WEEK', 'Day of Week']) ? String(getAny(row, ['DAY OF WEEK', 'Day of Week'])).trim() : '';
+            let dayStr = get(row,'DAY OF WEEK') ? String(get(row,'DAY OF WEEK')).trim() : '';
             if (dateStr) {
                 const parts = dateStr.split('-');
                 if (parts.length === 3) {
-                    const safeDate = new Date(+parts[0], +parts[1] - 1, +parts[2], 12, 0, 0);
+                    const safeDate = new Date(+parts[0], +parts[1]-1, +parts[2], 12, 0, 0);
                     const dayIdx = safeDate.getDay();
                     dayStr = DAYS[dayIdx === 0 ? 6 : dayIdx - 1];
                 }
             }
             set('ParsedDay', dayStr);
 
+            // Keep only fields required by the dashboard/export.
             const keep = [
                 'Receipt Number','SKU','Category','Quantity','Net Sales','Gross Sales',
                 'Total Collected','Total Collected Exc Rounding','Tax','Gratuity','Discounts',
-                'Refunds','Discount Applied','Discount Applied (Rp)','Payment Method','Sales Type'
+                'Refunds','Discount Applied','Discount Applied (Rp)','Payment Method',
+                'Sales Type'
             ];
-            for (const key of keep) {
-                const value = get(row, key);
+            for (let k = 0; k < keep.length; k++) {
+                const key = keep[k];
+                let value = get(row, key);
                 if (value === undefined || value === null) continue;
                 if (numFields.includes(key)) {
-                    const parsed = parsePlatformNumber(value);
-                    set(key, parsed);
-                } else {
-                    set(key, value);
+                    if (typeof value === 'string') value = parseFloat(value.replace(/,/g,'').trim()) || 0;
+                    else if (typeof value !== 'number') value = Number(value) || 0;
                 }
+                set(key, value);
             }
+
             rawData.push(compact);
         }
     }
+
     // Backward-compatible wrapper for any remaining object-based caller.
     function processParsedJSON(json) {
         if (!json || !json.length) return;
@@ -1268,11 +1278,7 @@
 
         let allDiscountsList = []; let selectedDiscountsSet = new Set();
         const discountSearch = document.getElementById('filterDiscountSearch'); const discountDropdown = document.getElementById('discountDropdown'); const discountOptContainer = document.getElementById('discountOptionsContainer'); const clearDiscountBtnContainer = document.getElementById('clearDiscountBtnContainer');
-        function populateDiscountDropdownUI() {
-            const values = new Set();
-            for (let i = 0; i < rawData.length; i++) { const r = rawData[i]; if (!matchesDashboardPlatform(r)) continue; const v = r['Discount Applied']; if (v && v !== 'Unknown') values.add(String(v)); }
-            allDiscountsList = Array.from(values).sort(); renderDiscountDropdown();
-        }
+        function populateDiscountDropdownUI() { allDiscountsList = Array.from(new Set(rawData.map(r => r['Discount Applied']).filter(x => x && x !== 'Unknown'))).sort(); renderDiscountDropdown(); }
         function renderDiscountDropdown(searchStr = '') {
             discountOptContainer.innerHTML = ''; updateClearDiscountButton();
             let filtered = allDiscountsList.filter(x => x.toLowerCase().includes(searchStr.toLowerCase())).slice(0, 100);
@@ -1323,16 +1329,9 @@
         document.getElementById('compareDateStart').addEventListener('change', executeFilterAndRender); document.getElementById('compareDateEnd').addEventListener('change', executeFilterAndRender);
         const searchMode = document.getElementById('searchMode'); searchMode.addEventListener('change', () => { selectedItemsSet.clear(); updateSelectedItemsUI(); populateItemDropdown(); executeFilterAndRender(); });
         function populateItemDropdown() {
-            const mode = searchMode.value;
-            const values = new Set();
-            for (let i = 0; i < rawData.length; i++) {
-                const r = rawData[i];
-                if (!matchesDashboardPlatform(r)) continue;
-                const value = mode === 'item' ? r.Items : r['Receipt Number'];
-                if (value && value !== 'Unknown' && value !== '-') values.add(String(value));
-            }
-            allItemsList = Array.from(values).sort();
-            renderItemDropdown('');
+            let mode = searchMode.value; let list = [];
+            if(mode === 'item') { list = rawData.map(r => r.Items).filter(x => x && x !== 'Unknown'); } else { list = rawData.map(r => r['Receipt Number']).filter(x => x && x !== 'Unknown' && x !== '-'); }
+            allItemsList = Array.from(new Set(list)).sort(); renderItemDropdown('');
         }
         function renderItemDropdown(searchStr) {
             optContainer.innerHTML = ''; updateClearButton();
@@ -1386,11 +1385,7 @@
 
         let allOutletsList = []; let selectedOutletsSet = new Set();
         const outletSearch = document.getElementById('filterOutletSearch'); const outletDropdown = document.getElementById('outletDropdown'); const outletOptContainer = document.getElementById('outletOptionsContainer'); const clearOutletBtnContainer = document.getElementById('clearOutletBtnContainer');
-        function populateOutletDropdownUI() {
-            const values = new Set();
-            for (let i = 0; i < rawData.length; i++) { const r = rawData[i]; if (!matchesDashboardPlatform(r)) continue; const v = r.Outlet; if (v && v !== 'Unknown') values.add(String(v)); }
-            allOutletsList = Array.from(values).sort(); renderOutletDropdown();
-        }
+        function populateOutletDropdownUI() { allOutletsList = Array.from(new Set(rawData.map(r => r.Outlet).filter(x => x && x !== 'Unknown'))).sort(); renderOutletDropdown(); }
         function renderOutletDropdown(searchStr = '') {
             outletOptContainer.innerHTML = ''; updateClearOutletButton();
             let filtered = allOutletsList.filter(x => x.toLowerCase().includes(searchStr.toLowerCase())).slice(0, 100);
@@ -1451,59 +1446,26 @@
         function applyLogo(src) { brandLogoImg.src = src; brandLogoImg.classList.remove('hidden'); brandLogoImg.style.display = 'block'; defaultLogo.classList.add('hidden'); defaultLogo.style.display = 'none'; }
         logoInput.addEventListener('change', (e) => { const file = e.target.files[0]; if(!file) return; const r = new FileReader(); r.onload = (evt) => { const src = evt.target.result; try { localStorage.setItem('LA_MAISON_LOGO', src); } catch(err) { console.warn("Logo too large for localStorage"); } applyLogo(src); }; r.readAsDataURL(file); });
 
-        // Cari tanggal minimum/maksimum dalam satu lintasan. Jangan map+sort jutaan baris.
-        function getDataDateBounds() {
-            let min = '', max = '';
-            for (let i = 0; i < rawData.length; i++) {
-                const r = rawData[i];
-                if (!matchesDashboardPlatform(r)) continue;
-                const d = r && r.DateStr;
-                if (!d) continue;
-                if (!min || d < min) min = d;
-                if (!max || d > max) max = d;
-            }
-            return { min, max };
-        }
-
         function setupDatePickers() {
-            const bounds = getDataDateBounds();
-            if (!bounds.min || !bounds.max) return;
+            let dates = rawData.map(r => r.DateStr).filter(d => d).sort(); if(dates.length === 0) return;
             const toIsoLocal = (d) => { let y = d.getFullYear(); let m = String(d.getMonth()+1).padStart(2,'0'); let dt = String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dt}`; };
-            filters.dStart.min = bounds.min; filters.dStart.max = bounds.max; filters.dEnd.min = bounds.min; filters.dEnd.max = bounds.max;
+            filters.dStart.min = dates[0]; filters.dStart.max = dates[dates.length-1]; filters.dEnd.min = dates[0]; filters.dEnd.max = dates[dates.length-1];
             const today = new Date(); const firstDay = new Date(today.getFullYear(), today.getMonth(), 1); const lastDay = new Date(today.getFullYear(), today.getMonth() + 1, 0);
-            let defaultStart = toIsoLocal(firstDay); let defaultEnd = toIsoLocal(lastDay); const dataStart = bounds.min; const dataEnd = bounds.max;
-            if (defaultEnd < dataStart || defaultStart > dataEnd) { const lastDataDate = new Date(dataEnd + 'T00:00:00'); const fallbackFirst = new Date(lastDataDate.getFullYear(), lastDataDate.getMonth(), 1); const fallbackLast = new Date(lastDataDate.getFullYear(), lastDataDate.getMonth() + 1, 0); defaultStart = toIsoLocal(fallbackFirst); defaultEnd = toIsoLocal(fallbackLast); }
+            let defaultStart = toIsoLocal(firstDay); let defaultEnd = toIsoLocal(lastDay); let dataStart = dates[0]; let dataEnd = dates[dates.length-1];
+            if (defaultEnd < dataStart || defaultStart > dataEnd) { const lastDataDate = new Date(dataEnd); const fallbackFirst = new Date(lastDataDate.getFullYear(), lastDataDate.getMonth(), 1); const fallbackLast = new Date(lastDataDate.getFullYear(), lastDataDate.getMonth() + 1, 0); defaultStart = toIsoLocal(fallbackFirst); defaultEnd = toIsoLocal(fallbackLast); }
             if (defaultStart < dataStart) defaultStart = dataStart; if (defaultStart > dataEnd) defaultStart = dataStart; if (defaultEnd > dataEnd) defaultEnd = dataEnd; if (defaultEnd < dataStart) defaultEnd = dataEnd;
             filters.dStart.value = defaultStart; filters.dEnd.value = defaultEnd;
             const now = new Date(); const isCurrentMonth = defaultStart === toIsoLocal(new Date(now.getFullYear(), now.getMonth(), 1)) && defaultEnd === toIsoLocal(new Date(now.getFullYear(), now.getMonth() + 1, 0));
             filters.quick.value = isCurrentMonth ? 'this_month' : 'custom';
         }
 
-        function populateDropdowns() {
-            const depts = new Set(), events = new Set(), outlets = new Set(), discounts = new Set(), areas = new Set();
-            for (let i = 0; i < rawData.length; i++) {
-                const r = rawData[i];
-                if (!matchesDashboardPlatform(r)) continue;
-                if (r.DEPT && r.DEPT !== 'Unknown') depts.add(String(r.DEPT).trim());
-                if (r['Event Type'] && r['Event Type'] !== 'Unknown') events.add(String(r['Event Type']).trim());
-                if (r.Outlet && r.Outlet !== 'Unknown') outlets.add(String(r.Outlet).trim());
-                if (r['Discount Applied'] && r['Discount Applied'] !== 'Unknown') discounts.add(String(r['Discount Applied']).trim());
-                if (r.AREA && r.AREA !== 'Unknown') areas.add(String(r.AREA).trim());
-            }
-            const fill = (el, vals) => { el.innerHTML = '<option value="ALL">All</option>'; vals.forEach(v => { const opt = document.createElement('option'); opt.value = v; opt.innerText = v; el.appendChild(opt); }); };
-            fill(filters.dept, Array.from(depts).sort());
-            fill(filters.eventType, Array.from(events).sort());
-            allOutletsList = Array.from(outlets).sort(); renderOutletDropdown();
-            allDiscountsList = Array.from(discounts).sort(); renderDiscountDropdown();
-            allAreasList = Array.from(areas).sort(); renderAreaDropdown();
-        }
+        function populateDropdowns() { const getU = (key) => { let s = new Set(); rawData.forEach(r => { if(r[key] && r[key] !== 'Unknown') s.add(r[key].toString().trim()); }); return Array.from(s).sort(); }; const fill = (el, vals) => { el.innerHTML = '<option value="ALL">All</option>'; vals.forEach(v => { let opt = document.createElement('option'); opt.value = v; opt.innerText = v; el.appendChild(opt); }); }; fill(filters.dept, getU('DEPT')); fill(filters.eventType, getU('Event Type')); populateOutletDropdownUI(); populateDiscountDropdownUI(); populateAreaDropdownUI(); }
 
 
         // ============================================================
-                async function executeFilterAndRender() {
+        async function executeFilterAndRender() {
             const sStart = filters.dStart.value; const sEnd = filters.dEnd.value; const sDept = filters.dept.value; const sEvt = filters.eventType.value;
             filteredData = rawData.filter(r => {
-                if (!matchesDashboardPlatform(r)) return false;
                 let m = true; const sv = (v) => v ? v.toString().trim() : '';
                 if (sStart && (!r.DateStr || r.DateStr < sStart)) m = false; if (sEnd && (!r.DateStr || r.DateStr > sEnd)) m = false;
                 if (selectedAreasSet.size > 0 && !selectedAreasSet.has(sv(r['AREA']))) m = false; if (selectedOutletsSet.size > 0 && !selectedOutletsSet.has(sv(r['Outlet']))) m = false;
@@ -1555,44 +1517,33 @@
         }
 
         function calculateAndRenderGrowth() {
-        let currMinDate = '', currMaxDate = '';
-        for (let i = 0; i < filteredData.length; i++) {
-            const d = filteredData[i].DateStr;
-            if (!d) continue;
-            if (!currMinDate || d < currMinDate) currMinDate = d;
-            if (!currMaxDate || d > currMaxDate) currMaxDate = d;
-        }
-        if (!currMinDate || !currMaxDate) return renderAllGrowth(0,0,0,0,0,0,0,0,0,0, '','');
+        let dates = filteredData.map(r => r.DateStr).filter(d=>d).sort(); if(dates.length === 0) return renderAllGrowth(0,0,0,0,0,0,0,0,0,0, '','');
         function toIsoLocal(d) { let y = d.getFullYear(); let m = String(d.getMonth()+1).padStart(2,'0'); let dt = String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dt}`; }
         let pStartStr = ''; let pEndStr = ''; let compMode = compareSelect.value;
         if (compMode === 'custom') { pStartStr = document.getElementById('compareDateStart').value; pEndStr = document.getElementById('compareDateEnd').value; }
-        else if (compMode === 'prev_year') { let currStart = new Date(currMinDate + 'T00:00:00'); let currEnd = new Date(currMaxDate + 'T00:00:00'); currStart.setFullYear(currStart.getFullYear() - 1); currEnd.setFullYear(currEnd.getFullYear() - 1); pStartStr = toIsoLocal(currStart); pEndStr = toIsoLocal(currEnd); }
-        else { let currStart = new Date(currMinDate + 'T00:00:00'); let currEnd = new Date(currMaxDate + 'T00:00:00'); let diffTime = Math.abs(currEnd - currStart); let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; let prevEnd = new Date(currStart); prevEnd.setDate(prevEnd.getDate() - 1); let prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate() - (diffDays - 1)); pStartStr = toIsoLocal(prevStart); pEndStr = toIsoLocal(prevEnd); }
+        else if (compMode === 'prev_year') { let currStart = new Date(dates[0]); let currEnd = new Date(dates[dates.length-1]); currStart.setFullYear(currStart.getFullYear() - 1); currEnd.setFullYear(currEnd.getFullYear() - 1); pStartStr = toIsoLocal(currStart); pEndStr = toIsoLocal(currEnd); }
+        else { let currStart = new Date(dates[0]); let currEnd = new Date(dates[dates.length-1]); let diffTime = Math.abs(currEnd - currStart); let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; let prevEnd = new Date(currStart); prevEnd.setDate(prevEnd.getDate() - 1); let prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate() - (diffDays - 1)); pStartStr = toIsoLocal(prevStart); pEndStr = toIsoLocal(prevEnd); }
 
         const sDept = filters.dept.value; const sEvt = filters.eventType.value; const sv = (v) => v ? v.toString().trim() : '';
+        let prevData = rawData.filter(r => {
+            let m = true; if(!r.DateStr || r.DateStr < pStartStr || r.DateStr > pEndStr) m = false;
+            if (selectedAreasSet.size > 0 && !selectedAreasSet.has(sv(r['AREA']))) m = false; if (selectedOutletsSet.size > 0 && !selectedOutletsSet.has(sv(r['Outlet']))) m = false;
+            if (sDept !== 'ALL' && sv(r['DEPT']) !== sDept) m = false; if (sEvt !== 'ALL' && sv(r['Event Type']) !== sEvt) m = false;
+            if (selectedItemsSet.size > 0) { if(searchMode.value === 'item') { if(!selectedItemsSet.has(sv(r['Items']))) m = false; } else { if(!selectedItemsSet.has(sv(r['Receipt Number']))) m = false; } }
+            if (selectedDiscountsSet.size > 0 && !selectedDiscountsSet.has(sv(r['Discount Applied']))) m = false;
+            return m;
+        });
+
         let pGross=0, pNet=0, pColl=0, pQty=0, pDisc=0, pRef=0, pTax=0, pGrat=0; let pTx = new Set();
         let pAggDate = {}; let pAggCat = {}; let pAggCatQty = {}; let pAggCatTx = {}; let pAggOutlet = {}; let pAggArea = {}; let pAggDept = {};
-        // Agregasi langsung; hindari membuat array prevData besar di memori.
-        for (let rowIndex = 0; rowIndex < rawData.length; rowIndex++) {
-            const r = rawData[rowIndex];
-            if (!matchesDashboardPlatform(r)) continue;
-            if (!r.DateStr || r.DateStr < pStartStr || r.DateStr > pEndStr) continue;
-            if (selectedAreasSet.size > 0 && !selectedAreasSet.has(sv(r['AREA']))) continue;
-            if (selectedOutletsSet.size > 0 && !selectedOutletsSet.has(sv(r['Outlet']))) continue;
-            if (sDept !== 'ALL' && sv(r['DEPT']) !== sDept) continue;
-            if (sEvt !== 'ALL' && sv(r['Event Type']) !== sEvt) continue;
-            if (selectedItemsSet.size > 0) {
-                if (searchMode.value === 'item' && !selectedItemsSet.has(sv(r['Items']))) continue;
-                if (searchMode.value !== 'item' && !selectedItemsSet.has(sv(r['Receipt Number']))) continue;
-            }
-            if (selectedDiscountsSet.size > 0 && !selectedDiscountsSet.has(sv(r['Discount Applied']))) continue;
+        prevData.forEach(r => {
             const rn = getCleanNum(r, 'Net Sales'); const rg = getCleanNum(r, 'Gross Sales'); const rt = getCleanNum(r, 'Tax'); const rq = getCleanNum(r, 'Quantity'); let rc = getCleanNum(r, 'Total Collected Exc Rounding') || getCleanNum(r, 'Total Collected') || (rn + rt); let rd = getDiscountValue(r); let rref = Math.abs(getCleanNum(r, 'Refunds') || 0); let rgrat = getGratuityValue(r);
             pGross += rg; pNet += rn; pColl += rc; pQty += rq; pDisc += rd; pRef += rref; pTax += rt; pGrat += rgrat;
             let rec = r['Receipt Number']; if(rec) pTx.add(rec);
             let dt = r.DateStr; if(dt) { if(!pAggDate[dt]) pAggDate[dt] = { net: 0, qty: 0, tx: new Set() }; pAggDate[dt].net += rn; pAggDate[dt].qty += rq; if(rec) pAggDate[dt].tx.add(rec); }
             let cat = r.Category; if(cat && cat !== 'Unknown') { pAggCat[cat] = (pAggCat[cat]||0) + rn; pAggCatQty[cat] = (pAggCatQty[cat]||0) + rq; if(!pAggCatTx[cat]) pAggCatTx[cat] = new Set(); if(rec) pAggCatTx[cat].add(rec); }
             let out = r.Outlet; if(out && out !== 'Unknown') pAggOutlet[out] = (pAggOutlet[out]||0) + rn; let area = r.AREA; if(area && area !== 'Unknown') pAggArea[area] = (pAggArea[area]||0) + rn; let dept = r.DEPT; if(dept && dept !== 'Unknown') pAggDept[dept] = (pAggDept[dept]||0) + rn;
-        }
+        });
         window.currentCompareCat = pAggCat; window.currentCompareCatQty = pAggCatQty; window.currentCompareCatTx = pAggCatTx; window.currentCompareOutlet = pAggOutlet; window.currentCompareArea = pAggArea; window.currentCompareDept = pAggDept; window.prevDataExport = null; window.currentCompareDateRange = {start: pStartStr, end: pEndStr};
 
         let currDatesArr = Object.keys(currentAggDate).sort(); window.currentCompareSeries = { net: [], qty: [], tx: [], dates: [] };
@@ -2376,35 +2327,6 @@
     });
 
     // ========================================================================
-    // ADVANCED COHORT COMPARE MODULE
-    // ========================================================================
-
-    let advGroups = []; let advGroupCounter = 0; let lastAdvResults = []; let advAllItems = []; let advAllDiscounts = []; let advAllOutlets = []; let advAllAreas = []; let advAllDepts = []; let advAllEventTypes = [];
-
-    function populateAdvGlobalLists() {
-        if (!rawData.length) return;
-        const items = new Set(), discounts = new Set(), outlets = new Set(), areas = new Set(), depts = new Set(), events = new Set();
-        for (let i = 0; i < rawData.length; i++) {
-            const r = rawData[i];
-            if (!matchesDashboardPlatform(r)) continue;
-            const add = (set, value) => { if (value && value !== 'Unknown' && value !== '-') set.add(String(value)); };
-            add(items, r.Items); add(discounts, r['Discount Applied']); add(outlets, r.Outlet);
-            add(areas, r.AREA); add(depts, r.DEPT); add(events, r['Event Type']);
-        }
-        advAllItems = Array.from(items).sort();
-        advAllDiscounts = Array.from(discounts).sort();
-        advAllOutlets = Array.from(outlets).sort();
-        advAllAreas = Array.from(areas).sort();
-        advAllDepts = Array.from(depts).sort();
-        advAllEventTypes = Array.from(events).sort();
-    }
-
-    function getAdvAvailableItems(group) { if(!group) return []; let tempFiltered = rawData.filter(r => { if (!matchesDashboardPlatform(r)) return false; const sv = (v) => v ? v.toString().trim() : ''; if(group.start && (!r.DateStr || r.DateStr < group.start)) return false; if(group.end && (!r.DateStr || r.DateStr > group.end)) return false; if(group.eventType !== 'ALL' && sv(r['Event Type']) !== group.eventType) return false; if(group.discounts.size > 0 && !group.discounts.has(sv(r['Discount Applied']))) return false; if(group.outlets.size > 0 && !group.outlets.has(sv(r['Outlet']))) return false; if(group.areas.size > 0 && !group.areas.has(sv(r['AREA']))) return false; if(group.dept !== 'ALL' && sv(r['DEPT']) !== group.dept) return false; return true; }); return Array.from(new Set(tempFiltered.map(r => r['Items']).filter(x => x && x !== 'Unknown' && x !== '-'))).sort(); }
-    function getAdvAvailableDiscounts(group) { if(!group) return []; let tempFiltered = rawData.filter(r => { if (!matchesDashboardPlatform(r)) return false; const sv = (v) => v ? v.toString().trim() : ''; if(group.start && (!r.DateStr || r.DateStr < group.start)) return false; if(group.end && (!r.DateStr || r.DateStr > group.end)) return false; if(group.eventType !== 'ALL' && sv(r['Event Type']) !== group.eventType) return false; if(group.items.size > 0 && !group.items.has(sv(r['Items']))) return false; if(group.outlets.size > 0 && !group.outlets.has(sv(r['Outlet']))) return false; if(group.areas.size > 0 && !group.areas.has(sv(r['AREA']))) return false; if(group.dept !== 'ALL' && sv(r['DEPT']) !== group.dept) return false; return true; }); return Array.from(new Set(tempFiltered.map(r => r['Discount Applied']).filter(x => x && x !== 'Unknown' && x !== '-'))).sort(); }
-    function getAdvAvailableOutlets(group) { if(!group) return []; let tempFiltered = rawData.filter(r => { if (!matchesDashboardPlatform(r)) return false; const sv = (v) => v ? v.toString().trim() : ''; if(group.start && (!r.DateStr || r.DateStr < group.start)) return false; if(group.end && (!r.DateStr || r.DateStr > group.end)) return false; if(group.eventType !== 'ALL' && sv(r['Event Type']) !== group.eventType) return false; if(group.items.size > 0 && !group.items.has(sv(r['Items']))) return false; if(group.discounts.size > 0 && !group.discounts.has(sv(r['Discount Applied']))) return false; if(group.areas.size > 0 && !group.areas.has(sv(r['AREA']))) return false; if(group.dept !== 'ALL' && sv(r['DEPT']) !== group.dept) return false; return true; }); return Array.from(new Set(tempFiltered.map(r => r['Outlet']).filter(x => x && x !== 'Unknown' && x !== '-'))).sort(); }
-    function getAdvAvailableAreas(group) { if(!group) return []; let tempFiltered = rawData.filter(r => { if (!matchesDashboardPlatform(r)) return false; const sv = (v) => v ? v.toString().trim() : ''; if(group.start && (!r.DateStr || r.DateStr < group.start)) return false; if(group.end && (!r.DateStr || r.DateStr > group.end)) return false; if(group.eventType !== 'ALL' && sv(r['Event Type']) !== group.eventType) return false; if(group.items.size > 0 && !group.items.has(sv(r['Items']))) return false; if(group.discounts.size > 0 && !group.discounts.has(sv(r['Discount Applied']))) return false; if(group.outlets.size > 0 && !group.outlets.has(sv(r['Outlet']))) return false; if(group.dept !== 'ALL' && sv(r['DEPT']) !== group.dept) return false; return true; }); return Array.from(new Set(tempFiltered.map(r => r['AREA']).filter(x => x && x !== 'Unknown' && x !== '-'))).sort(); }
-
-
     // AUTO-LOAD CSV DARI GITHUB
     // ============================================================
     const GH_USER = 'anggafmp';
@@ -2412,8 +2334,16 @@
     const GH_BASE_URL = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/main/`;
 
     let lazyManifest = [];
+    let lazyFileGroups = { Moka: [], GrabFood: [], GoFood: [] };
+
     const lazyMonthNames = ['januari','februari','maret','april','mei','juni','juli','agustus','september','oktober','november','desember'];
 
+    function lazyPlatformOfFile(fileName) {
+        const n = String(fileName || '').toLowerCase().replace(/[\s_-]+/g, '');
+        if (n.includes('grabfood')) return 'GrabFood';
+        if (n.includes('gofood')) return 'GoFood';
+        return 'Moka';
+    }
 
     function lazyPeriodKey(fileName) {
         const n = String(fileName || '').toLowerCase();
@@ -2422,105 +2352,66 @@
         return year * 100 + (idx >= 0 ? idx + 1 : 0);
     }
 
-
-    // Online Sales only: load the GrabFood and GoFood exports, not the large Moka monthly files.
-    // The platform buttons only switch the dashboard view; they do not download the CSV again.
     function lazySelectedFiles() {
-        return [...new Set(lazyManifest)]
-            .filter(name => /\.csv$/i.test(String(name || '')))
-            .filter(name => {
-                const token = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                return token.includes('grabfood') || token.includes('gofood');
-            })
-            .sort((a,b) => lazyPeriodKey(b) - lazyPeriodKey(a) || a.localeCompare(b));
+        const platform = document.getElementById('lazyPlatformSelect')?.value || 'Moka';
+        const platforms = platform === 'GrabFood+GoFood' ? ['GrabFood', 'GoFood'] : [platform];
+        const files = platforms.flatMap(p => lazyFileGroups[p] || []);
+        return [...new Set(files)].sort((a,b) => lazyPeriodKey(b) - lazyPeriodKey(a) || a.localeCompare(b));
     }
 
     async function processGithubCsvFile(fileName) {
+        const res = await fetch(GH_BASE_URL + encodeURIComponent(fileName) + '?t=' + Date.now());
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+
+        let csvText = await res.text();
+        let headerIdx = -1;
+        let headers = null;
         const sourceFileName = String(fileName || '');
         const sourceLower = sourceFileName.toLowerCase();
-        const sourceToken = sourceLower.replace(/[^a-z0-9]/g, '');
-        const fileUrl = GH_BASE_URL + encodeURIComponent(fileName) + '?v=20261120-papa-stream-v2';
-        let headerFound = false;
-        let headers = null;
-        let detectedPlatform = sourceToken.includes('grabfood') ? 'GrabFood'
-            : sourceToken.includes('gofood') ? 'GoFood' : 'Moka';
-
-        currentSourceFileName = sourceFileName;
 
         await new Promise((resolve, reject) => {
-            Papa.parse(fileUrl, {
-                download: true,
+            Papa.parse(csvText, {
                 header: false,
                 skipEmptyLines: true,
-                dynamicTyping: false,
-                worker: false,
-                chunkSize: 512 * 1024,
-                chunk: function(results, parser) {
-                    try {
-                        // Pause between chunks so rendering and input stay responsive.
-                        if (parser && typeof parser.pause === 'function') parser.pause();
-                        const rows = results && results.data ? results.data : [];
-                        if (!headerFound) {
-                            const normalize = value => String(value == null ? '' : value)
-                                .replace(/^\uFEFF/, '').toLowerCase().replace(/[^a-z0-9]/g, '');
-                            for (let j = 0; j < Math.min(rows.length, 150); j++) {
-                                const row = rows[j] || [];
-                                const tokens = new Set(row.map(normalize).filter(Boolean));
-                                const has = key => tokens.has(key);
-                                const hasId = has('transactionid') || has('orderid') || has('ordernumber');
-                                const hasSales = has('netsales') || has('netamount') || has('amount') || has('salesamount') || has('totalamount');
-                                const hasOutlet = has('storename') || has('outletname') || has('outlet') || has('paymentdate');
-                                const isMokaHeader = has('netsales') && (has('receiptnumber') || has('sku'));
-                                const isGrabFoodHeader = detectedPlatform === 'GrabFood' && hasId && hasSales && hasOutlet;
-                                const isGoFoodHeader = detectedPlatform === 'GoFood' && hasId && hasSales && hasOutlet;
-
-                                if (isGrabFoodHeader || isGoFoodHeader || (detectedPlatform === 'Moka' && isMokaHeader)) {
-                                    headerFound = true;
-                                    headers = row;
-                                    currentSourceFileName = sourceFileName;
-                                    const payload = rows.slice(j + 1);
-                                    if (payload.length) processParsedRows(payload, headers);
-                                    break;
-                                }
+                delimiter: '',
+                chunkSize: 1024 * 1024,
+                chunk: function(results) {
+                    currentSourceFileName = sourceFileName;
+                    const rows = results.data;
+                    if (headerIdx === -1) {
+                        for (let j = 0; j < Math.min(rows.length, 50); j++) {
+                            const row = rows[j] || [];
+                            const rowNorm = row.join(' ').toLowerCase();
+                            const isGrabFoodFile = sourceLower.includes('grabfood');
+                            const isGoFoodFile = sourceLower.includes('gofood');
+                            const isMokaFile = !isGrabFoodFile && !isGoFoodFile;
+                            const isMokaHeader = rowNorm.includes('net sales') && (rowNorm.includes('receipt number') || rowNorm.includes('sku'));
+                            const isGrabFoodHeader = isGrabFoodFile && rowNorm.includes('transaction id') && rowNorm.includes('net sales') && (rowNorm.includes('store name') || rowNorm.includes('order id'));
+                            const isGoFoodHeader = isGoFoodFile && rowNorm.includes('transaction id') && (rowNorm.includes('amount') || rowNorm.includes('net amount')) && (rowNorm.includes('outlet name') || rowNorm.includes('payment date'));
+                            if ((isMokaFile && isMokaHeader) || isGrabFoodHeader || isGoFoodHeader) {
+                                headerIdx = j;
+                                headers = rows[j];
+                                processParsedRows(rows.slice(j + 1), headers);
+                                break;
                             }
-                        } else if (rows.length) {
-                            currentSourceFileName = sourceFileName;
-                            processParsedRows(rows, headers);
                         }
-
-                        const statusEl = document.getElementById('loadingSubText');
-                        if (statusEl) statusEl.textContent = `STREAM ${sourceFileName} • ${formatNum(rawData.length)} baris tersimpan`;
-                        if (parser && typeof parser.resume === 'function') {
-                            setTimeout(() => parser.resume(), 0);
-                        }
-                    } catch (err) {
-                        if (parser && typeof parser.abort === 'function') parser.abort();
-                        reject(err);
+                    } else {
+                        processParsedRows(rows, headers);
                     }
                 },
-                complete: function() {
-                    if (!headerFound) {
-                        reject(new Error('Header CSV tidak dikenali: ' + sourceFileName));
-                        return;
-                    }
-                    const statusEl = document.getElementById('loadingSubText');
-                    if (statusEl) statusEl.textContent = `Selesai ${sourceFileName} (${detectedPlatform}) • ${formatNum(rawData.length)} baris tersimpan`;
-                    resolve();
-                },
-                error: function(err) {
-                    reject(new Error(`${sourceFileName}: ${err && err.message ? err.message : 'gagal diunduh'}`));
-                }
+                complete: resolve,
+                error: reject
             });
         });
 
+        csvText = '';
         await yieldToMain();
     }
 
-    async function loadAllGithubData() {
+    async function loadSelectedGithubData() {
         const files = lazySelectedFiles();
         if (!files.length) {
-            showToast('Manifest tidak memiliki CSV GrabFood atau GoFood.', 'error');
-            if (dashboardSourceStatus) dashboardSourceStatus.textContent = 'File GrabFood/GoFood tidak ditemukan di manifest.json';
+            showToast('Tidak ada file untuk pilihan ini.', 'error');
             return;
         }
 
@@ -2534,26 +2425,12 @@
             for (let i = 0; i < files.length; i++) {
                 const fileName = files[i];
                 const pct = Math.round((i / files.length) * 90);
-                setLoadingProgress(pct, `AUTO-LOAD STREAM • ${fileName} (${i+1}/${files.length})...`);
+                setLoadingProgress(pct, `Memuat ${fileName} (${i+1}/${files.length})...`);
                 await processGithubCsvFile(fileName);
-                const donePct = Math.round(((i + 1) / files.length) * 90);
-                setLoadingProgress(donePct, `AUTO-LOAD STREAM • ${i+1}/${files.length} file • ${formatNum(rawData.length)} baris terkumpul`);
-                await yieldToMain();
             }
 
-            let grabFoodRows = 0, goFoodRows = 0;
-            for (let i = 0; i < rawData.length; i++) {
-                const p = String(rawData[i].Platform || '').toLowerCase().replace(/[\s_-]+/g, '');
-                if (p.includes('grabfood')) grabFoodRows++;
-                else if (p.includes('gofood')) goFoodRows++;
-            }
-            setLoadingProgress(95, `Menyiapkan dashboard online • GrabFood ${formatNum(grabFoodRows)} • GoFood ${formatNum(goFoodRows)}`);
-            await yieldToMain();
-            if (grabFoodRows + goFoodRows > 0) {
-                const initialPlatform = grabFoodRows > 0 ? 'GrabFood' : 'GoFood';
-                if (dashboardPlatformSelect) dashboardPlatformSelect.value = initialPlatform;
-                activeDashboardPlatform = initialPlatform;
-                updateOnlineSalesButtons(initialPlatform);
+            setLoadingProgress(95, 'Menyiapkan dashboard...');
+            if (rawData.length > 0) {
                 setupDatePickers();
                 populateDropdowns();
                 populateItemDropdown();
@@ -2567,10 +2444,9 @@
                 setTimeout(async () => {
                     try {
                         await executeFilterAndRender();
-                        const selectedRows = countRowsForDashboardPlatform();
-                        const selectedLabel = dashboardPlatformSelect?.selectedOptions?.[0]?.textContent || 'Online Sales Dashboard';
-                        if (dashboardSourceStatus) dashboardSourceStatus.textContent = `${selectedLabel} • ${formatNum(selectedRows)} rows • semua sumber sudah dimuat`;
-                        showToast(`Online Sales siap • GrabFood ${formatNum(grabFoodRows)} baris • GoFood ${formatNum(goFoodRows)} baris.`);
+                        const platform = document.getElementById('lazyPlatformSelect')?.value || 'Moka';
+                        const statusEl = document.getElementById('lazyStatus'); if (statusEl) statusEl.textContent = `${platform} • ${files.length} file dimuat • ${formatNum(rawData.length)} baris`;
+                        showToast(`Berhasil memuat ${formatNum(rawData.length)} baris.`);
                     } catch (e) {
                         console.error(e);
                         showToast('Sebagian grafik gagal dirender karena data terlalu besar.', 'error');
@@ -2578,8 +2454,7 @@
                 }, 100);
             } else {
                 document.getElementById('mainContent').style.display = 'block';
-                if (dashboardSourceStatus) dashboardSourceStatus.textContent = 'CSV terbaca, tetapi tidak ada baris transaksi Online Sales yang valid.';
-                showToast('Tidak ada transaksi GrabFood/GoFood yang berhasil dibaca. Periksa header dan tanggal CSV.', 'error');
+                showToast('Tidak ada data valid pada file yang dipilih.', 'error');
             }
         } catch (err) {
             console.error(err);
@@ -2596,77 +2471,30 @@
             const manifestRes = await fetch(GH_BASE_URL + 'manifest.json?t=' + Date.now());
             if (!manifestRes.ok) throw new Error('manifest.json tidak ditemukan');
             lazyManifest = await manifestRes.json();
-            // Dashboard langsung memuat seluruh file dari manifest.
-            await loadAllGithubData();
+            lazyFileGroups = { Moka: [], GrabFood: [], GoFood: [] };
+            lazyManifest.forEach(fileName => {
+                const p = lazyPlatformOfFile(fileName);
+                lazyFileGroups[p].push(fileName);
+            });
+
+            const statusEl = document.getElementById('lazyStatus');
+            const counts = `Moka ${lazyFileGroups.Moka.length} file • GrabFood ${lazyFileGroups.GrabFood.length} file • GoFood ${lazyFileGroups.GoFood.length} file`;
+            if (statusEl) statusEl.textContent = `${counts} tersedia • pilih dashboard`;
+
+            // Ganti dashboard akan memuat ulang hanya sumber yang dipilih secara otomatis.
+            // Moka tetap menjadi pilihan awal; file Moka tidak dibuang dari manifest.
+            const sourceSelect = document.getElementById('lazyPlatformSelect');
+            sourceSelect?.addEventListener('change', () => {
+                selectedItemsSet.clear(); selectedOutletsSet.clear(); selectedAreasSet.clear(); selectedDiscountsSet.clear();
+                loadSelectedGithubData();
+            });
+            await loadSelectedGithubData();
         } catch (err) {
             console.error(err);
             showToast('Gagal membaca manifest: ' + err.message, 'error');
             els.main.style.display = 'block';
         }
     }
-
-    const dashboardPlatformSelect = document.getElementById('lazyPlatformSelect');
-    const dashboardSourceStatus = document.getElementById('dashboardSourceStatus');
-    if (dashboardPlatformSelect) dashboardPlatformSelect.value = 'GrabFood';
-
-    function countRowsForDashboardPlatform() {
-        let count = 0;
-        for (let i = 0; i < rawData.length; i++) if (matchesDashboardPlatform(rawData[i])) count++;
-        return count;
-    }
-
-    function updateOnlineSalesButtons(platform) {
-        const grab = document.getElementById('btnGrabFoodDashboard');
-        const go = document.getElementById('btnGoFoodDashboard');
-        const activeCls = 'px-4 py-2 rounded border border-blue-200 bg-blue-50 text-fr-blue text-[11px] font-bold shadow-sm transition-colors';
-        const idleCls = 'px-4 py-2 rounded border border-gray-300 bg-white text-gray-600 text-[11px] font-bold shadow-sm transition-colors hover:bg-gray-50';
-        if (grab) grab.className = platform === 'GrabFood' ? activeCls : idleCls;
-        if (go) go.className = platform === 'GoFood' ? activeCls : idleCls;
-    }
-
-    async function switchDashboardPlatform(platform) {
-        activeDashboardPlatform = (platform === 'GoFood') ? 'GoFood' : 'GrabFood';
-        // Reset dashboard-level selections to prevent filters from another source hiding data.
-        selectedAreasSet.clear();
-        selectedOutletsSet.clear();
-        selectedDiscountsSet.clear();
-        selectedItemsSet.clear();
-        if (filters.dept) filters.dept.value = 'ALL';
-        if (filters.eventType) filters.eventType.value = 'ALL';
-        if (searchInput) searchInput.value = '';
-        if (areaSearch) areaSearch.value = '';
-        if (outletSearch) outletSearch.value = '';
-        if (discountSearch) discountSearch.value = '';
-
-        setupDatePickers();
-        populateDropdowns();
-        populateItemDropdown();
-        await executeFilterAndRender();
-
-        const label = dashboardPlatformSelect?.selectedOptions?.[0]?.textContent || 'Dashboard';
-        const rows = countRowsForDashboardPlatform();
-        if (dashboardSourceStatus) dashboardSourceStatus.textContent = `${label} • ${formatNum(rows)} rows • data sudah dimuat otomatis`;
-        showToast(`${label}: ${formatNum(rows)} baris`);
-    }
-
-    dashboardPlatformSelect?.addEventListener('change', (e) => {
-        switchDashboardPlatform(e.target.value).catch(err => {
-            console.error('Gagal mengganti dashboard platform:', err);
-            showToast('Gagal menampilkan dashboard platform.', 'error');
-        });
-    });
-
-    document.getElementById('btnGrabFoodDashboard')?.addEventListener('click', () => {
-        if (dashboardPlatformSelect) dashboardPlatformSelect.value = 'GrabFood';
-        updateOnlineSalesButtons('GrabFood');
-        switchDashboardPlatform('GrabFood').catch(err => console.error(err));
-    });
-    document.getElementById('btnGoFoodDashboard')?.addEventListener('click', () => {
-        if (dashboardPlatformSelect) dashboardPlatformSelect.value = 'GoFood';
-        updateOnlineSalesButtons('GoFood');
-        switchDashboardPlatform('GoFood').catch(err => console.error(err));
-    });
-    updateOnlineSalesButtons('GrabFood');
 
     window.addEventListener('DOMContentLoaded', loadAllCsvFromGithub);
     </script>
