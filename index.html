@@ -255,6 +255,7 @@
             </select>
             <span id="lazyStatus" class="text-[10px] text-slate-500">Menyiapkan daftar data...</span>
         </div>
+        <div id="onlineDataNote" class="max-w-[1500px] mx-auto mt-1 text-[10px] text-slate-500">Catatan: file ekspor GrabFood/GoFood berisi data penjualan dan transaksi, bukan rincian menu atau jumlah item.</div>
     </section>
     <!-- MAIN CONTENT DISEMBUNYIKAN SEJAK AWAL MENGGUNAKAN INLINE CSS -->
     <main style="display: none;" id="mainContent" class="flex-grow max-w-[1500px] mx-auto w-full px-2 sm:px-4 lg:px-8 py-4 space-y-4">
@@ -986,16 +987,17 @@
         if (!rows || !rows.length || !headers) return;
 
         const idx = Object.create(null);
-        const normalizeHeader = value => String(value == null ? '' : value).replace(/^\uFEFF/, '').toLowerCase().replace(/[^a-z0-9]/g, '');
+        const normalizeHeader = value => String(value == null ? '' : value)
+            .replace(/^\uFEFF/, '')
+            .trim()
+            .toLowerCase()
+            .replace(/[^a-z0-9]/g, '');
         for (let i = 0; i < headers.length; i++) {
-            const h = headers[i];
-            if (h != null && String(h).trim()) {
-                idx[String(h).trim()] = i;
-                idx[normalizeHeader(h)] = i;
-            }
+            const normalized = normalizeHeader(headers[i]);
+            if (normalized) idx[normalized] = i;
         }
         const get = (row, key) => {
-            const i = idx[key] !== undefined ? idx[key] : idx[normalizeHeader(key)];
+            const i = idx[normalizeHeader(key)];
             return i === undefined ? undefined : row[i];
         };
         const getAny = (row, keys) => {
@@ -1005,111 +1007,143 @@
             }
             return undefined;
         };
-
+        const toNumber = value => {
+            if (value === undefined || value === null || String(value).trim() === '') return 0;
+            if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+            const parsed = Number(String(value).replace(/[^0-9.-]/g, ''));
+            return Number.isFinite(parsed) ? parsed : 0;
+        };
         const numFields = [
             'Net Sales','Gross Sales','Quantity','Tax','Gratuity','Discounts',
             'Refunds','Total Collected','Total Collected Exc Rounding','Discount Applied (Rp)'
         ];
 
+        const sourceName = String(currentSourceFileName || '').toLowerCase();
+        const isGrabSource = sourceName.replace(/[^a-z0-9]/g, '').includes('grabfood');
+        const isGoSource = sourceName.replace(/[^a-z0-9]/g, '').includes('gofood');
+        const isOnlineSource = isGrabSource || isGoSource;
+        const sourcePlatform = isGrabSource ? 'GrabFood' : (isGoSource ? 'GoFood' : '');
+
         for (let i = 0; i < rows.length; i++) {
             const row = rows[i];
-            if (!row) continue;
+            if (!row || !row.length) continue;
 
-            const sourceNameForRow = String(currentSourceFileName || '').toLowerCase();
-            const isGrabSource = sourceNameForRow.includes('grabfood') || sourceNameForRow.includes('grab food');
-            const isGoSource = sourceNameForRow.includes('gofood') || sourceNameForRow.includes('go food');
-            const isOnlineSource = isGrabSource || isGoSource;
+            // Exclude non-sales accounting events in the supplied platform exports.
+            // GrabFood: only transferred Payment records are actual sales transactions.
+            // GoFood: only settled transactions are included.
+            if (isGrabSource) {
+                const sourceType = String(get(row, 'Type') || '').trim().toLowerCase();
+                const sourceCategory = String(get(row, 'Category') || '').trim().toLowerCase();
+                const sourceStatus = String(get(row, 'Status') || '').trim().toLowerCase();
+                if (sourceType !== 'grabfood' || sourceCategory !== 'payment' || sourceStatus !== 'transferred') continue;
+            } else if (isGoSource) {
+                const sourceStatus = String(get(row, 'Transaction Status') || '').trim().toUpperCase();
+                if (sourceStatus !== 'SETTLEMENT') continue;
+            }
+
+            // These exports contain many comma-padded blank lines (Excel row-limit padding).
+            // Skip them before creating any dashboard objects.
+            let hasContent = false;
+            for (let c = 0; c < row.length; c++) {
+                if (row[c] !== undefined && row[c] !== null && String(row[c]).trim() !== '') {
+                    hasContent = true;
+                    break;
+                }
+            }
+            if (!hasContent) continue;
+
+            // Real source schemas supplied by Angga:
+            // GrabFood: Date, Transaction ID, Store Name, Amount, Net Sales.
+            // GoFood: Date (DD/MM/YYYY), Transaction ID, Outlet name, Amount, Net Amount.
             const rawDate = isOnlineSource
-                ? getAny(row, ['Date', 'Payment Date', 'Order Date', 'Transaction Date', 'Created At', 'Created Date'])
+                ? getAny(row, ['Date','Payment Date','Order Date','Transaction Date','Transaction time','Created On','Updated On'])
                 : get(row, 'Date');
-            const rawItems = isOnlineSource
-                ? getAny(row, ['Items', 'Item', 'Item Name', 'Product Name', 'Menu Item', 'Order Item', 'Description', 'Item Description', 'Nama Item', 'Nama Produk', 'Nama Menu'])
-                : get(row, 'Items');
             const rawReceipt = isOnlineSource
-                ? getAny(row, ['Receipt Number', 'Transaction ID', 'Order ID', 'Order Number', 'Transaction Number'])
+                ? getAny(row, ['Transaction ID','Order ID','Receipt Number','Order Number','Transaction Number'])
                 : get(row, 'Receipt Number');
+            if (isOnlineSource && (rawReceipt === undefined || rawReceipt === null || !String(rawReceipt).trim())) continue;
+            const rawItems = isOnlineSource
+                ? getAny(row, ['Items','Item','Item Name','Product Name','Menu Item','Order Item','Item Description','Nama Item','Nama Produk','Nama Menu'])
+                : get(row, 'Items');
             if (!rawDate && !rawItems && !rawReceipt) continue;
 
             const compact = {};
-            const set = (key, value) => { if (value !== undefined && value !== null) compact[key] = value; };
+            const set = (key, value) => {
+                if (value !== undefined && value !== null) compact[key] = value;
+            };
 
-            let outlet = get(row, 'Outlet');
-            outlet = outlet ? String(outlet).trim().split(',')[0].trim() : '';
-            set('Outlet', outlet);
-
-            set('AREA', get(row,'AREA') ? String(get(row,'AREA')).trim() : 'Unknown');
-            set('DEPT', get(row,'DEPT') ? String(get(row,'DEPT')).trim() : 'Unknown');
-            set('Event Type', get(row,'Event Type') ? String(get(row,'Event Type')).trim() : 'Unknown');
-            set('Items', get(row,'Items') ? String(get(row,'Items')).trim() : 'Unknown');
-
-            // Platform: gunakan kolom platform bila tersedia; jika tidak, infer dari nama file sumber.
-            const explicitPlatform = getAny(row,['Platform','Channel']) ?? '';
-            const sourceName = String(currentSourceFileName || '').toLowerCase();
-            let platform = explicitPlatform ? String(explicitPlatform).trim() : '';
-            if (!platform) {
-                if (sourceName.includes('grabfood') || sourceName.includes('grab food')) platform = 'GrabFood';
-                else if (sourceName.includes('gofood') || sourceName.includes('go food')) platform = 'GoFood';
-                else platform = 'Other';
+            // Keep Moka's existing mapping unchanged.
+            if (!isOnlineSource) {
+                const outlet = get(row, 'Outlet');
+                set('Outlet', outlet ? String(outlet).trim().split(',')[0].trim() : '');
+                set('AREA', get(row,'AREA') ? String(get(row,'AREA')).trim() : 'Unknown');
+                set('DEPT', get(row,'DEPT') ? String(get(row,'DEPT')).trim() : 'Unknown');
+                set('Event Type', get(row,'Event Type') ? String(get(row,'Event Type')).trim() : 'Unknown');
+                set('Items', get(row,'Items') ? String(get(row,'Items')).trim() : 'Unknown');
+            } else {
+                set('AREA', get(row,'AREA') ? String(get(row,'AREA')).trim() : 'Unknown');
+                set('DEPT', 'Unknown');
+                set('Event Type', sourcePlatform);
+                // These two exports are transaction/settlement reports, not item-level order exports.
+                set('Items', rawItems ? String(rawItems).trim() : 'Unknown');
             }
-            const pNorm = platform.toLowerCase().replace(/[\s_-]+/g, '');
-            if (pNorm.includes('grabfood')) platform = 'GrabFood';
-            else if (pNorm.includes('gofood')) platform = 'GoFood';
+
+            // Filename is authoritative for online source identity. In the GrabFood export,
+            // Channel is usually blank and one unrelated STATIC QR row is also present.
+            let platform = sourcePlatform;
+            if (!platform) {
+                const explicitPlatform = getAny(row, ['Platform','Channel','Type']) || '';
+                platform = explicitPlatform ? String(explicitPlatform).trim() : 'Other';
+                const pNorm = platform.toLowerCase().replace(/[\s_-]+/g, '');
+                if (pNorm.includes('grabfood')) platform = 'GrabFood';
+                else if (pNorm.includes('gofood')) platform = 'GoFood';
+            }
+            if (isGrabSource) {
+                const sourceType = String(get(row, 'Type') || '').trim().toLowerCase();
+                if (sourceType && sourceType !== 'grabfood') continue;
+            }
             set('Platform', platform);
 
-            // Normalize GrabFood / GoFood into dashboard canonical fields.
-            if (platform === 'GoFood' || platform === 'GrabFood') {
-                const isGoFood = platform === 'GoFood';
+            // Preserve the source's native fields and normalize them to dashboard fields.
+            if (isOnlineSource) {
+                const txId = String(rawReceipt || '').trim().replace(/^'+/, '');
+                set('Receipt Number', txId);
 
-                // Transaction ID -> Receipt Number
-                const txId = getAny(row, ['Transaction ID', 'Order ID', 'Order Number', 'Transaction Number']);
+                const outlet = isGoSource
+                    ? getAny(row, ['Outlet name','Outlet Name','Outlet','Store Name','Store'])
+                    : getAny(row, ['Store Name','Outlet name','Outlet Name','Outlet','Store']);
+                if (outlet !== undefined) set('Outlet', String(outlet).trim());
 
-                if (txId !== undefined && txId !== null && String(txId).trim()) {
-                    set('Receipt Number', String(txId).trim());
-                }
+                const quantity = getAny(row, ['Quantity','Qty','Item Quantity']);
+                // There is no item quantity in either attached online-sales export.
+                if (quantity !== undefined) set('Quantity', toNumber(quantity));
+                else set('Quantity', 0);
 
-                // Outlet / Store
-                const outlet = isGoFood
-                    ? getAny(row, ['Outlet name', 'Outlet Name', 'Outlet', 'Store Name', 'Store'])
-                    : getAny(row, ['Store Name', 'Store', 'Outlet name', 'Outlet Name', 'Outlet']);
+                const amount = getAny(row, ['Amount','Sales Amount','Total Amount']);
+                const onlineNet = isGrabSource
+                    ? getAny(row, ['Net Sales','Amount'])
+                    : getAny(row, ['Amount','Net Amount']);
+                if (amount !== undefined) set('Gross Sales', toNumber(amount));
+                if (onlineNet !== undefined) set('Net Sales', toNumber(onlineNet));
 
-                if (outlet !== undefined && outlet !== null && String(outlet).trim()) {
-                    set('Outlet', String(outlet).trim());
-                }
+                // Settlement received after platform fees, when the source provides it.
+                const settled = isGoSource
+                    ? getAny(row, ['Net Amount'])
+                    : getAny(row, ['Total']);
+                if (settled !== undefined) set('Total Collected', toNumber(settled));
 
-                // Item description
-                const description = rawItems !== undefined ? rawItems : getAny(row, ['Description', 'Item Description']);
-                if (description !== undefined && description !== null && String(description).trim()) {
-                    set('Items', String(description).trim());
-                }
+                const payment = isGoSource
+                    ? getAny(row, ['Payment Type','Payment Method'])
+                    : getAny(row, ['Payment Method','Payment Type']);
+                if (payment !== undefined) set('Payment Method', String(payment).trim());
 
-                // One platform row = one transaction.
-                const onlineQty = getAny(row, ['Quantity', 'Qty', 'Item Quantity']);
-                set('Quantity', onlineQty !== undefined ? (typeof onlineQty === 'number' ? onlineQty : (parseFloat(String(onlineQty).replace(/[^0-9.-]/g, '')) || 0)) : 1);
-
-                // Sales
-                const salesValue = isGoFood
-                    ? getAny(row, ['Amount', 'Net Amount', 'Net Sales', 'Sales Amount', 'Total Amount'])
-                    : getAny(row, ['Net Sales', 'Net Amount', 'Amount', 'Sales Amount', 'Total Amount']);
-
-                if (salesValue !== undefined && salesValue !== null) {
-                    const salesNumber = typeof salesValue === 'number'
-                        ? salesValue
-                        : parseFloat(String(salesValue).replace(/[^0-9.-]/g, '')) || 0;
-
-                    set('Net Sales', salesNumber);
-                    set('Gross Sales', salesNumber);
-                }
-
-                // Payment method
-                const payment = isGoFood
-                    ? getAny(row, ['Payment Type', 'Payment Method', 'Payment', 'Payment Channel'])
-                    : getAny(row, ['Payment Method', 'Payment Type', 'Payment', 'Payment Channel']);
-
-                if (payment !== undefined && payment !== null) {
-                    set('Payment Method', String(payment).trim());
-                }
+                // These source columns are transaction types/features, not menu categories.
+                if (isGrabSource) set('Category', get(row, 'Category') || 'Unknown');
+                else set('Category', 'Online Sales');
+            } else {
+                const explicitPlatform = getAny(row, ['Platform','platform','Channel','channel']) || 'Other';
+                set('Platform', explicitPlatform);
             }
-
 
             const collected = get(row,'Collected By') ?? get(row,'CollectedBy') ?? get(row,'collected by') ?? '-';
             const served = get(row,'Served By') ?? get(row,'ServedBy') ?? get(row,'served by') ?? '-';
@@ -1122,67 +1156,70 @@
 
             let dateStr = '', formattedDate = '';
             if (typeof rawDate === 'number') {
-                const serial = Math.floor(rawDate);
-                const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
+                const d = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
                 const y = d.getUTCFullYear(), m = String(d.getUTCMonth()+1).padStart(2,'0'), day = String(d.getUTCDate()).padStart(2,'0');
                 dateStr = `${y}-${m}-${day}`;
                 formattedDate = `${day}/${m}/${y}`;
             } else if (typeof rawDate === 'string') {
-                const str = rawDate.split(' ')[0];
-                const parts = str.split(/[-/]/);
-                if (parts.length === 3) {
-                    if (parts[0].length === 4) {
-                        dateStr = `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
-                        formattedDate = `${parts[2].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[0]}`;
-                    } else if (parts[2].length === 4) {
-                        dateStr = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
-                        formattedDate = `${parts[0].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[2]}`;
-                    } else {
-                        // 2-digit year: GoFood uses M/D/YY.
-                        // GrabFood normally uses DD/MM/YYYY, handled above.
-                        if (platform === 'GoFood') {
-                            const yy = parseInt(parts[2], 10);
-                            const mm = parseInt(parts[0], 10);
-                            const dd = parseInt(parts[1], 10);
-
-                            if (!isNaN(yy) && !isNaN(mm) && !isNaN(dd)) {
-                                const fullYear = yy >= 50 ? 1900 + yy : 2000 + yy;
-                                dateStr = `${fullYear}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
-                                formattedDate = `${String(dd).padStart(2,'0')}/${String(mm).padStart(2,'0')}/${fullYear}`;
-                            } else {
-                                dateStr = str; formattedDate = str;
+                const str = rawDate.trim().split(/[ T]/)[0];
+                const compactDate = str.match(/^(\d{4})(\d{2})(\d{2})$/);
+                if (compactDate) {
+                    dateStr = `${compactDate[1]}-${compactDate[2]}-${compactDate[3]}`;
+                    formattedDate = `${compactDate[3]}/${compactDate[2]}/${compactDate[1]}`;
+                } else {
+                    const parts = str.split(/[-/]/);
+                    if (parts.length === 3) {
+                        if (/^\d{4}$/.test(parts[0])) {
+                            dateStr = `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
+                            formattedDate = `${parts[2].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[0]}`;
+                        } else if (parts[2].length === 4) {
+                            // Both attached platform exports use DD/MM/YYYY in their Date column.
+                            const dd = parts[0].padStart(2,'0');
+                            const mm = parts[1].padStart(2,'0');
+                            const yyyy = parts[2];
+                            dateStr = `${yyyy}-${mm}-${dd}`;
+                            formattedDate = `${dd}/${mm}/${yyyy}`;
+                        } else if (parts[2].length === 2 && isGoSource) {
+                            // Fallback for older GoFood Date exports that use M/D/YY.
+                            const yy = parseInt(parts[2], 10), mm = parseInt(parts[0], 10), dd = parseInt(parts[1], 10);
+                            if (Number.isFinite(yy) && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
+                                const yyyy = yy >= 50 ? 1900 + yy : 2000 + yy;
+                                dateStr = `${yyyy}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
+                                formattedDate = `${String(dd).padStart(2,'0')}/${String(mm).padStart(2,'0')}/${yyyy}`;
                             }
-                        } else {
-                            dateStr = str; formattedDate = str;
+                        } else if (parts[2].length === 2) {
+                            const yyyy = (parseInt(parts[2],10) >= 50 ? 1900 : 2000) + parseInt(parts[2],10);
+                            dateStr = `${yyyy}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+                            formattedDate = `${parts[0].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${yyyy}`;
                         }
                     }
-                } else {
-                    dateStr = str; formattedDate = str;
                 }
             }
 
+            if (!dateStr) continue;
             set('DateStr', dateStr);
             set('FormattedDate', formattedDate);
 
-            // Dashboard hanya menggunakan data tahun 2025-2026.
-            const dashboardYear = parseInt(String(dateStr).slice(0, 4), 10);
+            // Existing dashboard is intentionally scoped to 2025-2026.
+            const dashboardYear = parseInt(dateStr.slice(0, 4), 10);
             if (dashboardYear < 2025 || dashboardYear > 2026) continue;
 
             let hrStr = get(row,'HOUR') ? String(get(row,'HOUR')).trim() : '';
             let exactTime = '-';
-            const rawTime = get(row,'Time');
-
-            if (typeof rawDate === 'number' && rawDate % 1 !== 0) {
-                const d = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
-                hrStr = String(d.getUTCHours());
-                exactTime = String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0');
-            } else if (typeof rawTime === 'number') {
+            const rawTime = getAny(row, ['Time','Transaction time','Created On','Updated On']);
+            if (typeof rawTime === 'number') {
                 const totalMins = Math.round((rawTime % 1) * 24 * 60);
                 hrStr = String(Math.floor(totalMins / 60));
-                exactTime = String(Math.floor(totalMins / 60)).padStart(2,'0') + ':' + String(totalMins % 60).padStart(2,'0');
+                exactTime = String(Math.floor(totalMins / 60)).padStart(2, '0') + ':' + String(totalMins % 60).padStart(2, '0');
             } else if (typeof rawTime === 'string') {
-                hrStr = rawTime.split(':')[0];
-                exactTime = rawTime;
+                const match = rawTime.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+                if (match) {
+                    hrStr = match[1];
+                    exactTime = `${match[1].padStart(2,'0')}:${match[2]}${match[3] ? ':' + match[3] : ''}`;
+                } else {
+                    hrStr = rawTime.trim().split(/\s+/)[0].split(':')[0];
+                    exactTime = rawTime.trim();
+                }
             } else if (hrStr) {
                 exactTime = hrStr.padStart(2, '0') + ':00';
             }
@@ -1190,32 +1227,36 @@
             set('ExactTime', exactTime);
 
             let dayStr = get(row,'DAY OF WEEK') ? String(get(row,'DAY OF WEEK')).trim() : '';
-            if (dateStr) {
-                const parts = dateStr.split('-');
-                if (parts.length === 3) {
-                    const safeDate = new Date(+parts[0], +parts[1]-1, +parts[2], 12, 0, 0);
-                    const dayIdx = safeDate.getDay();
-                    dayStr = DAYS[dayIdx === 0 ? 6 : dayIdx - 1];
-                }
+            const dateParts = dateStr.split('-');
+            if (dateParts.length === 3) {
+                const safeDate = new Date(+dateParts[0], +dateParts[1]-1, +dateParts[2], 12, 0, 0);
+                const dayIdx = safeDate.getDay();
+                dayStr = DAYS[dayIdx === 0 ? 6 : dayIdx - 1];
             }
             set('ParsedDay', dayStr);
 
-            // Keep only fields required by the dashboard/export.
+            // Copy original Moka numeric/text fields without changing their existing parsing.
             const keep = [
                 'Receipt Number','SKU','Category','Quantity','Net Sales','Gross Sales',
                 'Total Collected','Total Collected Exc Rounding','Tax','Gratuity','Discounts',
-                'Refunds','Discount Applied','Discount Applied (Rp)','Payment Method',
-                'Sales Type'
+                'Refunds','Discount Applied','Discount Applied (Rp)','Payment Method','Sales Type'
             ];
-            for (let k = 0; k < keep.length; k++) {
-                const key = keep[k];
-                let value = get(row, key);
-                if (value === undefined || value === null) continue;
-                if (numFields.includes(key)) {
-                    if (typeof value === 'string') value = parseFloat(value.replace(/,/g,'').trim()) || 0;
-                    else if (typeof value !== 'number') value = Number(value) || 0;
+            if (!isOnlineSource) {
+                for (let k = 0; k < keep.length; k++) {
+                    const key = keep[k];
+                    let value = get(row, key);
+                    if (value === undefined || value === null) continue;
+                    if (numFields.includes(key)) value = toNumber(value);
+                    set(key, value);
                 }
-                set(key, value);
+            } else {
+                // Preserve sales values normalized above; do not overwrite them with blank source cells.
+                const tax = getAny(row, ['Tax on Order Value','Value added tax','Restaurant tax']);
+                if (tax !== undefined) set('Tax', toNumber(tax));
+                const discount = getAny(row, ['Discount (Merchant-Funded)','GoFood discount','Merchant Promo Contribution']);
+                if (discount !== undefined) set('Discounts', Math.abs(toNumber(discount)));
+                const refund = getAny(row, ['Refunds','Refund Amount']);
+                if (refund !== undefined) set('Refunds', Math.abs(toNumber(refund)));
             }
 
             rawData.push(compact);
@@ -2360,52 +2401,79 @@
     }
 
     async function processGithubCsvFile(fileName) {
+        const sourceFileName = String(fileName || '');
+        const sourceToken = sourceFileName.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const isGrabFoodFile = sourceToken.includes('grabfood');
+        const isGoFoodFile = sourceToken.includes('gofood');
+        const isMokaFile = !isGrabFoodFile && !isGoFoodFile;
         const res = await fetch(GH_BASE_URL + encodeURIComponent(fileName) + '?t=' + Date.now());
-        if (!res.ok) throw new Error('HTTP ' + res.status);
+        if (!res.ok) throw new Error(`${sourceFileName}: HTTP ${res.status}`);
 
         let csvText = await res.text();
-        let headerIdx = -1;
+        let headerFound = false;
         let headers = null;
-        const sourceFileName = String(fileName || '');
-        const sourceLower = sourceFileName.toLowerCase();
+        let parsedRowsBefore = rawData.length;
 
         await new Promise((resolve, reject) => {
             Papa.parse(csvText, {
                 header: false,
                 skipEmptyLines: true,
                 delimiter: '',
+                dynamicTyping: false,
                 chunkSize: 1024 * 1024,
-                chunk: function(results) {
-                    currentSourceFileName = sourceFileName;
-                    const rows = results.data;
-                    if (headerIdx === -1) {
-                        for (let j = 0; j < Math.min(rows.length, 50); j++) {
-                            const row = rows[j] || [];
-                            const rowNorm = row.join(' ').toLowerCase();
-                            const isGrabFoodFile = sourceLower.includes('grabfood');
-                            const isGoFoodFile = sourceLower.includes('gofood');
-                            const isMokaFile = !isGrabFoodFile && !isGoFoodFile;
-                            const isMokaHeader = rowNorm.includes('net sales') && (rowNorm.includes('receipt number') || rowNorm.includes('sku'));
-                            const isGrabFoodHeader = isGrabFoodFile && rowNorm.includes('transaction id') && rowNorm.includes('net sales') && (rowNorm.includes('store name') || rowNorm.includes('order id'));
-                            const isGoFoodHeader = isGoFoodFile && rowNorm.includes('transaction id') && (rowNorm.includes('amount') || rowNorm.includes('net amount')) && (rowNorm.includes('outlet name') || rowNorm.includes('payment date'));
-                            if ((isMokaFile && isMokaHeader) || isGrabFoodHeader || isGoFoodHeader) {
-                                headerIdx = j;
-                                headers = rows[j];
-                                processParsedRows(rows.slice(j + 1), headers);
-                                break;
+                chunk: function(results, parser) {
+                    try {
+                        currentSourceFileName = sourceFileName;
+                        const rows = results && results.data ? results.data : [];
+                        if (!headerFound) {
+                            for (let j = 0; j < Math.min(rows.length, 100); j++) {
+                                const row = rows[j] || [];
+                                const tokens = new Set(row.map(v => String(v == null ? '' : v).replace(/^\uFEFF/, '').trim().toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean));
+                                const has = name => tokens.has(name);
+                                const isMokaHeader = has('netsales') && (has('receiptnumber') || has('sku'));
+                                // Exact header signatures verified against the two uploaded platform CSVs.
+                                const isGrabHeader = isGrabFoodFile && has('transactionid') && has('storename') && has('netsales') && has('date');
+                                const isGoHeader = isGoFoodFile && has('transactionid') && has('outletname') && has('amount') && has('date');
+                                if ((isMokaFile && isMokaHeader) || isGrabHeader || isGoHeader) {
+                                    headerFound = true;
+                                    headers = row;
+                                    const firstPayload = rows.slice(j + 1);
+                                    if (firstPayload.length) processParsedRows(firstPayload, headers);
+                                    break;
+                                }
                             }
+                        } else if (rows.length) {
+                            processParsedRows(rows, headers);
                         }
-                    } else {
-                        processParsedRows(rows, headers);
+                        const loadingStatus = document.getElementById('loadingSubText');
+                        if (loadingStatus) loadingStatus.textContent = `Memproses ${sourceFileName} • ${formatNum(rawData.length - parsedRowsBefore)} baris valid`;
+                        if (parser && typeof parser.pause === 'function') {
+                            parser.pause();
+                            setTimeout(() => parser.resume(), 0);
+                        }
+                    } catch (err) {
+                        if (parser && typeof parser.abort === 'function') parser.abort();
+                        reject(err);
                     }
                 },
-                complete: resolve,
-                error: reject
+                complete: function() {
+                    if (!headerFound) {
+                        reject(new Error(`Header CSV tidak dikenali: ${sourceFileName}`));
+                        return;
+                    }
+                    resolve();
+                },
+                error: function(err) {
+                    reject(new Error(`${sourceFileName}: ${err && err.message ? err.message : 'gagal diparse'}`));
+                }
             });
         });
 
         csvText = '';
+        const addedRows = rawData.length - parsedRowsBefore;
+        if (addedRows <= 0) throw new Error(`${sourceFileName}: header ditemukan tetapi tidak ada transaksi valid tahun 2025-2026`);
         await yieldToMain();
+        return addedRows;
     }
 
     async function loadSelectedGithubData() {
@@ -2445,8 +2513,8 @@
                     try {
                         await executeFilterAndRender();
                         const platform = document.getElementById('lazyPlatformSelect')?.value || 'Moka';
-                        const statusEl = document.getElementById('lazyStatus'); if (statusEl) statusEl.textContent = `${platform} • ${files.length} file dimuat • ${formatNum(rawData.length)} baris`;
-                        showToast(`Berhasil memuat ${formatNum(rawData.length)} baris.`);
+                        const statusEl = document.getElementById('lazyStatus'); if (statusEl) statusEl.textContent = `${platform} • ${files.length} file • ${formatNum(rawData.length)} transaksi valid`;
+                        showToast(`${platform}: ${formatNum(rawData.length)} transaksi valid berhasil dimuat.`);
                     } catch (e) {
                         console.error(e);
                         showToast('Sebagian grafik gagal dirender karena data terlalu besar.', 'error');
@@ -2484,8 +2552,14 @@
             // Ganti dashboard akan memuat ulang hanya sumber yang dipilih secara otomatis.
             // Moka tetap menjadi pilihan awal; file Moka tidak dibuang dari manifest.
             const sourceSelect = document.getElementById('lazyPlatformSelect');
+            const onlineNote = document.getElementById('onlineDataNote');
+            const syncOnlineNote = () => { if (onlineNote && sourceSelect) onlineNote.style.display = sourceSelect.value === 'Moka' ? 'none' : 'block'; };
+            syncOnlineNote();
             sourceSelect?.addEventListener('change', () => {
+                syncOnlineNote();
                 selectedItemsSet.clear(); selectedOutletsSet.clear(); selectedAreasSet.clear(); selectedDiscountsSet.clear();
+                const status = document.getElementById('lazyStatus');
+                if (status) status.textContent = 'Memuat ' + sourceSelect.value + '...';
                 loadSelectedGithubData();
             });
             await loadSelectedGithubData();
