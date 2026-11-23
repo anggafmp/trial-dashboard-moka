@@ -4,7 +4,7 @@
 <head>
 <meta charset="utf-8"/>
 <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-<title>Enterprise POS Analytics Pro - Optimized</title>
+<title>La Maison de Pierre • Online Sales Dashboard</title>
 <script src="https://cdn.tailwindcss.com">
         // Large-data guard: avoid accidental duplicate filtering/export arrays.
         window.getDashboardMemoryInfo = function() {
@@ -226,7 +226,6 @@
 <div class="hidden items-center gap-1.5 whitespace-nowrap" id="navDashboardControls">
 <label class="flex items-center gap-1.5 cursor-pointer bg-blue-50 text-fr-blue border border-blue-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input class="w-3.5 h-3.5 text-fr-blue rounded focus:ring-fr-blue cursor-pointer" id="toggleLabelsCheckbox" type="checkbox"/>Show Values</label>
 <label class="flex items-center gap-1.5 cursor-pointer bg-purple-50 text-purple-700 border border-purple-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input class="w-3.5 h-3.5 text-purple-700 rounded focus:ring-purple-700 cursor-pointer" id="toggleVsLineCheckbox" type="checkbox"/>Show VS Line</label>
-<button class="flex items-center gap-1 cursor-pointer bg-blue-50 text-fr-blue border border-blue-200 hover:bg-blue-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0" id="openAdvCompareBtn" style="display:none">📊 Adv. Compare</button>
 <button class="flex items-center gap-1 cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0" id="openVsTableBtn" style="display:none"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> VS Table</button>
 </div>
 </div>
@@ -543,52 +542,6 @@
 </div>
 </div>
 </main>
-<!-- Advanced Compare Modal -->
-<div class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[10000] hidden flex items-center justify-center p-2 sm:p-4" id="advCompareModal">
-<div class="bg-white rounded shadow-xl w-full max-w-6xl flex flex-col max-h-[95vh] h-full sm:h-[800px]">
-<div class="px-3 sm:px-5 py-3 border-b border-gray-200 bg-gray-50 rounded-t">
-<div class="flex justify-between items-center">
-<h3 class="font-bold text-fr-text text-sm" id="advCompareModalTitle">Advanced Compare</h3>
-<button class="text-gray-400 hover:text-gray-600 text-lg leading-none" id="closeAdvCompareBtn">×</button>
-</div>
-<div class="flex gap-1 mt-2">
-<button class="px-3 py-1.5 rounded border border-blue-200 bg-blue-50 text-fr-blue text-[10px] font-bold" id="advCohortTabBtn">
-                        Advanced Comparison
-                    </button>
-
-</div>
-</div>
-<div class="flex flex-col sm:flex-row flex-grow overflow-hidden" id="advCohortPanel">
-<div class="w-full sm:w-1/3 border-b sm:border-b-0 sm:border-r border-gray-200 bg-gray-50 flex flex-col max-h-[40vh] sm:max-h-full">
-<div class="p-3 border-b border-gray-200 flex justify-between items-center">
-<span class="font-bold text-xs text-gray-700">Cohorts / Groups</span>
-<button class="px-2 py-1 bg-fr-blue text-white text-[10px] font-bold rounded hover:bg-blue-800" id="addAdvGroupBtn">+ Add Group</button>
-</div>
-<div class="p-3 overflow-y-auto flex-grow flex flex-col gap-3" id="advGroupContainer"></div>
-<div class="p-3 border-t border-gray-200 bg-white">
-<button class="w-full py-2 bg-fr-blue text-white text-xs font-bold rounded hover:bg-blue-800 shadow-sm transition-colors" id="runAdvCompareBtn">Run Comparison</button>
-</div>
-</div>
-<div class="w-full sm:w-2/3 flex flex-col bg-white overflow-hidden">
-<div class="p-3 sm:p-4 border-b border-gray-200 bg-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-<h4 class="font-bold text-xs text-gray-700">Comparison Results <span class="text-[10px] font-normal text-gray-500 block sm:inline sm:ml-2">(Group 1 otomatis menjadi Baseline persentase)</span></h4>
-<button class="px-3 py-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded text-[10px] font-bold shadow-sm hidden transition-colors flex items-center gap-1" id="exportAdvCompareBtn">
-<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> Export CSV
-                        </button>
-</div>
-<div class="p-3 sm:p-4 overflow-auto flex-grow">
-<table class="min-w-full text-left whitespace-nowrap border-collapse" id="advCompareTable">
-<thead class="bg-gray-50 border-b border-gray-200 sticky top-0" id="advCompareHead"></thead>
-<tbody id="advCompareBody">
-<tr><td class="text-center py-12 text-gray-400 text-xs italic">Tambahkan minimal 2 group di panel kiri, lalu klik "Run Comparison"</td></tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-<div class="hidden flex-grow overflow-y-auto bg-slate-50 p-2 sm:p-4" id="advMtdPanel"></div>
-</div>
-</div>
 <script>
         function showToast(msg, type='info') {
             const container = document.getElementById('toastContainer');
@@ -1039,23 +992,19 @@
     function processParsedRows(rows, headers) {
         if (!rows || !rows.length || !headers) return;
 
-        const idx = Object.create(null);
         const normalizeHeader = value => String(value == null ? '' : value)
             .replace(/^\uFEFF/, '')
             .toLowerCase()
             .replace(/[^a-z0-9]/g, '');
+        const idx = Object.create(null);
         for (let i = 0; i < headers.length; i++) {
-            const h = headers[i];
-            const normalized = normalizeHeader(h);
-            if (normalized) idx[normalized] = i;
+            const key = normalizeHeader(headers[i]);
+            if (key) idx[key] = i;
         }
         const get = (row, key) => {
             const i = idx[normalizeHeader(key)];
             return i === undefined ? undefined : row[i];
         };
-
-        // Ambil nilai dari beberapa kemungkinan nama kolom item/menu.
-        // Export GrabFood/GoFood tidak selalu memakai nama header yang sama.
         const getAny = (row, keys) => {
             for (const key of keys) {
                 const value = get(row, key);
@@ -1063,14 +1012,31 @@
             }
             return undefined;
         };
-
+        const parsePlatformNumber = value => {
+            if (typeof value === 'number') return Number.isFinite(value) ? value : 0;
+            if (value === undefined || value === null) return 0;
+            let text = String(value).trim().replace(/[^0-9,.-]/g, '');
+            if (!text) return 0;
+            const comma = text.lastIndexOf(',');
+            const dot = text.lastIndexOf('.');
+            if (comma >= 0 && dot >= 0) {
+                if (comma > dot) text = text.replace(/\./g, '').replace(',', '.');
+                else text = text.replace(/,/g, '');
+            } else if (comma >= 0) {
+                const tail = text.length - comma - 1;
+                text = tail === 1 || tail === 2 ? text.replace(/\./g, '').replace(',', '.') : text.replace(/,/g, '');
+            } else if (dot >= 0) {
+                const pieces = text.split('.');
+                if (pieces.length > 1 && pieces.slice(1).every(part => part.length === 3)) text = pieces.join('');
+            }
+            const parsed = Number(text);
+            return Number.isFinite(parsed) ? parsed : 0;
+        };
         const itemValue = row => getAny(row, [
-            'Items', 'Item', 'Item Name', 'ItemName', 'Product', 'Product Name',
-            'ProductName', 'Menu', 'Menu Item', 'MenuItem', 'Order Item',
-            'OrderItem', 'Item Description', 'ItemDescription', 'Description',
+            'Item Name', 'Product Name', 'Menu Item', 'Order Item', 'Items', 'Item',
+            'Product', 'Menu', 'Description', 'Item Description', 'Order Description',
             'Nama Item', 'Nama Produk', 'Nama Menu'
         ]);
-
         const numFields = [
             'Net Sales','Gross Sales','Quantity','Tax','Gratuity','Discounts',
             'Refunds','Total Collected','Total Collected Exc Rounding','Discount Applied (Rp)'
@@ -1080,107 +1046,79 @@
             const row = rows[i];
             if (!row) continue;
 
-            // Tiga sumber memakai nama kolom tanggal/ID yang berbeda.
-            // Ambil alias platform sebelum validasi agar baris GrabFood/GoFood tidak terbuang.
-            const rawDate = get(row, 'Date')
-                ?? get(row, 'Payment Date')
-                ?? get(row, 'Payment date')
-                ?? get(row, 'Order Date')
-                ?? get(row, 'Transaction Date')
-                ?? get(row, 'Created At');
+            const rawDate = getAny(row, [
+                'Date', 'Payment Date', 'Order Date', 'Transaction Date',
+                'Created At', 'Created Date', 'Order Created At'
+            ]);
             const rawItems = itemValue(row);
-            const rawReceipt = get(row, 'Receipt Number')
-                ?? get(row, 'Transaction ID')
-                ?? get(row, 'Order ID');
+            const rawReceipt = getAny(row, [
+                'Receipt Number', 'Transaction ID', 'Order ID', 'Order Number',
+                'Transaction Number', 'Order Code'
+            ]);
             if (!rawDate && !rawItems && !rawReceipt) continue;
 
             const compact = {};
             const set = (key, value) => { if (value !== undefined && value !== null) compact[key] = value; };
 
-            let outlet = get(row, 'Outlet');
-            outlet = outlet ? String(outlet).trim().split(',')[0].trim() : '';
-            set('Outlet', outlet);
-
-            set('AREA', get(row,'AREA') ? String(get(row,'AREA')).trim() : 'Unknown');
-            set('DEPT', get(row,'DEPT') ? String(get(row,'DEPT')).trim() : 'Unknown');
-            set('Event Type', get(row,'Event Type') ? String(get(row,'Event Type')).trim() : 'Unknown');
-            const baseItem = itemValue(row);
-            set('Items', baseItem ? String(baseItem).trim() : 'Unknown');
-
-            // Platform: gunakan kolom platform bila tersedia; jika tidak, infer dari nama file sumber.
-            const explicitPlatform = get(row,'Platform') ?? get(row,'platform') ?? get(row,'Channel') ?? get(row,'channel') ?? '';
             const sourceName = String(currentSourceFileName || '').toLowerCase();
             const sourceToken = sourceName.replace(/[^a-z0-9]/g, '');
-            // The dedicated export filename is authoritative for delivery-platform files.
-            // This prevents a generic Channel/Platform cell from relabeling these rows as Other.
+            const explicitPlatform = getAny(row, ['Platform', 'Channel']);
             let platform = sourceToken.includes('grabfood') ? 'GrabFood'
                 : sourceToken.includes('gofood') ? 'GoFood'
                 : (explicitPlatform ? String(explicitPlatform).trim() : 'Other');
-            const pNorm = platform.toLowerCase().replace(/[\s_-]+/g, '');
-            if (pNorm.includes('grabfood')) platform = 'GrabFood';
-            else if (pNorm.includes('gofood')) platform = 'GoFood';
+            const platformToken = platform.toLowerCase().replace(/[\s_-]+/g, '');
+            if (platformToken.includes('grabfood')) platform = 'GrabFood';
+            else if (platformToken.includes('gofood')) platform = 'GoFood';
             set('Platform', platform);
 
-            // Normalize GrabFood / GoFood into dashboard canonical fields.
-            if (platform === 'GoFood' || platform === 'GrabFood') {
-                const isGoFood = platform === 'GoFood';
+            // Keep receipt/order ID on the canonical field used by distinct transaction KPIs.
+            if (rawReceipt !== undefined && String(rawReceipt).trim()) {
+                set('Receipt Number', String(rawReceipt).trim());
+            }
 
-                // Transaction ID -> Receipt Number
-                const txId = get(row, 'Transaction ID');
+            const online = platform === 'GrabFood' || platform === 'GoFood';
+            const isGoFood = platform === 'GoFood';
+            if (online) {
+                const outlet = getAny(row, isGoFood
+                    ? ['Outlet Name', 'Outlet name', 'Outlet', 'Store Name', 'Store']
+                    : ['Store Name', 'Store', 'Outlet Name', 'Outlet name', 'Outlet']);
+                if (outlet !== undefined) set('Outlet', String(outlet).trim());
 
-                if (txId !== undefined && txId !== null && String(txId).trim()) {
-                    set('Receipt Number', String(txId).trim());
-                }
+                if (rawItems !== undefined) set('Items', String(rawItems).trim());
+                else set('Items', 'Unknown');
 
-                // Outlet / Store
-                const outlet = isGoFood
-                    ? get(row, 'Outlet name')
-                    : get(row, 'Store Name');
+                const qtyValue = getAny(row, ['Quantity', 'Qty', 'Item Quantity', 'Product Quantity']);
+                set('Quantity', qtyValue !== undefined ? parsePlatformNumber(qtyValue) : 1);
 
-                if (outlet !== undefined && outlet !== null && String(outlet).trim()) {
-                    set('Outlet', String(outlet).trim());
-                }
-
-                // Item / menu: setiap export platform bisa memakai header berbeda.
-                const description = itemValue(row);
-                if (description !== undefined && description !== null && String(description).trim()) {
-                    set('Items', String(description).trim());
-                } else {
-                    set('Items', 'Unknown');
-                }
-
-                // One platform row = one transaction.
-                set('Quantity', 1);
-
-                // Sales
-                const salesValue = isGoFood
-                    ? get(row, 'Amount')
-                    : get(row, 'Net Sales');
-
-                if (salesValue !== undefined && salesValue !== null) {
-                    const salesNumber = typeof salesValue === 'number'
-                        ? salesValue
-                        : parseFloat(String(salesValue).replace(/[^0-9.-]/g, '')) || 0;
-
+                // Prefer the platform's net sales amount, then fall back to the alternate export label.
+                const salesValue = getAny(row, isGoFood
+                    ? ['Amount', 'Net Amount', 'Net Sales', 'Sales Amount', 'Total Amount']
+                    : ['Net Sales', 'Net Amount', 'Amount', 'Sales Amount', 'Total Amount']);
+                if (salesValue !== undefined) {
+                    const salesNumber = parsePlatformNumber(salesValue);
                     set('Net Sales', salesNumber);
                     set('Gross Sales', salesNumber);
                 }
 
-                // Payment method
-                const payment = isGoFood
-                    ? get(row, 'Payment Type')
-                    : get(row, 'Payment Method');
-
-                if (payment !== undefined && payment !== null) {
-                    set('Payment Method', String(payment).trim());
-                }
+                const payment = getAny(row, isGoFood
+                    ? ['Payment Type', 'Payment Method', 'Payment', 'Payment Channel']
+                    : ['Payment Method', 'Payment Type', 'Payment', 'Payment Channel']);
+                if (payment !== undefined) set('Payment Method', String(payment).trim());
+            } else {
+                set('Outlet', get(row, 'Outlet') ? String(get(row, 'Outlet')).trim().split(',')[0].trim() : '');
+                set('Items', rawItems ? String(rawItems).trim() : 'Unknown');
             }
 
+            set('AREA', get(row, 'AREA') ? String(get(row, 'AREA')).trim() : 'Unknown');
+            set('DEPT', get(row, 'DEPT') ? String(get(row, 'DEPT')).trim() : 'Unknown');
+            set('Event Type', get(row, 'Event Type') ? String(get(row, 'Event Type')).trim() : 'Unknown');
+            set('Category', getAny(row, ['Category', 'Category Name']) || 'Unknown');
+            set('SKU', getAny(row, ['SKU', 'Item ID', 'Product ID']) || '');
 
-            const collected = get(row,'Collected By') ?? get(row,'CollectedBy') ?? get(row,'collected by') ?? '-';
-            const served = get(row,'Served By') ?? get(row,'ServedBy') ?? get(row,'served by') ?? '-';
-            const customer = get(row,'Customer') ?? get(row,'customer') ?? get(row,'CUSTOMER') ?? '-';
-            const refundReason = get(row,'Reason of Refund') ?? get(row,'Reason Of Refund') ?? get(row,'ReasonofRefund') ?? get(row,'reason of refund') ?? '-';
+            const collected = getAny(row, ['Collected By', 'CollectedBy']) ?? '-';
+            const served = getAny(row, ['Served By', 'ServedBy']) ?? '-';
+            const customer = get(row, 'Customer') ?? '-';
+            const refundReason = getAny(row, ['Reason of Refund', 'Reason Of Refund', 'ReasonofRefund']) ?? '-';
             set('Collected By', collected ? String(collected).trim() : '-');
             set('Served By', served ? String(served).trim() : '-');
             set('Customer', customer ? String(customer).trim() : '-');
@@ -1188,43 +1126,30 @@
 
             let dateStr = '', formattedDate = '';
             if (typeof rawDate === 'number') {
-                const serial = Math.floor(rawDate);
-                const d = new Date(Math.round((serial - 25569) * 86400 * 1000));
-                const y = d.getUTCFullYear(), m = String(d.getUTCMonth()+1).padStart(2,'0'), day = String(d.getUTCDate()).padStart(2,'0');
+                const d = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
+                const y = d.getUTCFullYear(), m = String(d.getUTCMonth() + 1).padStart(2, '0'), day = String(d.getUTCDate()).padStart(2, '0');
                 dateStr = `${y}-${m}-${day}`;
                 formattedDate = `${day}/${m}/${y}`;
-            } else if (typeof rawDate === 'string') {
-                const str = rawDate.trim().split(/[ T]/)[0];
+            } else if (rawDate !== undefined && rawDate !== null) {
+                const str = String(rawDate).trim().split(/[ T]/)[0];
                 const parts = str.split(/[-/]/);
-                if (parts.length === 3) {
-                    if (/^\d{4}$/.test(parts[0])) {
-                        // ISO / year-first: YYYY-MM-DD
-                        dateStr = `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`;
-                        formattedDate = `${parts[2].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[0]}`;
-                    } else if (platform === 'GoFood') {
-                        // GoFood export uses M/D/YY or M/D/YYYY (US date order).
-                        const yy = parseInt(parts[2], 10);
-                        const mm = parseInt(parts[0], 10);
-                        const dd = parseInt(parts[1], 10);
-                        if (!isNaN(yy) && !isNaN(mm) && !isNaN(dd) && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
-                            const fullYear = parts[2].length === 2 ? (yy >= 50 ? 1900 + yy : 2000 + yy) : yy;
-                            dateStr = `${fullYear}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
-                            formattedDate = `${String(dd).padStart(2,'0')}/${String(mm).padStart(2,'0')}/${fullYear}`;
-                        } else {
-                            dateStr = str; formattedDate = str;
-                        }
-                    } else if (parts[2].length === 4 || parts[2].length === 2) {
-                        // Moka / GrabFood use day-first dates (DD/MM/YYYY or DD/MM/YY).
-                        const dd = parseInt(parts[0], 10);
-                        const mm = parseInt(parts[1], 10);
-                        const yy = parseInt(parts[2], 10);
-                        if (!isNaN(dd) && !isNaN(mm) && !isNaN(yy) && mm >= 1 && mm <= 12 && dd >= 1 && dd <= 31) {
-                            const fullYear = parts[2].length === 2 ? (yy >= 50 ? 1900 + yy : 2000 + yy) : yy;
-                            dateStr = `${fullYear}-${String(mm).padStart(2,'0')}-${String(dd).padStart(2,'0')}`;
-                            formattedDate = `${String(dd).padStart(2,'0')}/${String(mm).padStart(2,'0')}/${fullYear}`;
-                        } else {
-                            dateStr = str; formattedDate = str;
-                        }
+                if (parts.length === 3 && /^\d{4}$/.test(parts[0])) {
+                    const y = parts[0], m = parts[1].padStart(2, '0'), day = parts[2].padStart(2, '0');
+                    dateStr = `${y}-${m}-${day}`;
+                    formattedDate = `${day}/${m}/${y}`;
+                } else if (parts.length === 3 && (parts[2].length === 4 || parts[2].length === 2)) {
+                    const a = parseInt(parts[0], 10), b = parseInt(parts[1], 10), yy = parseInt(parts[2], 10);
+                    // GoFood defaults to M/D/YY; GrabFood defaults to D/M/YY.
+                    // A component >12 removes ambiguity and overrides that default.
+                    const monthFirst = isGoFood
+                        ? (a <= 12 && b <= 31)
+                        : (a <= 12 && b > 12);
+                    const day = monthFirst ? b : a;
+                    const month = monthFirst ? a : b;
+                    if (Number.isFinite(day) && Number.isFinite(month) && Number.isFinite(yy) && month >= 1 && month <= 12 && day >= 1 && day <= 31) {
+                        const year = parts[2].length === 2 ? (yy >= 50 ? 1900 + yy : 2000 + yy) : yy;
+                        dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        formattedDate = `${String(day).padStart(2, '0')}/${String(month).padStart(2, '0')}/${year}`;
                     } else {
                         dateStr = str; formattedDate = str;
                     }
@@ -1235,65 +1160,58 @@
 
             set('DateStr', dateStr);
             set('FormattedDate', formattedDate);
-
-            // Dashboard hanya menggunakan data tahun 2025-2026.
             const dashboardYear = parseInt(String(dateStr).slice(0, 4), 10);
-            if (dashboardYear < 2025 || dashboardYear > 2026) continue;
+            if (!Number.isFinite(dashboardYear) || dashboardYear < 2025 || dashboardYear > 2026) continue;
 
-            let hrStr = get(row,'HOUR') ? String(get(row,'HOUR')).trim() : '';
+            let hrStr = getAny(row, ['HOUR', 'Hour']) ? String(getAny(row, ['HOUR', 'Hour'])).trim() : '';
             let exactTime = '-';
-            const rawTime = get(row,'Time');
-
+            const rawTime = getAny(row, ['Time', 'Order Time', 'Transaction Time']);
             if (typeof rawDate === 'number' && rawDate % 1 !== 0) {
                 const d = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
                 hrStr = String(d.getUTCHours());
-                exactTime = String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0');
+                exactTime = `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
             } else if (typeof rawTime === 'number') {
                 const totalMins = Math.round((rawTime % 1) * 24 * 60);
                 hrStr = String(Math.floor(totalMins / 60));
-                exactTime = String(Math.floor(totalMins / 60)).padStart(2,'0') + ':' + String(totalMins % 60).padStart(2,'0');
+                exactTime = `${String(Math.floor(totalMins / 60)).padStart(2, '0')}:${String(totalMins % 60).padStart(2, '0')}`;
             } else if (typeof rawTime === 'string') {
                 hrStr = rawTime.split(':')[0];
                 exactTime = rawTime;
             } else if (hrStr) {
-                exactTime = hrStr.padStart(2, '0') + ':00';
+                exactTime = `${hrStr.padStart(2, '0')}:00`;
             }
-            set('ParsedHour', String(hrStr || '').padStart(2,'0'));
+            set('ParsedHour', String(hrStr || '').padStart(2, '0'));
             set('ExactTime', exactTime);
 
-            let dayStr = get(row,'DAY OF WEEK') ? String(get(row,'DAY OF WEEK')).trim() : '';
+            let dayStr = getAny(row, ['DAY OF WEEK', 'Day of Week']) ? String(getAny(row, ['DAY OF WEEK', 'Day of Week'])).trim() : '';
             if (dateStr) {
                 const parts = dateStr.split('-');
                 if (parts.length === 3) {
-                    const safeDate = new Date(+parts[0], +parts[1]-1, +parts[2], 12, 0, 0);
+                    const safeDate = new Date(+parts[0], +parts[1] - 1, +parts[2], 12, 0, 0);
                     const dayIdx = safeDate.getDay();
                     dayStr = DAYS[dayIdx === 0 ? 6 : dayIdx - 1];
                 }
             }
             set('ParsedDay', dayStr);
 
-            // Keep only fields required by the dashboard/export.
             const keep = [
                 'Receipt Number','SKU','Category','Quantity','Net Sales','Gross Sales',
                 'Total Collected','Total Collected Exc Rounding','Tax','Gratuity','Discounts',
-                'Refunds','Discount Applied','Discount Applied (Rp)','Payment Method',
-                'Sales Type'
+                'Refunds','Discount Applied','Discount Applied (Rp)','Payment Method','Sales Type'
             ];
-            for (let k = 0; k < keep.length; k++) {
-                const key = keep[k];
-                let value = get(row, key);
+            for (const key of keep) {
+                const value = get(row, key);
                 if (value === undefined || value === null) continue;
                 if (numFields.includes(key)) {
-                    if (typeof value === 'string') value = parseFloat(value.replace(/,/g,'').trim()) || 0;
-                    else if (typeof value !== 'number') value = Number(value) || 0;
+                    const parsed = parsePlatformNumber(value);
+                    set(key, parsed);
+                } else {
+                    set(key, value);
                 }
-                set(key, value);
             }
-
             rawData.push(compact);
         }
     }
-
     // Backward-compatible wrapper for any remaining object-based caller.
     function processParsedJSON(json) {
         if (!json || !json.length) return;
@@ -1582,296 +1500,7 @@
 
 
         // ============================================================
-        // MTD PLATFORM COMPARISON — GRABFOOD vs GOFOOD
-        // Single-pass aggregation to keep browser memory low.
-        // ============================================================
-        function mtdPlatformName(r) {
-            const p = String(r['Platform'] || '').toLowerCase().replace(/[\s_-]+/g,'');
-            if (p.includes('grabfood')) return 'GrabFood';
-            if (p.includes('gofood')) return 'GoFood';
-            return 'Other';
-        }
-
-        function getPlatformDateBounds() {
-            let min = '', max = '';
-            for (let i = 0; i < rawData.length; i++) {
-                const row = rawData[i];
-                const platform = mtdPlatformName(row);
-                if (platform !== 'GrabFood' && platform !== 'GoFood') continue;
-                const date = row.DateStr;
-                if (!date) continue;
-                if (!min || date < min) min = date;
-                if (!max || date > max) max = date;
-            }
-            return { min, max };
-        }
-
-        function mtdGrowthHtml(curr, prev) {
-            if (!prev) return curr > 0 ? '<span class="text-emerald-600 font-semibold">NEW</span>' : '<span class="text-slate-400">—</span>';
-            const pct = ((curr - prev) / Math.abs(prev)) * 100;
-            const cls = pct >= 0 ? 'text-emerald-600' : 'text-red-600';
-            return `<span class="${cls} font-semibold">${pct >= 0 ? '▲' : '▼'} ${Math.abs(pct).toFixed(1)}%</span>`;
-        }
-
-        function mtdAggForPeriod(start, end) {
-            const out = {
-                GrabFood: { sales:0, qty:0, tx:0, receipts:new Set(), outlets:new Map(), items:new Map() },
-                GoFood: { sales:0, qty:0, tx:0, receipts:new Set(), outlets:new Map(), items:new Map() }
-            };
-            for (const r of rawData) {
-                const d = r.DateStr;
-                if (!d || d < start || d > end) continue;
-                const p = mtdPlatformName(r);
-                if (p === 'Other') continue;
-                const sales = getCleanNum(r,'Net Sales');
-                const qty = getCleanNum(r,'Quantity');
-                const receipt = String(r['Receipt Number'] || '').trim();
-                const outlet = String(r['Outlet'] || 'Unknown').trim() || 'Unknown';
-                const item = String(r['Items'] || 'Unknown').trim() || 'Unknown';
-                const a = out[p];
-                a.sales += sales;
-                a.qty += qty;
-                if (receipt) a.receipts.add(receipt);
-
-                let o = a.outlets.get(outlet);
-                if (!o) { o = {sales:0, qty:0, receipts:new Set()}; a.outlets.set(outlet,o); }
-                o.sales += sales; o.qty += qty; if (receipt) o.receipts.add(receipt);
-
-                let it = a.items.get(item);
-                if (!it) { it = {sales:0, qty:0}; a.items.set(item,it); }
-                it.sales += sales; it.qty += qty;
-            }
-            out.GrabFood.tx = out.GrabFood.receipts.size;
-            out.GoFood.tx = out.GoFood.receipts.size;
-            return out;
-        }
-
-        function mtdRenderOutletRows(tbodyId, agg, metric) {
-            const tbody = document.getElementById(tbodyId);
-            if (!tbody) return;
-            const rows = Array.from(agg.outlets.entries()).map(([name,v]) => ({
-                name, value: metric === 'sales' ? v.sales : metric === 'qty' ? v.qty : v.receipts.size
-            })).sort((a,b)=>b.value-a.value).slice(0,10);
-            tbody.innerHTML = rows.map((r,i) => `<tr><td class="py-1 pr-2 text-[10px]">${i+1}. ${r.name}</td><td class="py-1 text-right text-[10px] font-semibold">${metric==='sales' ? formatRp(r.value) : formatNum(r.value)}</td></tr>`).join('') || '<tr><td colspan="2" class="py-2 text-center text-[10px] text-slate-400">Tidak ada data</td></tr>';
-        }
-
-        function mtdRenderItems(platform, agg) {
-            const tbody = document.getElementById('mtdTopItemBody');
-            if (!tbody) return;
-            const sources = platform === 'Combined' ? [agg.GrabFood.items, agg.GoFood.items] : [agg[platform].items];
-            const map = new Map();
-            for (const source of sources) for (const [name,v] of source) {
-                const x = map.get(name) || {qty:0,sales:0};
-                x.qty += v.qty; x.sales += v.sales; map.set(name,x);
-            }
-            const totalSales = Array.from(map.values()).reduce((s,v)=>s+v.sales,0);
-            const rows = Array.from(map.entries()).sort((a,b)=>b[1].sales-a[1].sales).slice(0,10);
-            tbody.innerHTML = rows.map(([name,v],i)=>`<tr><td class="py-1 pr-2 text-[10px]">${i+1}. ${name}</td><td class="py-1 text-right text-[10px]">${formatNum(v.qty)}</td><td class="py-1 text-right text-[10px]">${formatRp(v.sales)}</td><td class="py-1 text-right text-[10px]">${totalSales ? (v.sales/totalSales*100).toFixed(1)+'%' : '0.0%'}</td></tr>`).join('') || '<tr><td colspan="4" class="py-2 text-center text-[10px] text-slate-400">Tidak ada data</td></tr>';
-        }
-
-        function renderMtdPlatformComparison() {
-    if (!rawData.length) return;
-
-    // MTD comparison follows the latest date in GrabFood/GoFood exports,
-    // not a possibly newer Moka transaction date.
-    const latestDate = getPlatformDateBounds().max || getDataDateBounds().max;
-    if (!latestDate) return;
-
-    const startInput = document.getElementById('mtdStartDate');
-    const endInput = document.getElementById('mtdEndDate');
-
-    // Default: MTD terbaru
-    let start = startInput?.value || '';
-    let asOf = endInput?.value || '';
-
-    if (!start || !asOf) {
-        const latest = new Date(latestDate + 'T00:00:00');
-
-        start =
-            `${latest.getFullYear()}-` +
-            `${String(latest.getMonth() + 1).padStart(2, '0')}-01`;
-
-        asOf = latestDate;
-
-        if (startInput) startInput.value = start;
-        if (endInput) endInput.value = asOf;
-    }
-
-    // Validasi
-    if (start > asOf) {
-        const tmp = start;
-        start = asOf;
-        asOf = tmp;
-
-        if (startInput) startInput.value = start;
-        if (endInput) endInput.value = asOf;
-    }
-
-    // Previous period = jumlah hari yang sama sebelum current period
-    const currentStartDate = new Date(start + 'T00:00:00');
-    const currentEndDate = new Date(asOf + 'T00:00:00');
-
-    const diffDays =
-        Math.round(
-            (currentEndDate - currentStartDate) / 86400000
-        ) + 1;
-
-    const prevEndDate = new Date(
-        currentStartDate.getTime() - 86400000
-    );
-
-    const prevStartDate = new Date(
-        prevEndDate.getTime() -
-        (diffDays - 1) * 86400000
-    );
-
-    const toIso = d => {
-        const y = d.getFullYear();
-        const m = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        return `${y}-${m}-${day}`;
-    };
-
-    const prevStart = toIso(prevStartDate);
-    const prevEnd = toIso(prevEndDate);
-
-    const curr = mtdAggForPeriod(start, asOf);
-    const prev = mtdAggForPeriod(prevStart, prevEnd);
-
-    const fmtDate = s =>
-        s
-            ? new Date(s + 'T00:00:00')
-                .toLocaleDateString('id-ID', {
-                    day: '2-digit',
-                    month: 'short',
-                    year: 'numeric'
-                })
-            : '-';
-
-    const subtitle =
-        document.getElementById('mtdPlatformSubtitle');
-
-    if (subtitle) {
-        subtitle.textContent =
-            `MTD ${fmtDate(start)} – ${fmtDate(asOf)} ` +
-            `vs ${fmtDate(prevStart)} – ${fmtDate(prevEnd)}.`;
-    }
-
-    const set = (id, val) => {
-        const el = document.getElementById(id);
-        if (el) el.innerText = val;
-    };
-
-    const setg = (id, c, p) => {
-        const el = document.getElementById(id);
-        if (el) el.innerHTML = mtdGrowthHtml(c, p);
-    };
-
-    for (const [prefix, p] of [
-        ['Grab', curr.GrabFood],
-        ['Go', curr.GoFood]
-    ]) {
-
-        const q = p.qty;
-        const tx = p.tx;
-        const sales = p.sales;
-        const aov = tx ? sales / tx : 0;
-
-        const pp =
-            prefix === 'Grab'
-                ? prev.GrabFood
-                : prev.GoFood;
-
-        set(`mtd${prefix}Tx`, formatNum(tx));
-        set(`mtd${prefix}Sales`, formatRp(sales));
-        set(`mtd${prefix}Qty`, formatNum(q));
-        set(`mtd${prefix}Aov`, formatRp(aov));
-
-        setg(
-            `mtd${prefix}TxGrowth`,
-            tx,
-            pp.tx
-        );
-
-        setg(
-            `mtd${prefix}SalesGrowth`,
-            sales,
-            pp.sales
-        );
-
-        setg(
-            `mtd${prefix}QtyGrowth`,
-            q,
-            pp.qty
-        );
-
-        setg(
-            `mtd${prefix}AovGrowth`,
-            aov,
-            pp.tx ? pp.sales / pp.tx : 0
-        );
-    }
-
-    const metric =
-        document.getElementById('mtdOutletMetricSelect')?.value
-        || 'sales';
-
-    mtdRenderOutletRows(
-        'mtdGrabOutletBody',
-        curr.GrabFood,
-        metric
-    );
-
-    mtdRenderOutletRows(
-        'mtdGoOutletBody',
-        curr.GoFood,
-        metric
-    );
-
-    const itemPlatform =
-        document.getElementById('mtdItemPlatformSelect')?.value
-        || 'GrabFood';
-
-    mtdRenderItems(itemPlatform, curr);
-}
-
-        document.getElementById('mtdOutletMetricSelect')?.addEventListener('change', renderMtdPlatformComparison);
-        document.getElementById('mtdItemPlatformSelect')?.addEventListener('change', renderMtdPlatformComparison);
-        document.getElementById('mtdApplyBtn')?.addEventListener(
-    'click',
-    () => {
-        renderMtdPlatformComparison();
-    }
-);
-
-document.getElementById('mtdResetBtn')?.addEventListener(
-    'click',
-    () => {
-        const latestDate = getPlatformDateBounds().max || getDataDateBounds().max;
-        if (!latestDate) return;
-
-        const latest = new Date(
-            latestDate + 'T00:00:00'
-        );
-
-        const start =
-            `${latest.getFullYear()}-` +
-            `${String(latest.getMonth() + 1).padStart(2, '0')}-01`;
-
-        const startInput =
-            document.getElementById('mtdStartDate');
-
-        const endInput =
-            document.getElementById('mtdEndDate');
-
-        if (startInput) startInput.value = start;
-        if (endInput) endInput.value = latestDate;
-
-        renderMtdPlatformComparison();
-    }
-);
-
-        async function executeFilterAndRender() {
+                async function executeFilterAndRender() {
             const sStart = filters.dStart.value; const sEnd = filters.dEnd.value; const sDept = filters.dept.value; const sEvt = filters.eventType.value;
             filteredData = rawData.filter(r => {
                 if (!matchesDashboardPlatform(r)) return false;
@@ -2776,201 +2405,6 @@ document.getElementById('mtdResetBtn')?.addEventListener(
     function getAdvAvailableAreas(group) { if(!group) return []; let tempFiltered = rawData.filter(r => { if (!matchesDashboardPlatform(r)) return false; const sv = (v) => v ? v.toString().trim() : ''; if(group.start && (!r.DateStr || r.DateStr < group.start)) return false; if(group.end && (!r.DateStr || r.DateStr > group.end)) return false; if(group.eventType !== 'ALL' && sv(r['Event Type']) !== group.eventType) return false; if(group.items.size > 0 && !group.items.has(sv(r['Items']))) return false; if(group.discounts.size > 0 && !group.discounts.has(sv(r['Discount Applied']))) return false; if(group.outlets.size > 0 && !group.outlets.has(sv(r['Outlet']))) return false; if(group.dept !== 'ALL' && sv(r['DEPT']) !== group.dept) return false; return true; }); return Array.from(new Set(tempFiltered.map(r => r['AREA']).filter(x => x && x !== 'Unknown' && x !== '-'))).sort(); }
 
 
-    // Advanced Compare tabs: Cohort Comparison + MTD GrabFood vs GoFood.
-    const advMtdSection = document.getElementById('mtdPlatformSection');
-    const advMtdPanel = document.getElementById('advMtdPanel');
-    const advCohortPanel = document.getElementById('advCohortPanel');
-    const advCohortTabBtn = document.getElementById('advCohortTabBtn');
-    const advMtdTabBtn = document.getElementById('advMtdTabBtn');
-    const advCompareModalTitle = document.getElementById('advCompareModalTitle');
-
-    if (advMtdSection && advMtdPanel) {
-        advMtdPanel.appendChild(advMtdSection);
-        advMtdSection.classList.remove('hidden');
-        advMtdSection.classList.add('w-full');
-    }
-
-    function setAdvCompareTab(tab) {
-        const isMtd = tab === 'mtd';
-        advCohortPanel?.classList.toggle('hidden', isMtd);
-        advMtdPanel?.classList.toggle('hidden', !isMtd);
-
-        advCohortTabBtn?.classList.toggle('bg-blue-50', !isMtd);
-        advCohortTabBtn?.classList.toggle('text-fr-blue', !isMtd);
-        advCohortTabBtn?.classList.toggle('border-blue-200', !isMtd);
-        advCohortTabBtn?.classList.toggle('bg-white', isMtd);
-        advCohortTabBtn?.classList.toggle('text-gray-500', isMtd);
-
-        advMtdTabBtn?.classList.toggle('bg-blue-50', isMtd);
-        advMtdTabBtn?.classList.toggle('text-fr-blue', isMtd);
-        advMtdTabBtn?.classList.toggle('border-blue-200', isMtd);
-        advMtdTabBtn?.classList.toggle('bg-white', !isMtd);
-        advMtdTabBtn?.classList.toggle('text-gray-500', !isMtd);
-
-        if (advCompareModalTitle) {
-            advCompareModalTitle.textContent = isMtd
-                ? 'MTD GrabFood vs GoFood'
-                : 'Advanced Cohort Comparison';
-        }
-        if (isMtd) renderMtdPlatformComparison();
-    }
-
-    advCohortTabBtn?.addEventListener('click', () => setAdvCompareTab('cohort'));
-
-    document.getElementById('openAdvCompareBtn').addEventListener('click', () => {
-        if(rawData.length === 0) {
-            showToast('Upload data terlebih dahulu', 'error');
-            return;
-        }
-        populateAdvGlobalLists();
-        document.getElementById('advCompareModal').classList.remove('hidden');
-        setAdvCompareTab('cohort');
-        if(advGroups.length === 0) { addAdvGroup(); addAdvGroup(); }
-    });
-
-    document.getElementById('closeAdvCompareBtn').addEventListener('click', () => { document.getElementById('advCompareModal').classList.add('hidden'); }); document.getElementById('addAdvGroupBtn').addEventListener('click', addAdvGroup);
-
-    function addAdvGroup() {
-        advGroupCounter++; let groupId = 'adv_g_' + advGroupCounter;
-        advGroups.push({ id: groupId, name: 'Group ' + advGroupCounter, start: '', end: '', items: new Set(), discounts: new Set(), outlets: new Set(), areas: new Set(), dept: 'ALL', eventType: 'ALL',
-            filterConfig: [ { id: 'date', label: 'Date Range', visible: true }, { id: 'items', label: 'Item', visible: true }, { id: 'discount', label: 'Discount Applied', visible: true }, { id: 'outlet', label: 'Outlet', visible: false }, { id: 'area', label: 'Area', visible: false }, { id: 'dept', label: 'Dept', visible: false }, { id: 'event', label: 'Event Type', visible: false } ]
-        });
-        renderAdvGroups();
-    }
-
-    function removeAdvGroup(id) { advGroups = advGroups.filter(g => g.id !== id); renderAdvGroups(); }
-
-    function renderAdvGroups() {
-        const container = document.getElementById('advGroupContainer'); container.innerHTML = '';
-        advGroups.forEach((g, idx) => {
-            let itemInputVal = g.items.size === 0 ? '' : (g.items.size === 1 ? Array.from(g.items)[0] : `${g.items.size} terpilih`); let discInputVal = g.discounts.size === 0 ? '' : (g.discounts.size === 1 ? Array.from(g.discounts)[0] : `${g.discounts.size} terpilih`); let outletInputVal = g.outlets.size === 0 ? '' : (g.outlets.size === 1 ? Array.from(g.outlets)[0] : `${g.outlets.size} terpilih`); let areaInputVal = g.areas.size === 0 ? '' : (g.areas.size === 1 ? Array.from(g.areas)[0] : `${g.areas.size} terpilih`);
-            let sortedConfig = [...g.filterConfig].sort((a,b) => { const order = ['date', 'items', 'discount', 'outlet', 'area', 'dept', 'event']; return order.indexOf(a.id) - order.indexOf(b.id); });
-
-            let filterHtml = '';
-            sortedConfig.forEach(f => {
-                if(!f.visible) return;
-                if(f.id === 'date') { filterHtml += ` <div class="flex flex-col gap-1 mt-1 relative" data-adv-filter="date"> <label class="text-[9px] font-bold text-gray-500 uppercase tracking-wider">${f.label}</label> <div class="flex items-center gap-1"> <input type="date" class="pro-input text-[10px] p-1.5 w-full bg-gray-50 border-gray-200" value="${g.start}" onchange="updateAdvGroup('${g.id}', 'start', this.value); renderAdvGroups();" title="Start Date"> <span class="text-gray-400 font-bold">-</span> <input type="date" class="pro-input text-[10px] p-1.5 w-full bg-gray-50 border-gray-200" value="${g.end}" onchange="updateAdvGroup('${g.id}', 'end', this.value); renderAdvGroups();" title="End Date"> </div> </div>`; }
-                else if(f.id === 'items') { filterHtml += ` <div class="flex flex-col gap-1 mt-1 relative" data-adv-filter="items" id="adv-item-wrap-${g.id}"> <label class="text-[9px] font-bold text-gray-500 uppercase tracking-wider">${f.label}</label> <input type="text" id="adv-item-search-${g.id}" class="pro-input text-[10px] p-1.5 w-full cursor-pointer" placeholder="Semua Item" value="${itemInputVal}" readonly onfocus="openAdvMenu('item', '${g.id}')" oninput="filterAdvMenu('item', '${g.id}', this.value)"> <div id="adv-item-menu-${g.id}" class="hidden absolute top-full left-0 w-full bg-white border border-gray-200 shadow-xl z-[60] max-h-48 overflow-y-auto mt-1 rounded"></div> </div>`; }
-                else if(f.id === 'discount') { filterHtml += ` <div class="flex flex-col gap-1 mt-1 relative" data-adv-filter="discount" id="adv-disc-wrap-${g.id}"> <label class="text-[9px] font-bold text-gray-500 uppercase tracking-wider">${f.label}</label> <input type="text" id="adv-disc-search-${g.id}" class="pro-input text-[10px] p-1.5 w-full cursor-pointer" placeholder="Semua Diskon" value="${discInputVal}" readonly onfocus="openAdvMenu('disc', '${g.id}')" oninput="filterAdvMenu('disc', '${g.id}', this.value)"> <div id="adv-disc-menu-${g.id}" class="hidden absolute top-full left-0 w-full bg-white border border-gray-200 shadow-xl z-[60] max-h-48 overflow-y-auto mt-1 rounded"></div> </div>`; }
-                else if(f.id === 'outlet') { filterHtml += ` <div class="flex flex-col gap-1 mt-1 relative" data-adv-filter="outlet" id="adv-outlet-wrap-${g.id}"> <label class="text-[9px] font-bold text-gray-500 uppercase tracking-wider">${f.label}</label> <input type="text" id="adv-outlet-search-${g.id}" class="pro-input text-[10px] p-1.5 w-full cursor-pointer" placeholder="Semua Outlet" value="${outletInputVal}" readonly onfocus="openAdvMenu('outlet', '${g.id}')" oninput="filterAdvMenu('outlet', '${g.id}', this.value)"> <div id="adv-outlet-menu-${g.id}" class="hidden absolute top-full left-0 w-full bg-white border border-gray-200 shadow-xl z-[60] max-h-48 overflow-y-auto mt-1 rounded"></div> </div>`; }
-                else if(f.id === 'area') { filterHtml += ` <div class="flex flex-col gap-1 mt-1 relative" data-adv-filter="area" id="adv-area-wrap-${g.id}"> <label class="text-[9px] font-bold text-gray-500 uppercase tracking-wider">${f.label}</label> <input type="text" id="adv-area-search-${g.id}" class="pro-input text-[10px] p-1.5 w-full cursor-pointer" placeholder="Semua Area" value="${areaInputVal}" readonly onfocus="openAdvMenu('area', '${g.id}')" oninput="filterAdvMenu('area', '${g.id}', this.value)"> <div id="adv-area-menu-${g.id}" class="hidden absolute top-full left-0 w-full bg-white border border-gray-200 shadow-xl z-[60] max-h-48 overflow-y-auto mt-1 rounded"></div> </div>`; }
-                else if(f.id === 'dept') { filterHtml += ` <div class="flex flex-col gap-1 mt-1 relative" data-adv-filter="dept"> <label class="text-[9px] font-bold text-gray-500 uppercase tracking-wider">${f.label}</label> <select class="pro-select text-[10px] p-1.5 w-full bg-gray-50 border-gray-200" onchange="updateAdvGroup('${g.id}', 'dept', this.value); renderAdvGroups();"> <option value="ALL">All</option> ${advAllDepts.map(d => `<option value="${d}" ${g.dept === d ? 'selected' : ''}>${d}</option>`).join('')} </select> </div>`; }
-                else if(f.id === 'event') { filterHtml += ` <div class="flex flex-col gap-1 mt-1 relative" data-adv-filter="event"> <label class="text-[9px] font-bold text-gray-500 uppercase tracking-wider">${f.label}</label> <select class="pro-select text-[10px] p-1.5 w-full bg-gray-50 border-gray-200" onchange="updateAdvGroup('${g.id}', 'eventType', this.value); renderAdvGroups();"> <option value="ALL">All</option> ${advAllEventTypes.map(d => `<option value="${d}" ${g.eventType === d ? 'selected' : ''}>${d}</option>`).join('')} </select> </div>`; }
-            });
-
-            let div = document.createElement('div'); div.className = "bg-white p-3 rounded border border-gray-200 shadow-sm flex flex-col gap-2 relative transition-all";
-            div.innerHTML = ` <div class="flex justify-between items-center mb-1"> <input type="text" class="font-bold text-xs text-fr-blue border-b border-transparent hover:border-gray-300 focus:border-fr-blue outline-none w-3/4 px-1 bg-transparent" value="${g.name}" onchange="updateAdvGroup('${g.id}', 'name', this.value)"> <div class="flex items-center gap-1"> <button onclick="toggleAdvFilterSettings('${g.id}')" class="text-gray-400 hover:text-gray-600 text-xs" title="Set Filters">⚙️</button> ${advGroups.length > 1 ? `<button onclick="removeAdvGroup('${g.id}')" class="text-red-400 hover:text-red-600 text-lg leading-none" title="Hapus Group">&times;</button>` : ''} </div> </div> ${filterHtml} <div id="adv-filter-settings-${g.id}" class="hidden absolute top-full right-0 mt-1 w-56 bg-white border border-gray-200 shadow-2xl rounded z-[70] text-[11px]"> <div class="p-2 border-b border-gray-200 font-bold flex justify-between items-center bg-gray-50 rounded-t"> <span>Atur Filter (Drag & Drop)</span> <button onclick="toggleAdvFilterSettings('${g.id}')" class="text-gray-500 hover:text-red-500 text-sm leading-none">&times;</button> </div> <ul id="adv-filter-list-${g.id}" class="max-h-64 overflow-y-auto p-1 bg-gray-50"></ul> </div> `;
-            container.appendChild(div);
-        });
-        advGroups.forEach(g => { initAdvFilterSettings(g.id); });
-    }
-
-    window.toggleAdvFilterSettings = function(groupId) { let menu = document.getElementById(`adv-filter-settings-${groupId}`); menu.classList.toggle('hidden'); };
-    document.addEventListener('click', (e) => { advGroups.forEach(g => { let menu = document.getElementById(`adv-filter-settings-${g.id}`); let btn = e.target.closest(`#adv-filter-settings-${g.id}`)?.previousElementSibling?.querySelector('button[title="Set Filters"]'); if(menu && !menu.contains(e.target)) { let settingBtn = e.target.closest('button[title="Set Filters"]'); if(!settingBtn || settingBtn.getAttribute('onclick') !== `toggleAdvFilterSettings('${g.id}')`) { menu.classList.add('hidden'); } } }); });
-
-    function initAdvFilterSettings(groupId) {
-        let g = advGroups.find(x => x.id === groupId); if(!g) return; const list = document.getElementById(`adv-filter-list-${groupId}`); if(!list) return; list.innerHTML = '';
-        let dragStartIdx = -1; const order = ['date', 'items', 'discount', 'outlet', 'area', 'dept', 'event']; g.filterConfig.sort((a,b) => order.indexOf(a.id) - order.indexOf(b.id));
-        g.filterConfig.forEach((f, idx) => {
-            let li = document.createElement('li'); li.className = "flex items-center p-1.5 border-b border-gray-100 bg-white mb-1 rounded cursor-move hover:bg-gray-100 transition-colors"; li.draggable = true; li.dataset.idx = idx;
-            li.innerHTML = `<div class="flex items-center gap-2 w-full pointer-events-none"> <span class="text-gray-400 cursor-move tracking-tighter">⋮⋮</span> <input type="checkbox" class="pointer-events-auto rounded text-fr-blue w-3 h-3 cursor-pointer focus:ring-0" ${f.visible ? 'checked' : ''}> <span class="font-medium text-gray-700">${f.label}</span> </div>`;
-            li.querySelector('input').addEventListener('change', (e) => { f.visible = e.target.checked; let popoverId = `adv-filter-settings-${groupId}`; let popoverWasOpen = !document.getElementById(popoverId).classList.contains('hidden'); renderAdvGroups(); if(popoverWasOpen) { let newPopover = document.getElementById(popoverId); if(newPopover) newPopover.classList.remove('hidden'); } });
-            li.addEventListener('dragstart', (e) => { dragStartIdx = +e.target.closest('li').dataset.idx; e.dataTransfer.effectAllowed = 'move'; setTimeout(() => e.target.classList.add('opacity-50'), 0); });
-            li.addEventListener('dragover', (e) => { e.preventDefault(); return false; }); li.addEventListener('dragenter', (e) => { e.preventDefault(); e.target.closest('li')?.classList.add('border-blue-400', 'border-t-2'); }); li.addEventListener('dragleave', (e) => { e.target.closest('li')?.classList.remove('border-blue-400', 'border-t-2'); }); li.addEventListener('dragend', (e) => { e.target.classList.remove('opacity-50'); });
-            li.addEventListener('drop', (e) => { e.stopPropagation(); const targetLi = e.target.closest('li'); if(!targetLi) return false; targetLi.classList.remove('border-blue-400', 'border-t-2'); const dragEndIndex = +targetLi.dataset.idx; const item = g.filterConfig.splice(dragStartIdx, 1)[0]; g.filterConfig.splice(dragEndIndex, 0, item); let popoverId = `adv-filter-settings-${groupId}`; let popoverWasOpen = !document.getElementById(popoverId).classList.contains('hidden'); renderAdvGroups(); if(popoverWasOpen) { let newPopover = document.getElementById(popoverId); if(newPopover) newPopover.classList.remove('hidden'); } return false; });
-            list.appendChild(li);
-        });
-    }
-
-    window.updateAdvGroup = function(id, field, value) { let g = advGroups.find(x => x.id === id); if(g) g[field] = value; };
-    window.openAdvMenu = function(type, groupId) { let input = document.getElementById(`adv-${type}-search-${groupId}`); if(!input) return; input.removeAttribute('readonly'); input.value = ''; document.getElementById(`adv-${type}-menu-${groupId}`).classList.remove('hidden'); renderAdvDropdown(type, groupId, ''); };
-    window.filterAdvMenu = function(type, groupId, val) { let menu = document.getElementById(`adv-${type}-menu-${groupId}`); if(!menu) return; menu.classList.remove('hidden'); renderAdvDropdown(type, groupId, val); };
-
-    function renderAdvDropdown(type, groupId, searchStr) {
-        let g = advGroups.find(x => x.id === groupId); if(!g) return; let menu = document.getElementById(`adv-${type}-menu-${groupId}`); if(!menu) return;
-        let list, set; if(type === 'item') { list = getAdvAvailableItems(g); set = g.items; } else if(type === 'disc') { list = getAdvAvailableDiscounts(g); set = g.discounts; } else if(type === 'outlet') { list = getAdvAvailableOutlets(g); set = g.outlets; } else if(type === 'area') { list = getAdvAvailableAreas(g); set = g.areas; } else return;
-        let filtered = list.filter(x => x.toLowerCase().includes(searchStr.toLowerCase())); let html = '';
-        if (set.size > 0) { html += `<div class="px-2 py-1.5 bg-red-50 border-b border-red-100 text-fr-red text-[10px] font-bold cursor-pointer hover:bg-red-100 flex justify-between items-center sticky top-0 z-10" onclick="clearAdvSet('${type}', '${groupId}')"><span>${set.size} terpilih</span> <span>Clear &times;</span></div>`; }
-        if (filtered.length === 0) { html += `<div class="p-2 text-[10px] text-gray-500 italic">Tidak ditemukan</div>`; } else { html += filtered.slice(0, 100).map(val => { let checked = set.has(val) ? 'checked' : ''; let safeVal = val.replace(/'/g, "\\'").replace(/"/g, '&quot;'); return `<div class="px-2 py-1.5 hover:bg-gray-50 flex items-start gap-2 cursor-pointer border-b border-gray-50 last:border-0" onclick="event.stopPropagation(); toggleAdvSetItem('${type}', '${groupId}', '${safeVal}')"> <input type="checkbox" class="mt-0.5 cursor-pointer rounded text-fr-blue focus:ring-fr-blue h-3 w-3 shrink-0" ${checked} onclick="event.stopPropagation(); toggleAdvSetItem('${type}', '${groupId}', '${safeVal}')"> <span class="text-[10px] font-medium text-gray-700 leading-tight pointer-events-none">${val}</span> </div>`; }).join(''); }
-        menu.innerHTML = html;
-    }
-
-    window.toggleAdvSetItem = function(type, groupId, val) { let g = advGroups.find(x => x.id === groupId); if(!g) return; let set; if(type === 'item') set = g.items; else if(type === 'disc') set = g.discounts; else if(type === 'outlet') set = g.outlets; else if(type === 'area') set = g.areas; else return; if (set.has(val)) set.delete(val); else set.add(val); let input = document.getElementById(`adv-${type}-search-${groupId}`); if(input) renderAdvDropdown(type, groupId, input.value); };
-    window.clearAdvSet = function(type, groupId) { let g = advGroups.find(x => x.id === groupId); if(!g) return; if (type === 'item') g.items.clear(); else if (type === 'disc') g.discounts.clear(); else if (type === 'outlet') g.outlets.clear(); else if (type === 'area') g.areas.clear(); renderAdvDropdown(type, groupId, ''); updateAdvInput(type, groupId); }
-
-    function updateAdvInput(type, groupId) {
-        let g = advGroups.find(x => x.id === groupId); if(!g) return; let set; if(type === 'item') set = g.items; else if(type === 'disc') set = g.discounts; else if(type === 'outlet') set = g.outlets; else if(type === 'area') set = g.areas; else return;
-        let input = document.getElementById(`adv-${type}-search-${groupId}`); if(!input) return; input.setAttribute('readonly', true);
-        if(set.size === 0) input.value = ''; else if(set.size === 1) input.value = Array.from(set)[0]; else input.value = `${set.size} terpilih`; input.title = set.size > 0 ? Array.from(set).join('\n') : '';
-    }
-
-    document.addEventListener('click', (e) => { advGroups.forEach(g => { ['item', 'disc', 'outlet', 'area'].forEach(type => { let wrap = document.getElementById(`adv-${type}-wrap-${g.id}`); let menu = document.getElementById(`adv-${type}-menu-${g.id}`); if (wrap && menu) { if (!wrap.contains(e.target)) { if (!menu.classList.contains('hidden')) { menu.classList.add('hidden'); updateAdvInput(type, g.id); } } } }); }); });
-
-    document.getElementById('runAdvCompareBtn').addEventListener('click', () => {
-        let results = advGroups.map(g => {
-            let filtered = rawData.filter(r => {
-                if (!matchesDashboardPlatform(r)) return false;
-                let match = true; const sv = (v) => v ? v.toString().trim() : '';
-                if(g.start && (!r.DateStr || r.DateStr < g.start)) match = false; if(g.end && (!r.DateStr || r.DateStr > g.end)) match = false;
-                if (g.items.size > 0 && !g.items.has(sv(r['Items']))) match = false; if (g.discounts.size > 0 && !g.discounts.has(sv(r['Discount Applied']))) match = false; if (g.outlets.size > 0 && !g.outlets.has(sv(r['Outlet']))) match = false; if (g.areas.size > 0 && !g.areas.has(sv(r['AREA']))) match = false; if (g.dept !== 'ALL' && sv(r['DEPT']) !== g.dept) match = false; if (g.eventType !== 'ALL' && sv(r['Event Type']) !== g.eventType) match = false;
-                return match;
-            });
-            let net = 0, gross = 0, qty = 0, txSet = new Set(), disc = 0, ref = 0, tax = 0, grat = 0, coll = 0;
-            filtered.forEach(r => { net += getCleanNum(r, 'Net Sales'); gross += getCleanNum(r, 'Gross Sales'); qty += getCleanNum(r, 'Quantity'); tax += getCleanNum(r, 'Tax'); coll += getCleanNum(r, 'Total Collected Exc Rounding') || getCleanNum(r, 'Total Collected') || (getCleanNum(r, 'Net Sales') + getCleanNum(r, 'Tax')); disc += getDiscountValue(r); grat += getGratuityValue(r); ref += Math.abs(getCleanNum(r, 'Refunds') || 0); if(r['Receipt Number']) txSet.add(r['Receipt Number']); });
-            return { name: g.name, start: g.start, end: g.end, items: g.items, discounts: g.discounts, outlets: g.outlets, areas: g.areas, dept: g.dept, eventType: g.eventType, net, gross, qty, tx: txSet.size, disc, ref, tax, grat, coll, avgTx: txSet.size > 0 ? net / txSet.size : 0 };
-        });
-        renderAdvCompareTable(results);
-    });
-
-    function renderAdvCompareTable(results) {
-        lastAdvResults = results; const thead = document.getElementById('advCompareHead'); const tbody = document.getElementById('advCompareBody'); document.getElementById('exportAdvCompareBtn').classList.remove('hidden');
-        let trHead = document.createElement('tr'); trHead.innerHTML = `<th class="py-2.5 px-3 text-xs bg-gray-100 border border-gray-200 text-gray-700 shadow-sm z-10 sticky left-0 text-center align-middle">METRIC</th>`;
-        results.forEach((res, idx) => {
-            let periodStr = (!res.start && !res.end) ? 'Seluruh Waktu' : `${res.start || '...'} s/d ${res.end || '...'}`; let isBaseline = idx === 0 ? '<span class="px-1.5 py-0.5 bg-gray-200 text-gray-700 rounded text-[8px] ml-1 font-bold">BASELINE</span>' : '';
-            let itemStr = res.items.size === 0 ? 'All' : (res.items.size === 1 ? Array.from(res.items)[0] : `${res.items.size} Selected`); let itemFull = res.items.size > 0 ? Array.from(res.items).join(', ') : 'All';
-            let discStr = res.discounts.size === 0 ? 'All' : (res.discounts.size === 1 ? Array.from(res.discounts)[0] : `${res.discounts.size} Selected`); let discFull = res.discounts.size > 0 ? Array.from(res.discounts).join(', ') : 'All';
-            trHead.innerHTML += `<th class="py-2.5 px-3 text-xs bg-gray-50 border border-gray-200 text-center text-fr-blue font-bold min-w-[170px] shadow-sm align-top"> <div class="flex items-center justify-center">${res.name} ${isBaseline}</div> <span class="text-[9px] text-gray-500 font-normal block mt-1 uppercase">${periodStr}</span> <span class="text-[9px] text-gray-500 font-normal block truncate max-w-[170px] mx-auto uppercase mt-1" title="${itemFull}">Item: <span class="font-semibold text-gray-700">${itemStr}</span></span> <span class="text-[9px] text-gray-500 font-normal block truncate max-w-[170px] mx-auto uppercase" title="${discFull}">Disc: <span class="font-semibold text-gray-700">${discStr}</span></span> </th>`;
-        });
-        thead.innerHTML = ''; thead.appendChild(trHead); tbody.innerHTML = '';
-
-        const metrics = [
-            { id: 'net', label: 'Net Sales', isRp: true, isNeg: false }, { id: 'gross', label: 'Gross Sales', isRp: true, isNeg: false }, { id: 'coll', label: 'Total Collected', isRp: true, isNeg: false },
-            { id: 'disc', label: 'Total Discounts', isRp: true, isNeg: true }, { id: 'ref', label: 'Refunds', isRp: true, isNeg: true }, { id: 'tax', label: 'Total Tax', isRp: true, isNeg: false }, { id: 'grat', label: 'Total Gratuity', isRp: true, isNeg: false },
-            { id: 'qty', label: 'Quantity Sold', isRp: false, isNeg: false }, { id: 'tx', label: 'Transactions', isRp: false, isNeg: false }, { id: 'avgTx', label: 'Avg Transaction Value', isRp: true, isNeg: false, calc: (r) => r.tx > 0 ? (r.net / r.tx) : 0 }
-        ];
-
-        metrics.forEach(m => {
-            let tr = document.createElement('tr'); tr.className = "hover:bg-blue-50/50 border-b border-gray-100 transition-colors"; tr.innerHTML = `<td class="py-2 px-3 font-semibold text-[11px] text-gray-700 border border-gray-200 bg-white sticky left-0 z-10">${m.label}</td>`;
-            let baseVal = m.calc ? m.calc(results[0]) : results[0][m.id];
-            results.forEach((res, i) => {
-                let val = m.calc ? m.calc(res) : res[m.id]; let str = m.isRp ? 'Rp ' + formatRp(val) : formatNum(val);
-                if (i > 0) {
-                    if (baseVal > 0) { let pct = ((val - baseVal) / baseVal) * 100; let isPos = pct > 0; let color = isPos ? 'text-green-600' : 'text-red-500'; if (m.isNeg) color = isPos ? 'text-red-500' : 'text-green-600'; let icon = isPos ? '▲' : '▼'; str += ` <span class="text-[10px] ${color} ml-1.5 font-bold whitespace-nowrap bg-${isPos?'green':'red'}-50 px-1 py-0.5 rounded">${icon}${Math.abs(pct).toFixed(1)}%</span>`; }
-                    else if (baseVal === 0 && val > 0) { let color = m.isNeg ? 'text-red-500' : 'text-green-600'; str += ` <span class="text-[10px] ${color} ml-1.5 font-bold whitespace-nowrap bg-green-50 px-1 py-0.5 rounded">▲100%</span>`; }
-                } else { str += ` <span class="text-[10px] text-gray-400 ml-1.5 font-bold">—</span>`; }
-                tr.innerHTML += `<td class="py-2 px-3 text-right text-[12px] font-medium border border-gray-200 text-gray-800">${str}</td>`;
-            });
-            tbody.appendChild(tr);
-        });
-    }
-
-    document.getElementById('exportAdvCompareBtn').addEventListener('click', () => {
-        if(lastAdvResults.length === 0) return;
-        const escapeCsv = (val) => { let s = String(val === null || val === undefined ? '' : val); if (s.includes(',') || s.includes('"') || s.includes('\n') || s.includes('\r')) { return '"' + s.replace(/"/g, '""') + '"'; } return s; };
-        const headerRow = ['Metric']; const subHeaderRow = ['']; const itemRow = ['']; const discRow = ['']; const otherRow = [''];
-        lastAdvResults.forEach((r, idx) => {
-            let baselineStr = idx === 0 ? " (BASELINE)" : ""; headerRow.push(r.name + baselineStr + ' - Value'); subHeaderRow.push(r.start || r.end ? `${r.start||'All'} to ${r.end||'All'}` : 'Seluruh Waktu'); itemRow.push(`Item: ${r.items.size > 0 ? Array.from(r.items).join('; ') : 'All'}`); discRow.push(`Disc: ${r.discounts.size > 0 ? Array.from(r.discounts).join('; ') : 'All'}`);
-            let otherFilters = []; if(r.outlets.size > 0) otherFilters.push(`Outlet: ${Array.from(r.outlets).join('; ')}`); if(r.areas.size > 0) otherFilters.push(`Area: ${Array.from(r.areas).join('; ')}`); if(r.dept !== 'ALL') otherFilters.push(`Dept: ${r.dept}`); if(r.eventType !== 'ALL') otherFilters.push(`Event: ${r.eventType}`); otherRow.push(otherFilters.length > 0 ? otherFilters.join(' | ') : '-');
-            if(idx > 0) { headerRow.push(r.name + ' - Growth vs Baseline'); subHeaderRow.push(''); itemRow.push(''); discRow.push(''); otherRow.push(''); }
-        });
-        let wsData = [headerRow, subHeaderRow, itemRow, discRow, otherRow, []];
-        const baseResult = lastAdvResults[0];
-        const metrics = [ { id: 'net', label: 'Net Sales' }, { id: 'gross', label: 'Gross Sales' }, { id: 'coll', label: 'Total Collected' }, { id: 'disc', label: 'Total Discounts' }, { id: 'ref', label: 'Refunds' }, { id: 'tax', label: 'Total Tax' }, { id: 'grat', label: 'Total Gratuity' }, { id: 'qty', label: 'Quantity Sold' }, { id: 'tx', label: 'Transactions' }, { id: 'avgTx', label: 'Avg Transaction Value', calc: (r) => r.tx > 0 ? (r.net / r.tx) : 0 } ];
-        metrics.forEach(m => { let row = [m.label]; lastAdvResults.forEach((res, idx) => { let val = m.calc ? m.calc(res) : res[m.id]; row.push(val); if (idx > 0) { let baseVal = m.calc ? m.calc(baseResult) : baseResult[m.id]; row.push(baseVal > 0 ? ((val - baseVal) / baseVal * 100).toFixed(2) + '%' : ''); } }); wsData.push(row); });
-        let csv = wsData.map(row => row.map(escapeCsv).join(',')).join('\r\n'); let blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8;' }); let url = URL.createObjectURL(blob); let a = document.createElement('a'); a.href = url; a.download = `Adv_Compare_${new Date().getTime()}.csv`; document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url); showToast("Advanced Comparison berhasil diexport ke CSV!");
-    });
-
-    // ============================================================
     // AUTO-LOAD CSV DARI GITHUB
     // ============================================================
     const GH_USER = 'anggafmp';
@@ -2989,9 +2423,15 @@ document.getElementById('mtdResetBtn')?.addEventListener(
     }
 
 
-    // Semua data dimuat otomatis sekali saat dashboard dibuka.
+    // Online Sales only: load the GrabFood and GoFood exports, not the large Moka monthly files.
+    // The platform buttons only switch the dashboard view; they do not download the CSV again.
     function lazySelectedFiles() {
         return [...new Set(lazyManifest)]
+            .filter(name => /\.csv$/i.test(String(name || '')))
+            .filter(name => {
+                const token = String(name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+                return token.includes('grabfood') || token.includes('gofood');
+            })
             .sort((a,b) => lazyPeriodKey(b) - lazyPeriodKey(a) || a.localeCompare(b));
     }
 
@@ -3027,13 +2467,14 @@ document.getElementById('mtdResetBtn')?.addEventListener(
                                 const row = rows[j] || [];
                                 const tokens = new Set(row.map(normalize).filter(Boolean));
                                 const has = key => tokens.has(key);
+                                const hasId = has('transactionid') || has('orderid') || has('ordernumber');
+                                const hasSales = has('netsales') || has('netamount') || has('amount') || has('salesamount') || has('totalamount');
+                                const hasOutlet = has('storename') || has('outletname') || has('outlet') || has('paymentdate');
                                 const isMokaHeader = has('netsales') && (has('receiptnumber') || has('sku'));
-                                const isGrabFoodHeader = has('transactionid') && (has('netsales') || has('netamount') || has('amount')) && (has('storename') || has('orderid') || has('outletname'));
-                                const isGoFoodHeader = has('transactionid') && (has('amount') || has('netamount')) && (has('outletname') || has('paymentdate') || has('orderid'));
+                                const isGrabFoodHeader = detectedPlatform === 'GrabFood' && hasId && hasSales && hasOutlet;
+                                const isGoFoodHeader = detectedPlatform === 'GoFood' && hasId && hasSales && hasOutlet;
 
                                 if (isGrabFoodHeader || isGoFoodHeader || (detectedPlatform === 'Moka' && isMokaHeader)) {
-                                    if (isGrabFoodHeader) detectedPlatform = 'GrabFood';
-                                    else if (isGoFoodHeader) detectedPlatform = 'GoFood';
                                     headerFound = true;
                                     headers = row;
                                     currentSourceFileName = sourceFileName;
@@ -3078,7 +2519,8 @@ document.getElementById('mtdResetBtn')?.addEventListener(
     async function loadAllGithubData() {
         const files = lazySelectedFiles();
         if (!files.length) {
-            showToast('Tidak ada file untuk pilihan ini.', 'error');
+            showToast('Manifest tidak memiliki CSV GrabFood atau GoFood.', 'error');
+            if (dashboardSourceStatus) dashboardSourceStatus.textContent = 'File GrabFood/GoFood tidak ditemukan di manifest.json';
             return;
         }
 
@@ -3105,10 +2547,13 @@ document.getElementById('mtdResetBtn')?.addEventListener(
                 if (p.includes('grabfood')) grabFoodRows++;
                 else if (p.includes('gofood')) goFoodRows++;
             }
-            setLoadingProgress(95, `Menyiapkan dashboard • ${formatNum(rawData.length)} baris • GrabFood ${formatNum(grabFoodRows)} • GoFood ${formatNum(goFoodRows)}`);
+            setLoadingProgress(95, `Menyiapkan dashboard online • GrabFood ${formatNum(grabFoodRows)} • GoFood ${formatNum(goFoodRows)}`);
             await yieldToMain();
-            if (rawData.length > 0) {
-                activeDashboardPlatform = dashboardPlatformSelect?.value || 'GrabFood';
+            if (grabFoodRows + goFoodRows > 0) {
+                const initialPlatform = grabFoodRows > 0 ? 'GrabFood' : 'GoFood';
+                if (dashboardPlatformSelect) dashboardPlatformSelect.value = initialPlatform;
+                activeDashboardPlatform = initialPlatform;
+                updateOnlineSalesButtons(initialPlatform);
                 setupDatePickers();
                 populateDropdowns();
                 populateItemDropdown();
@@ -3123,9 +2568,9 @@ document.getElementById('mtdResetBtn')?.addEventListener(
                     try {
                         await executeFilterAndRender();
                         const selectedRows = countRowsForDashboardPlatform();
-                        const selectedLabel = dashboardPlatformSelect?.selectedOptions?.[0]?.textContent || 'Moka Dashboard';
+                        const selectedLabel = dashboardPlatformSelect?.selectedOptions?.[0]?.textContent || 'Online Sales Dashboard';
                         if (dashboardSourceStatus) dashboardSourceStatus.textContent = `${selectedLabel} • ${formatNum(selectedRows)} rows • semua sumber sudah dimuat`;
-                        showToast(`Semua data selesai • Moka ${formatNum(rawData.length - grabFoodRows - goFoodRows)} • GrabFood ${formatNum(grabFoodRows)} • GoFood ${formatNum(goFoodRows)}.`);
+                        showToast(`Online Sales siap • GrabFood ${formatNum(grabFoodRows)} baris • GoFood ${formatNum(goFoodRows)} baris.`);
                     } catch (e) {
                         console.error(e);
                         showToast('Sebagian grafik gagal dirender karena data terlalu besar.', 'error');
@@ -3133,7 +2578,8 @@ document.getElementById('mtdResetBtn')?.addEventListener(
                 }, 100);
             } else {
                 document.getElementById('mainContent').style.display = 'block';
-                showToast('Tidak ada data valid pada file yang dipilih.', 'error');
+                if (dashboardSourceStatus) dashboardSourceStatus.textContent = 'CSV terbaca, tetapi tidak ada baris transaksi Online Sales yang valid.';
+                showToast('Tidak ada transaksi GrabFood/GoFood yang berhasil dibaca. Periksa header dan tanggal CSV.', 'error');
             }
         } catch (err) {
             console.error(err);
