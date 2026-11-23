@@ -1,10 +1,11 @@
 <!DOCTYPE html>
+
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Enterprise POS Analytics Pro - Optimized</title>
-    <script src="https://cdn.tailwindcss.com">
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Enterprise POS Analytics Pro - Optimized</title>
+<script src="https://cdn.tailwindcss.com">
         // Large-data guard: avoid accidental duplicate filtering/export arrays.
         window.getDashboardMemoryInfo = function() {
             return {
@@ -18,19 +19,19 @@
             };
         };
 </script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<script>
         tailwind.config = {
             theme: { extend: { colors: { fr: { blue: '#002395', red: '#ED2939', white: '#FFFFFF', bg: '#f1f5f9', border: '#e2e8f0', text: '#0f172a', muted: '#64748b' } }, fontFamily: { sans: ['Inter', 'sans-serif'], } } }
         }
     </script>
-    <style>
+<style>
         body { background-color: #f1f5f9; color: #0f172a; font-size: 13px; }
         .panel { background-color: #ffffff; border: 1px solid #e2e8f0; border-radius: 4px; box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); }
         .chart-container { position: relative; height: 300px; width: 100%; }
@@ -72,734 +73,523 @@
         /* Custom Tooltip Global */
         #customMultiTooltip { position: absolute; background: #1e293b; color: white; padding: 8px 12px; border-radius: 6px; font-size: 11px; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 9999; border: 1px solid #334155; max-height: 250px; overflow-y: auto; width: max-content; max-width: 300px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
     </style>
-
 <style>
-    #advMtdPanel #mtdPlatformSection { margin: 0; }
-    #advMtdPanel #mtdPlatformSection .panel { box-shadow: none; }
 </style>
 </head>
 <body class="antialiased min-h-screen flex flex-col">
-    <div id="toastContainer" class="fixed top-2 right-4 z-[10000] flex flex-col gap-1.5 pointer-events-none"></div>
-
-    <!-- Loading Overlay - Tampil saat proses -->
-    <div id="loadingOverlay">
-        <h2 class="text-base font-semibold text-fr-text" id="loadingText">Processing Data...</h2>
-        <p class="text-xs text-fr-muted mt-1.5 font-medium" id="loadingSubText">Mengunggah file...</p>
-        <div class="progress-bar-wrap"><div class="progress-bar-fill" id="loadingProgressBar"></div></div>
-    </div>
-
-    <div id="customTooltip" class="tooltip"></div>
-    <div id="customMultiTooltip" class="hidden absolute bg-slate-800 text-white p-2.5 rounded-md shadow-xl border border-slate-700 z-[9999] max-h-64 overflow-y-auto w-max min-w-[200px] pointer-events-none opacity-0 transition-opacity duration-200"></div>
-
-    <!-- File Selection Modal (Hidden, hanya untuk fallback) -->
-    <div id="fileSelectModal" class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[9999] hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded shadow-xl w-full max-w-2xl flex flex-col max-h-[80vh]">
-            <div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center">
-                <h3 class="font-bold text-fr-text text-sm">Pilih File untuk Diproses</h3>
-                <button id="closeFileModalBtn" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
-            </div>
-            <div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center">
-                <input type="checkbox" id="selectAllFilesCb" class="rounded text-fr-blue focus:ring-fr-blue h-3.5 w-3.5 cursor-pointer mr-2" checked>
-                <label for="selectAllFilesCb" class="text-xs font-semibold text-gray-700 cursor-pointer select-none">Pilih Semua</label>
-            </div>
-            <div id="fileListContainer" class="p-5 overflow-y-auto overflow-x-auto flex-grow flex flex-col gap-2"></div>
-            <div class="px-5 py-4 border-t border-gray-200 flex justify-end gap-2 bg-gray-50 rounded-b">
-                <button id="cancelFileModalBtn" class="px-4 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">Batal</button>
-                <button id="processFilesBtn" class="px-4 py-2 text-xs font-semibold text-white bg-fr-blue rounded hover:bg-blue-800 shadow-sm">Proses Data</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- VS Table Modal -->
-    <div id="vsTableModal" class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[9999] hidden flex items-center justify-center p-2 sm:p-4">
-        <div id="vsTableModalContent" class="bg-white rounded shadow-xl w-full max-w-6xl flex flex-col max-h-[95vh] transition-all duration-300">
-            <div class="px-3 sm:px-5 py-3 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 rounded-t gap-2 sm:gap-0">
-                <div class="flex items-center gap-3">
-                    <h3 class="font-bold text-fr-text text-sm">Comparison Data Table</h3>
-                    <span class="group/tt relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-4 h-4 rounded-full border border-gray-300 hover:border-fr-blue transition-colors text-[11px] font-bold leading-none">
+<div class="fixed top-2 right-4 z-[10000] flex flex-col gap-1.5 pointer-events-none" id="toastContainer"></div>
+<!-- Loading Overlay - Tampil saat proses -->
+<div id="loadingOverlay">
+<h2 class="text-base font-semibold text-fr-text" id="loadingText">Processing Data...</h2>
+<p class="text-xs text-fr-muted mt-1.5 font-medium" id="loadingSubText">Mengunggah file...</p>
+<div class="progress-bar-wrap"><div class="progress-bar-fill" id="loadingProgressBar"></div></div>
+</div>
+<div class="tooltip" id="customTooltip"></div>
+<div class="hidden absolute bg-slate-800 text-white p-2.5 rounded-md shadow-xl border border-slate-700 z-[9999] max-h-64 overflow-y-auto w-max min-w-[200px] pointer-events-none opacity-0 transition-opacity duration-200" id="customMultiTooltip"></div>
+<!-- File Selection Modal (Hidden, hanya untuk fallback) -->
+<div class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[9999] hidden flex items-center justify-center p-4" id="fileSelectModal">
+<div class="bg-white rounded shadow-xl w-full max-w-2xl flex flex-col max-h-[80vh]">
+<div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center">
+<h3 class="font-bold text-fr-text text-sm">Pilih File untuk Diproses</h3>
+<button class="text-gray-400 hover:text-gray-600 text-lg leading-none" id="closeFileModalBtn">×</button>
+</div>
+<div class="px-5 py-3 border-b border-gray-100 bg-gray-50 flex items-center">
+<input checked="" class="rounded text-fr-blue focus:ring-fr-blue h-3.5 w-3.5 cursor-pointer mr-2" id="selectAllFilesCb" type="checkbox"/>
+<label class="text-xs font-semibold text-gray-700 cursor-pointer select-none" for="selectAllFilesCb">Pilih Semua</label>
+</div>
+<div class="p-5 overflow-y-auto overflow-x-auto flex-grow flex flex-col gap-2" id="fileListContainer"></div>
+<div class="px-5 py-4 border-t border-gray-200 flex justify-end gap-2 bg-gray-50 rounded-b">
+<button class="px-4 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50" id="cancelFileModalBtn">Batal</button>
+<button class="px-4 py-2 text-xs font-semibold text-white bg-fr-blue rounded hover:bg-blue-800 shadow-sm" id="processFilesBtn">Proses Data</button>
+</div>
+</div>
+</div>
+<!-- VS Table Modal -->
+<div class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[9999] hidden flex items-center justify-center p-2 sm:p-4" id="vsTableModal">
+<div class="bg-white rounded shadow-xl w-full max-w-6xl flex flex-col max-h-[95vh] transition-all duration-300" id="vsTableModalContent">
+<div class="px-3 sm:px-5 py-3 border-b border-gray-200 flex flex-col sm:flex-row justify-between items-start sm:items-center bg-gray-50 rounded-t gap-2 sm:gap-0">
+<div class="flex items-center gap-3">
+<h3 class="font-bold text-fr-text text-sm">Comparison Data Table</h3>
+<span class="group/tt relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-4 h-4 rounded-full border border-gray-300 hover:border-fr-blue transition-colors text-[11px] font-bold leading-none">
                         ?
-                        <div id="vsPeriodTooltip" class="hidden group-hover/tt:block absolute top-full left-0 mt-1 z-[100] bg-gray-800 text-white p-2.5 rounded w-max shadow-xl text-[10px] font-normal whitespace-nowrap before:content-[''] before:absolute before:bottom-full before:left-4 before:border-4 before:border-transparent before:border-b-gray-800"></div>
-                    </span>
-                </div>
-                <div class="flex flex-wrap items-center gap-2 sm:gap-3 relative w-full sm:w-auto justify-between sm:justify-end">
-                    <label class="flex items-center gap-1.5 cursor-pointer bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-bold shadow-sm shrink-0" title="Centang untuk menghitung receipt unik.">
-                        <input type="checkbox" id="vsDistinctTxCb" class="w-3.5 h-3.5 text-fr-blue rounded focus:ring-fr-blue cursor-pointer" checked> Distinct Tx
+                        <div class="hidden group-hover/tt:block absolute top-full left-0 mt-1 z-[100] bg-gray-800 text-white p-2.5 rounded w-max shadow-xl text-[10px] font-normal whitespace-nowrap before:content-[''] before:absolute before:bottom-full before:left-4 before:border-4 before:border-transparent before:border-b-gray-800" id="vsPeriodTooltip"></div>
+</span>
+</div>
+<div class="flex flex-wrap items-center gap-2 sm:gap-3 relative w-full sm:w-auto justify-between sm:justify-end">
+<label class="flex items-center gap-1.5 cursor-pointer bg-white border border-gray-300 hover:bg-gray-50 text-gray-700 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-bold shadow-sm shrink-0" title="Centang untuk menghitung receipt unik.">
+<input checked="" class="w-3.5 h-3.5 text-fr-blue rounded focus:ring-fr-blue cursor-pointer" id="vsDistinctTxCb" type="checkbox"/> Distinct Tx
                     </label>
-                    <div class="flex gap-2">
-                        <button id="fullscreenVsBtn" class="px-2 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded text-[10px] sm:text-[11px] font-bold shadow-sm flex items-center gap-1 transition-colors" title="Toggle Fullscreen">
-                            <svg id="fullscreenIcon" class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4"></path></svg>
-                        </button>
-                        <button id="vsTableSettingsBtn" class="px-2 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded text-[10px] sm:text-[11px] font-bold shadow-sm flex items-center gap-1 transition-colors">⚙️ Setup</button>
-                        <button id="exportVsTableBtn" class="px-2 py-1.5 bg-fr-blue border border-fr-blue text-white hover:bg-blue-800 rounded text-[10px] sm:text-[11px] font-bold shadow-sm flex items-center gap-1 transition-colors"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Export</button>
-                        <button id="closeVsTableBtn" class="text-gray-400 hover:text-gray-600 text-lg leading-none px-1">&times;</button>
-                    </div>
-
-                    <div id="vsSettingsMenu" class="hidden absolute top-full right-0 sm:right-[100px] mt-1 w-[300px] sm:w-[500px] bg-white border border-gray-200 shadow-2xl rounded z-[60] text-[11px] flex flex-col sm:flex-row items-start">
-                        <div class="w-full sm:w-[30%] border-b sm:border-b-0 sm:border-r border-gray-200 flex flex-col max-h-60 sm:max-h-80">
-                            <div class="p-2 border-b border-gray-200 bg-gray-100 font-bold text-center">Dimensions</div>
-                            <ul id="vsDimList" class="overflow-y-auto p-1 bg-gray-50 flex-grow"></ul>
-                        </div>
-                        <div class="w-full sm:w-[30%] border-b sm:border-b-0 sm:border-r border-gray-200 flex flex-col max-h-60 sm:max-h-80">
-                            <div class="p-2 border-b border-gray-200 bg-gray-100 font-bold text-center">Metrics</div>
-                            <ul id="vsMetricList" class="overflow-y-auto p-1 bg-gray-50 flex-grow"></ul>
-                        </div>
-                        <div class="w-full sm:w-[40%] flex flex-col max-h-80">
-                            <div class="p-2 border-b border-gray-200 bg-gray-100 font-bold text-center">Pivot Options</div>
-                            <div class="p-3 bg-gray-50 flex-grow flex flex-col gap-3 overflow-y-auto">
-                                <label class="flex items-center gap-2 cursor-pointer font-medium text-gray-700 hover:text-fr-blue">
-                                    <input type="checkbox" id="vsRepeatLabelsCb" class="w-3.5 h-3.5 rounded text-fr-blue focus:ring-fr-blue cursor-pointer">
+<div class="flex gap-2">
+<button class="px-2 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded text-[10px] sm:text-[11px] font-bold shadow-sm flex items-center gap-1 transition-colors" id="fullscreenVsBtn" title="Toggle Fullscreen">
+<svg class="w-3.5 h-3.5" fill="none" id="fullscreenIcon" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 0l-5 5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg>
+</button>
+<button class="px-2 py-1.5 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded text-[10px] sm:text-[11px] font-bold shadow-sm flex items-center gap-1 transition-colors" id="vsTableSettingsBtn">⚙️ Setup</button>
+<button class="px-2 py-1.5 bg-fr-blue border border-fr-blue text-white hover:bg-blue-800 rounded text-[10px] sm:text-[11px] font-bold shadow-sm flex items-center gap-1 transition-colors" id="exportVsTableBtn"><svg class="w-3 h-3" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> Export</button>
+<button class="text-gray-400 hover:text-gray-600 text-lg leading-none px-1" id="closeVsTableBtn">×</button>
+</div>
+<div class="hidden absolute top-full right-0 sm:right-[100px] mt-1 w-[300px] sm:w-[500px] bg-white border border-gray-200 shadow-2xl rounded z-[60] text-[11px] flex flex-col sm:flex-row items-start" id="vsSettingsMenu">
+<div class="w-full sm:w-[30%] border-b sm:border-b-0 sm:border-r border-gray-200 flex flex-col max-h-60 sm:max-h-80">
+<div class="p-2 border-b border-gray-200 bg-gray-100 font-bold text-center">Dimensions</div>
+<ul class="overflow-y-auto p-1 bg-gray-50 flex-grow" id="vsDimList"></ul>
+</div>
+<div class="w-full sm:w-[30%] border-b sm:border-b-0 sm:border-r border-gray-200 flex flex-col max-h-60 sm:max-h-80">
+<div class="p-2 border-b border-gray-200 bg-gray-100 font-bold text-center">Metrics</div>
+<ul class="overflow-y-auto p-1 bg-gray-50 flex-grow" id="vsMetricList"></ul>
+</div>
+<div class="w-full sm:w-[40%] flex flex-col max-h-80">
+<div class="p-2 border-b border-gray-200 bg-gray-100 font-bold text-center">Pivot Options</div>
+<div class="p-3 bg-gray-50 flex-grow flex flex-col gap-3 overflow-y-auto">
+<label class="flex items-center gap-2 cursor-pointer font-medium text-gray-700 hover:text-fr-blue">
+<input class="w-3.5 h-3.5 rounded text-fr-blue focus:ring-fr-blue cursor-pointer" id="vsRepeatLabelsCb" type="checkbox"/>
                                     Repeat Labels
                                 </label>
-                                <div class="flex flex-col gap-1 border-t border-gray-200 pt-2">
-                                    <span class="font-bold text-gray-600 text-[10px] uppercase tracking-wider mb-1">Show Subtotal For:</span>
-                                    <div id="vsSubtotalLevelContainer" class="flex flex-col gap-1.5 pl-1">
-                                        <!-- Checkboxes will be generated here -->
-                                    </div>
-                                </div>
-                                <div class="flex flex-col gap-1 border-t border-gray-200 pt-2">
-                                    <span class="font-bold text-gray-600 text-[10px] uppercase tracking-wider mb-1">Grand Total</span>
-                                    <label class="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-fr-blue">
-                                        <input type="checkbox" id="vsGrandTotalCb" class="w-3.5 h-3.5 rounded text-fr-blue focus:ring-fr-blue cursor-pointer" checked>
+<div class="flex flex-col gap-1 border-t border-gray-200 pt-2">
+<span class="font-bold text-gray-600 text-[10px] uppercase tracking-wider mb-1">Show Subtotal For:</span>
+<div class="flex flex-col gap-1.5 pl-1" id="vsSubtotalLevelContainer">
+<!-- Checkboxes will be generated here -->
+</div>
+</div>
+<div class="flex flex-col gap-1 border-t border-gray-200 pt-2">
+<span class="font-bold text-gray-600 text-[10px] uppercase tracking-wider mb-1">Grand Total</span>
+<label class="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-fr-blue">
+<input checked="" class="w-3.5 h-3.5 rounded text-fr-blue focus:ring-fr-blue cursor-pointer" id="vsGrandTotalCb" type="checkbox"/>
                                         Show Grand Total
                                     </label>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Date Range picker -->
-            <div class="px-3 sm:px-5 py-3 border-b border-gray-200 bg-white flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 flex-wrap">
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Main Period</span>
-                    <input type="date" id="vsModalMainStart" class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300">
-                    <span class="text-gray-400 font-bold">-</span>
-                    <input type="date" id="vsModalMainEnd" class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300">
-                </div>
-                <div class="hidden sm:block w-px h-5 bg-gray-300"></div>
-                <div class="flex flex-wrap items-center gap-2">
-                    <span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Compare VS</span>
-                    <select id="vsModalCompareMode" class="pro-select text-[11px] w-[110px] p-1.5 text-gray-700 font-semibold cursor-pointer border-gray-300">
-                        <option value="prev_period">Prev Period</option>
-                        <option value="prev_year">Prev Year</option>
-                        <option value="custom">Custom</option>
-                    </select>
-                    <div id="vsModalCustomDateWrapper" class="hidden items-center gap-1">
-                        <input type="date" id="vsModalVsStart" class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300">
-                        <span class="text-gray-400 font-bold">-</span>
-                        <input type="date" id="vsModalVsEnd" class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300">
-                    </div>
-                </div>
-            </div>
-
-            <!-- Filter panel untuk dimension terpilih -->
-            <div id="vsDimFilterPanel" class="px-3 sm:px-5 py-3 border-b border-gray-200 bg-blue-50/30 flex flex-wrap items-end gap-3"></div>
-
-            <div class="overflow-y-auto overflow-x-auto flex-grow flex flex-col relative border border-gray-200 rounded mx-2 sm:mx-5 mb-2 sm:mb-5 mt-2 sm:mt-4">
-                <table class="min-w-full text-left whitespace-nowrap border-collapse" id="vsDataTable">
-                    <thead class="bg-gray-50 border-b border-gray-200 sticky top-0 shadow-sm z-20" id="vsTableHead"></thead>
-                    <tbody id="vsTableBody"></tbody>
-                </table>
-            </div>
-        </div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Date Range picker -->
+<div class="px-3 sm:px-5 py-3 border-b border-gray-200 bg-white flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4 flex-wrap">
+<div class="flex flex-wrap items-center gap-2">
+<span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Main Period</span>
+<input class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300" id="vsModalMainStart" type="date"/>
+<span class="text-gray-400 font-bold">-</span>
+<input class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300" id="vsModalMainEnd" type="date"/>
+</div>
+<div class="hidden sm:block w-px h-5 bg-gray-300"></div>
+<div class="flex flex-wrap items-center gap-2">
+<span class="text-[10px] font-bold text-gray-500 uppercase tracking-wider">Compare VS</span>
+<select class="pro-select text-[11px] w-[110px] p-1.5 text-gray-700 font-semibold cursor-pointer border-gray-300" id="vsModalCompareMode">
+<option value="prev_period">Prev Period</option>
+<option value="prev_year">Prev Year</option>
+<option value="custom">Custom</option>
+</select>
+<div class="hidden items-center gap-1" id="vsModalCustomDateWrapper">
+<input class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300" id="vsModalVsStart" type="date"/>
+<span class="text-gray-400 font-bold">-</span>
+<input class="pro-input text-[11px] p-1.5 w-[120px] text-gray-700 font-semibold cursor-pointer border-gray-300" id="vsModalVsEnd" type="date"/>
+</div>
+</div>
+</div>
+<!-- Filter panel untuk dimension terpilih -->
+<div class="px-3 sm:px-5 py-3 border-b border-gray-200 bg-blue-50/30 flex flex-wrap items-end gap-3" id="vsDimFilterPanel"></div>
+<div class="overflow-y-auto overflow-x-auto flex-grow flex flex-col relative border border-gray-200 rounded mx-2 sm:mx-5 mb-2 sm:mb-5 mt-2 sm:mt-4">
+<table class="min-w-full text-left whitespace-nowrap border-collapse" id="vsDataTable">
+<thead class="bg-gray-50 border-b border-gray-200 sticky top-0 shadow-sm z-20" id="vsTableHead"></thead>
+<tbody id="vsTableBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- Export Settings Modal -->
+<div class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[9999] hidden flex items-center justify-center p-4" id="exportModal">
+<div class="bg-white rounded shadow-xl w-full max-w-sm flex flex-col">
+<div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center"><h3 class="font-bold text-fr-text text-sm">Export Options (CSV)</h3><button class="text-gray-400 hover:text-gray-600 text-lg leading-none" id="closeExportModalBtn">×</button></div>
+<div class="p-5 flex flex-col gap-3 text-sm">
+<label class="flex items-center gap-2 cursor-pointer font-bold border-b border-gray-100 pb-3 text-gray-800"><input checked="" class="rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer" id="exportAllCb" type="checkbox"/> ALL</label>
+<label class="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-fr-blue transition-colors"><input checked="" class="export-cb rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer" id="exportTxCb" type="checkbox"/> 1. Data Transaksi</label>
+<label class="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-fr-blue transition-colors"><input checked="" class="export-cb rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer" id="exportVsCb" type="checkbox"/> 2. Data Periode VS</label>
+<label class="flex items-start gap-2 cursor-pointer text-gray-700 hover:text-fr-blue transition-colors"><input checked="" class="export-cb mt-1 rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer shrink-0" id="exportDateColsCb" type="checkbox"/> <span>3. Include kolom Day, Month, Year untuk pivot (Ditambahkan di paling kanan)</span></label>
+</div>
+<div class="px-5 py-4 border-t border-gray-200 flex justify-end gap-2 bg-gray-50 rounded-b"><button class="px-4 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50" id="cancelExportBtn">Batal</button><button class="px-4 py-2 text-xs font-semibold text-white bg-fr-blue rounded hover:bg-blue-800 shadow-sm flex items-center gap-1" id="proceedExportBtn"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> Download CSV</button></div>
+</div>
+</div>
+<!-- Navigation -->
+<nav class="bg-white border-b border-fr-border px-4 sm:px-6 py-2.5 sticky top-0 z-50">
+<div class="max-w-[1500px] mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-0">
+<!-- Logo & Title -->
+<div class="flex items-center justify-between w-full md:w-auto gap-3">
+<div class="flex items-center gap-3">
+<label class="cursor-pointer flex items-center justify-center shrink-0 hover:opacity-80 transition-opacity" title="Klik untuk Upload Custom Logo">
+<img class="h-8 w-auto object-contain max-w-[150px]" id="brandLogoImg" onerror="this.style.display='none'; document.getElementById('defaultLogo').style.display='flex';" src="logo.jpeg?v=3"/>
+<div class="hidden gap-0.5 border border-gray-200 p-0.5 shadow-sm bg-white" id="defaultLogo"><div class="w-3 h-3 bg-fr-blue"></div><div class="w-3 h-3 bg-fr-white border border-gray-300"></div><div class="w-3 h-3 bg-fr-red"></div></div>
+<input accept="image/*" class="hidden" id="logoInput" type="file"/>
+</label>
+<span class="font-bold text-[10px] sm:text-[11px] xl:text-xs tracking-tight ml-1 sm:ml-2 text-fr-text uppercase whitespace-normal sm:whitespace-nowrap leading-tight">LA MAISON DE PIERRE • ONLINE SALES ANALYTIC PERFORMANCE</span>
+</div>
+</div>
+<!-- Nav Controls (Tombol Upload Manual Dihilangkan) -->
+<div class="flex items-center gap-1.5 whitespace-nowrap overflow-x-auto w-full md:w-auto pb-1 md:pb-0 justify-start md:justify-end">
+<div class="hidden items-center gap-1.5 whitespace-nowrap" id="navDashboardControls">
+<label class="flex items-center gap-1.5 cursor-pointer bg-blue-50 text-fr-blue border border-blue-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input class="w-3.5 h-3.5 text-fr-blue rounded focus:ring-fr-blue cursor-pointer" id="toggleLabelsCheckbox" type="checkbox"/>Show Values</label>
+<label class="flex items-center gap-1.5 cursor-pointer bg-purple-50 text-purple-700 border border-purple-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input class="w-3.5 h-3.5 text-purple-700 rounded focus:ring-purple-700 cursor-pointer" id="toggleVsLineCheckbox" type="checkbox"/>Show VS Line</label>
+<button class="flex items-center gap-1 cursor-pointer bg-blue-50 text-fr-blue border border-blue-200 hover:bg-blue-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0" id="openAdvCompareBtn" style="display:none">📊 Adv. Compare</button>
+<button class="flex items-center gap-1 cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0" id="openVsTableBtn" style="display:none"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> VS Table</button>
+</div>
+</div>
+</div>
+</nav>
+<!-- ONLINE SALES DASHBOARD SELECTOR -->
+<section class="bg-white border-b border-slate-200 px-4 sm:px-6 py-3" id="dashboardSourceBar">
+<div class="max-w-[1500px] mx-auto flex flex-col sm:flex-row items-start sm:items-center gap-3">
+    <div class="flex items-center gap-2 shrink-0">
+        <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500">ONLINE SALES</span>
+        <span class="text-[10px] text-slate-400">Dashboard Penjualan & Transaksi</span>
     </div>
-
-    <!-- Export Settings Modal -->
-    <div id="exportModal" class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[9999] hidden flex items-center justify-center p-4">
-        <div class="bg-white rounded shadow-xl w-full max-w-sm flex flex-col">
-            <div class="px-5 py-4 border-b border-gray-200 flex justify-between items-center"><h3 class="font-bold text-fr-text text-sm">Export Options (CSV)</h3><button id="closeExportModalBtn" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button></div>
-            <div class="p-5 flex flex-col gap-3 text-sm">
-                <label class="flex items-center gap-2 cursor-pointer font-bold border-b border-gray-100 pb-3 text-gray-800"><input type="checkbox" id="exportAllCb" class="rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer" checked> ALL</label>
-                <label class="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-fr-blue transition-colors"><input type="checkbox" id="exportTxCb" class="export-cb rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer" checked> 1. Data Transaksi</label>
-                <label class="flex items-center gap-2 cursor-pointer text-gray-700 hover:text-fr-blue transition-colors"><input type="checkbox" id="exportVsCb" class="export-cb rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer" checked> 2. Data Periode VS</label>
-                <label class="flex items-start gap-2 cursor-pointer text-gray-700 hover:text-fr-blue transition-colors"><input type="checkbox" id="exportDateColsCb" class="export-cb mt-1 rounded text-fr-blue focus:ring-fr-blue h-4 w-4 cursor-pointer shrink-0" checked> <span>3. Include kolom Day, Month, Year untuk pivot (Ditambahkan di paling kanan)</span></label>
-            </div>
-            <div class="px-5 py-4 border-t border-gray-200 flex justify-end gap-2 bg-gray-50 rounded-b"><button id="cancelExportBtn" class="px-4 py-2 text-xs font-semibold text-gray-600 bg-white border border-gray-300 rounded hover:bg-gray-50">Batal</button><button id="proceedExportBtn" class="px-4 py-2 text-xs font-semibold text-white bg-fr-blue rounded hover:bg-blue-800 shadow-sm flex items-center gap-1"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Download CSV</button></div>
-        </div>
+    <div class="flex items-center gap-2 w-full sm:w-auto">
+        <button type="button" id="btnGrabFoodDashboard" data-platform="GrabFood"
+            class="px-4 py-2 rounded border border-blue-200 bg-blue-50 text-fr-blue text-[11px] font-bold shadow-sm transition-colors">
+            GrabFood
+        </button>
+        <button type="button" id="btnGoFoodDashboard" data-platform="GoFood"
+            class="px-4 py-2 rounded border border-gray-300 bg-white text-gray-600 text-[11px] font-bold shadow-sm transition-colors">
+            GoFood
+        </button>
     </div>
-
-    <!-- Navigation -->
-    <nav class="bg-white border-b border-fr-border px-4 sm:px-6 py-2.5 sticky top-0 z-50">
-        <div class="max-w-[1500px] mx-auto flex flex-col md:flex-row justify-between items-center gap-3 md:gap-0">
-            <!-- Logo & Title -->
-            <div class="flex items-center justify-between w-full md:w-auto gap-3">
-                <div class="flex items-center gap-3">
-                    <label class="cursor-pointer flex items-center justify-center shrink-0 hover:opacity-80 transition-opacity" title="Klik untuk Upload Custom Logo">
-                        <img id="brandLogoImg" src="logo.jpeg?v=3" class="h-8 w-auto object-contain max-w-[150px]" onerror="this.style.display='none'; document.getElementById('defaultLogo').style.display='flex';">
-                        <div id="defaultLogo" class="hidden gap-0.5 border border-gray-200 p-0.5 shadow-sm bg-white"><div class="w-3 h-3 bg-fr-blue"></div><div class="w-3 h-3 bg-fr-white border border-gray-300"></div><div class="w-3 h-3 bg-fr-red"></div></div>
-                        <input type="file" id="logoInput" accept="image/*" class="hidden">
-                    </label>
-                    <span class="font-bold text-[10px] sm:text-[11px] xl:text-xs tracking-tight ml-1 sm:ml-2 text-fr-text uppercase whitespace-normal sm:whitespace-nowrap leading-tight">LA MAISON DE PIERRE BOULANGERIE ANALYTIC PERFORMANCE</span>
-                </div>
-            </div>
-
-            <!-- Nav Controls (Tombol Upload Manual Dihilangkan) -->
-            <div class="flex items-center gap-1.5 whitespace-nowrap overflow-x-auto w-full md:w-auto pb-1 md:pb-0 justify-start md:justify-end">
-                <div id="navDashboardControls" class="hidden items-center gap-1.5 whitespace-nowrap">
-                    <label class="flex items-center gap-1.5 cursor-pointer bg-blue-50 text-fr-blue border border-blue-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input type="checkbox" id="toggleLabelsCheckbox" class="w-3.5 h-3.5 text-fr-blue rounded focus:ring-fr-blue cursor-pointer">Show Values</label>
-                    <label class="flex items-center gap-1.5 cursor-pointer bg-purple-50 text-purple-700 border border-purple-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input type="checkbox" id="toggleVsLineCheckbox" class="w-3.5 h-3.5 text-purple-700 rounded focus:ring-purple-700 cursor-pointer">Show VS Line</label>
-
-                    <button id="openAdvCompareBtn" class="flex items-center gap-1 cursor-pointer bg-blue-50 text-fr-blue border border-blue-200 hover:bg-blue-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0">📊 Adv. Compare</button>
-                    <button id="openVsTableBtn" class="flex items-center gap-1 cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> VS Table</button>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <!-- MAIN CONTENT DISEMBUNYIKAN SEJAK AWAL MENGGUNAKAN INLINE CSS -->
-    <main style="display: none;" id="mainContent" class="flex-grow max-w-[1500px] mx-auto w-full px-2 sm:px-4 lg:px-8 py-4 space-y-4">
-        <div id="dashboardContent" class="hidden space-y-4">
-            <!-- GLOBAL FILTERS -->
-            <div class="panel p-3 mb-2">
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 pb-2 border-b border-gray-100 relative gap-2">
-                    <h3 class="text-xs font-bold text-gray-700 uppercase tracking-wider">Data Filters</h3>
-                    <div class="flex items-center gap-3">
-                        <button id="toggleFiltersBtn" class="text-fr-blue hover:text-blue-800 text-[10px] font-bold flex items-center gap-1 transition-colors">
-                            <span id="filterToggleIcon" class="transform transition-transform">▲</span> <span id="filterToggleText">Hide Filters</span>
+    <!-- Hidden state control kept for existing dashboard logic -->
+    <select aria-label="Platform online sales" class="hidden" id="lazyPlatformSelect">
+        <option value="GrabFood" selected>GrabFood</option>
+        <option value="GoFood">GoFood</option>
+    </select>
+    <span class="text-[10px] text-slate-400" id="dashboardSourceStatus">GrabFood • memuat data online sales otomatis...</span>
+</div>
+</section>
+<!-- MAIN CONTENT DISEMBUNYIKAN SEJAK AWAL MENGGUNAKAN INLINE CSS -->
+<main class="flex-grow max-w-[1500px] mx-auto w-full px-2 sm:px-4 lg:px-8 py-4 space-y-4" id="mainContent" style="display: none;">
+<div class="hidden space-y-4" id="dashboardContent">
+<!-- GLOBAL FILTERS -->
+<div class="panel p-3 mb-2">
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 pb-2 border-b border-gray-100 relative gap-2">
+<h3 class="text-xs font-bold text-gray-700 uppercase tracking-wider">Data Filters</h3>
+<div class="flex items-center gap-3">
+<button class="text-fr-blue hover:text-blue-800 text-[10px] font-bold flex items-center gap-1 transition-colors" id="toggleFiltersBtn">
+<span class="transform transition-transform" id="filterToggleIcon">▲</span> <span id="filterToggleText">Hide Filters</span>
+</button>
+<div class="w-px h-3 bg-gray-300"></div>
+<button class="text-fr-red hover:text-red-800 text-[10px] font-bold flex items-center gap-1 transition-colors" id="globalClearBtn" title="Clear All Filters">
+<svg class="w-3 h-3" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> Clear
                         </button>
-                        <div class="w-px h-3 bg-gray-300"></div>
-                        <button id="globalClearBtn" class="text-fr-red hover:text-red-800 text-[10px] font-bold flex items-center gap-1 transition-colors" title="Clear All Filters">
-                            <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Clear
-                        </button>
-                        <div class="w-px h-3 bg-gray-300"></div>
-                        <button id="filterSettingsBtn" class="text-gray-600 hover:text-gray-800 text-[10px] font-bold flex items-center gap-1 transition-colors relative">
+<div class="w-px h-3 bg-gray-300"></div>
+<button class="text-gray-600 hover:text-gray-800 text-[10px] font-bold flex items-center gap-1 transition-colors relative" id="filterSettingsBtn">
                             ⚙️ Set Filters
                         </button>
-                        <div id="filterSettingsMenu" class="hidden absolute top-full right-0 mt-1 w-56 bg-white border border-gray-200 shadow-2xl rounded z-[60] text-[11px]">
-                            <div class="p-2 border-b border-gray-200 font-bold flex justify-between items-center bg-gray-50 rounded-t">
-                                <div class="flex flex-col">
-                                    <span>Atur Filter (Drag & Drop)</span>
-                                    <button id="resetFilterOrderBtn" class="text-[9px] text-fr-blue hover:underline text-left mt-0.5 font-normal">Reset ke Default</button>
-                                </div>
-                                <button id="closeFilterMenu" class="text-gray-500 hover:text-red-500 text-sm leading-none">&times;</button>
-                            </div>
-                            <ul id="filterSettingsList" class="max-h-64 overflow-y-auto p-1 bg-gray-50"></ul>
-                        </div>
-                    </div>
-                </div>
-                <div id="filterWrapper" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:flex lg:flex-wrap items-end gap-3 transition-all duration-300 origin-top">
-                    <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="daterange" id="dateRangeContainer">
-                        <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Date Range</label>
-                        <div class="flex flex-wrap sm:flex-nowrap items-center gap-1">
-                            <select id="quickDateSelect" class="pro-select text-[11px] w-full sm:w-[110px] p-1.5">
-                                <option value="custom">Custom</option>
-                                <option value="today">Today</option>
-                                <option value="yesterday">Yesterday</option>
-                                <option value="this_week">This Week</option>
-                                <option value="last_week">Last Week</option>
-                                <option value="7days">Last 7 Days</option>
-                                <option value="this_month">This Month</option>
-                                <option value="last_month">Last Month</option>
-                                <option value="this_year">This Year</option>
-                                <option value="choose_month">Choose Month ▸</option>
-                            </select>
-                            <div class="flex items-center gap-1 w-full sm:w-auto mt-1 sm:mt-0">
-                                <input type="date" id="filterDateStart" class="pro-input text-[11px] p-1.5 w-full sm:w-[110px]">
-                                <span class="text-fr-muted">-</span>
-                                <input type="date" id="filterDateEnd" class="pro-input text-[11px] p-1.5 w-full sm:w-[110px]">
-                            </div>
-                        </div>
-                        <div id="monthSubmenu" class="month-submenu absolute top-full left-0 sm:left-[110px] mt-1 w-48 bg-white border border-gray-200 shadow-2xl rounded z-[70]">
-                            <div class="p-2 border-b border-gray-200 bg-gray-50 font-bold text-[10px] text-gray-600 rounded-t">Pilih Bulan</div>
-                            <div id="monthList" class="p-1 max-h-[350px] overflow-y-auto"></div>
-                        </div>
-                    </div>
-                    <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="compare" id="compareContainer">
-                        <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Compare Vs</label>
-                        <div class="flex flex-wrap sm:flex-nowrap items-center gap-1">
-                            <select id="compareSelect" class="pro-select text-[11px] w-full sm:w-[100px] p-1.5 text-gray-700 border-gray-300 bg-white">
-                                <option value="prev_period">Prev Period</option>
-                                <option value="prev_year">Prev Year</option>
-                                <option value="custom">Custom</option>
-                            </select>
-                            <div id="customCompareWrapper" class="hidden items-center gap-1 w-full sm:w-auto mt-1 sm:mt-0">
-                                <input type="date" id="compareDateStart" class="pro-input text-[11px] p-1.5 w-full sm:w-[110px] border-gray-300 bg-white">
-                                <span class="text-fr-muted">-</span>
-                                <input type="date" id="compareDateEnd" class="pro-input text-[11px] p-1.5 w-full sm:w-[110px] border-gray-300 bg-white">
-                            </div>
-                        </div>
-                    </div>
-                    <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="search" id="itemSearchContainer">
-                        <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Search</label>
-                        <div class="flex items-center w-full">
-                            <select id="searchMode" class="pro-select text-[11px] p-1.5 w-[85px] rounded-r-none border-r-0 bg-gray-50 text-gray-700 outline-none focus:ring-0">
-                                <option value="item">Items</option>
-                                <option value="receipt">Receipts</option>
-                            </select>
-                            <input type="text" id="filterItemSearch" placeholder="Search..." class="pro-input text-[11px] p-1.5 w-full lg:w-[260px] rounded-l-none" autocomplete="off">
-                        </div>
-
-                        <div id="itemDropdown" class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1">
-                            <div id="clearBtnContainer"></div>
-                            <div id="itemOptionsContainer"></div>
-                        </div>
-                    </div>
-                    <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="outlet" id="outletSearchContainer">
-                        <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Outlet</label>
-                        <input type="text" id="filterOutletSearch" placeholder="All Outlets..." class="pro-input text-[11px] p-1.5 w-full lg:w-[140px] cursor-pointer" autocomplete="off">
-                        <div id="outletDropdown" class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1">
-                            <div id="clearOutletBtnContainer"></div>
-                            <div id="outletOptionsContainer"></div>
-                        </div>
-                    </div>
-
-                    <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="area" id="areaSearchContainer">
-                        <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Area</label>
-                        <input type="text" id="filterAreaSearch" placeholder="All Areas..." class="pro-input text-[11px] p-1.5 w-full lg:w-[120px] cursor-pointer" autocomplete="off">
-                        <div id="areaDropdown" class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1">
-                            <div id="clearAreaBtnContainer"></div>
-                            <div id="areaOptionsContainer"></div>
-                        </div>
-                    </div>
-                    <div class="filter-item flex flex-col shrink-0 w-full lg:w-auto" data-id="dept"><label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Dept</label><select id="filterDept" class="pro-select text-[11px] p-1.5 w-full lg:w-[100px]"><option value="ALL">All</option></select></div>
-                    <div class="filter-item flex flex-col shrink-0 w-full lg:w-auto" data-id="event"><label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Event Type</label><select id="filterEventType" class="pro-select text-[11px] p-1.5 w-full lg:w-[120px]"><option value="ALL">All</option></select></div>
-                    <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="discount" id="discountSearchContainer">
-                        <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Discount Applied</label>
-                        <input type="text" id="filterDiscountSearch" placeholder="All Discounts..." class="pro-input text-[11px] p-1.5 w-full lg:w-[200px] cursor-pointer" autocomplete="off">
-                        <div id="discountDropdown" class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1">
-                            <div id="clearDiscountBtnContainer"></div>
-                            <div id="discountOptionsContainer"></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- KPI -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-                <div class="panel p-3 border-l-2 border-l-fr-blue  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Gross Sales</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total penjualan keseluruhan sebelum dikurangi diskon atau refund.</div></div></div><h3 class="kpi-value text-fr-blue text-lg sm:text-xl" id="kpiGrossSales">0</h3></div><div class="mt-2" id="growGrossSales"></div></div>
-                <div class="panel p-3 border-l-2 border-l-fr-blue  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Net Sales</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total pendapatan bersih setelah dikurangi diskon dan refund.</div></div></div><h3 class="kpi-value text-fr-blue text-lg sm:text-xl" id="kpiNetSales">0</h3></div><div class="mt-2" id="growNetSales"></div></div>
-                <div class="panel p-3 border-l-2 border-l-fr-blue bg-white flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Collected</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total uang yang diterima dari pelanggan (termasuk pajak & layanan).</div></div></div><h3 class="kpi-value text-fr-blue text-lg sm:text-xl" id="kpiTotalCollected">0</h3></div><div class="mt-2" id="growTotalCollected"></div></div>
-                <div class="panel p-3 border-l-2 border-l-gray-400  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Transactions</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Jumlah struk/transaksi unik yang terjadi.</div></div></div><h3 class="kpi-value text-gray-900 text-lg sm:text-xl" id="kpiTransactions">0</h3></div><div class="mt-2" id="growTransactions"></div></div>
-                <div class="panel p-3 border-l-2 border-l-gray-400  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Items Sold</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total kuantitas barang/produk yang terjual.</div></div></div><h3 class="kpi-value text-gray-900 text-lg sm:text-xl" id="kpiItems">0</h3></div><div class="mt-2" id="growItems"></div></div>
-                <div class="panel p-3 border-l-2 border-l-fr-red  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Discounts</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total nilai potongan harga/diskon yang diberikan.</div></div></div><h3 class="kpi-value text-fr-red text-lg sm:text-xl" id="kpiDiscounts">0</h3></div><div class="mt-2" id="growDiscounts"></div></div>
-                <div class="panel p-3 border-l-2 border-l-fr-red  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Refunds</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total pengembalian dana kepada pelanggan.</div></div></div><h3 class="kpi-value text-fr-red text-lg sm:text-xl" id="kpiRefunds">0</h3></div><div class="mt-2" id="growRefunds"></div></div>
-                <div class="panel p-3 border-l-2 border-l-gray-400  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Tax</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total pajak yang dipungut dari penjualan.</div></div></div><h3 class="kpi-value text-gray-700 text-lg sm:text-xl" id="kpiTax">0</h3></div><div class="mt-2" id="growTax"></div></div>
-                <div class="panel p-3 border-l-2 border-l-gray-400  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Gratuity</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total biaya layanan/gratuity yang dipungut.</div></div></div><h3 class="kpi-value text-gray-700 text-lg sm:text-xl" id="kpiGratuity">0</h3></div><div class="mt-2" id="growGratuity"></div></div>
-                <div class="panel p-3 border-l-2 border-l-blue-400  flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Avg Transaction Val</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Rata-rata nilai Net Sales per transaksi.</div></div></div><h3 class="kpi-value text-blue-600 text-lg sm:text-xl" id="kpiAvgTx">0</h3></div><div class="mt-2" id="growAvgTx"></div></div>
-            </div>
-
-            <!-- CHARTS ROW 1 -->
-            <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                <div class="panel p-3 sm:p-4 lg:col-span-2 flex flex-col">
-                    <div class="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
-                        <h3 id="trendTitle" class="section-title mb-0">Trend (Net Sales)</h3>
-                        <div class="flex flex-wrap items-center gap-2">
-                            <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-                                <button id="trendNetBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">NET SALES</button>
-                                <button id="trendQtyBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">QTY</button>
-                                <button id="trendTxBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">TRANSACTIONS</button>
-                            </div>
-                            <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-                                <button id="trendDayBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">DAY</button>
-                                <button id="trendWeekBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">WEEK</button>
-                                <button id="trendMonthBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">MONTH</button>
-                                <button id="trendQuarterBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">QUARTERLY</button>
-                            </div>
-                            <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-                                <button id="trendLineBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">LINE</button>
-                                <button id="trendBarBtn" class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">BAR</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="chart-container flex-grow"><canvas id="trendChart"></canvas></div>
-                </div>
-                <div class="panel p-3 sm:p-4 flex flex-col">
-                    <div class="flex justify-between items-start mb-4">
-                        <h3 class="section-title mb-0">Sales by Category</h3>
-                        <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-                            <button id="catNetBtn" class="px-2 py-0.5 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">NET</button>
-                            <button id="catQtyBtn" class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">QTY</button>
-                            <button id="catTxBtn" class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">TX</button>
-                        </div>
-                    </div>
-                    <div class="chart-container flex-grow"><canvas id="categoryChart"></canvas></div>
-                </div>
-            </div>
-            <!-- CHARTS ROW 2 -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                <div class="panel p-3 sm:p-4 flex flex-col">
-                    <div class="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
-                        <h3 class="section-title mb-0">Location Mapping</h3>
-                        <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-                            <button id="toggleAreaBtn" class="px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">AREA</button>
-                            <button id="toggleOutletBtn" class="px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">OUTLET</button>
-                        </div>
-                    </div>
-                    <div class="chart-container flex-grow relative" style="height: 230px;">
-                        <canvas id="locationChart"></canvas>
-                    </div>
-                </div>
-                <div class="panel p-3 sm:p-4">
-                    <div class="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
-                        <h3 class="section-title mb-0">Sales by Dept</h3>
-                        <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-                            <button id="deptDoughnutBtn" class="px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">DOUGHNUT</button>
-                            <button id="deptBarBtn" class="px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">BAR</button>
-                        </div>
-                    </div>
-                    <div class="chart-container" style="height: 250px;"><canvas id="deptChart"></canvas></div>
-                </div>
-            </div>
-            <!-- CHARTS ROW 3 -->
-            <div class="grid grid-cols-1 lg:grid-cols-5 gap-3 pb-2">
-                <div class="panel p-3 sm:p-4 lg:col-span-3 overflow-x-auto">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 min-w-[450px] gap-2">
-                        <h3 class="section-title mb-0">Activity Heatmap (By Hour & Day)</h3>
-                        <div class="text-[9px] font-semibold text-fr-muted flex items-center gap-1 uppercase"><span>Low</span><div class="w-2 h-2 bg-gray-100 border border-gray-200"></div><div class="w-2 h-2 bg-fr-blue opacity-40"></div><div class="w-2 h-2 bg-fr-blue opacity-70"></div><div class="w-2 h-2 bg-fr-blue"></div><span>High</span></div>
-                    </div>
-                    <div class="min-w-[450px]"><div id="heatmapContainer" class="heatmap-grid"></div></div>
-                </div>
-                <div class="panel p-3 sm:p-4 lg:col-span-2 flex flex-col h-[320px]">
-                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
-                        <h3 class="section-title mb-0">Product Ranking</h3>
-                        <div class="flex gap-1">
-                            <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-                                <button id="rankTopBtn" class="px-2 py-0.5 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">TOP</button>
-                                <button id="rankBottomBtn" class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">BOTTOM</button>
-                            </div>
-                            <div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
-                                <button id="rankSortQtyBtn" class="px-2 py-0.5 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all">QTY</button>
-                                <button id="rankSortNetBtn" class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all">NET SALES</button>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="overflow-y-auto flex-grow">
-                        <table class="min-w-full text-left">
-                            <thead class="bg-white sticky top-0 shadow-sm">
-                                <tr>
-                                    <th class="py-2 px-2">Item</th>
-                                    <th class="py-2 px-2 text-right">Qty</th>
-                                    <th class="py-2 px-2 text-right">Net Sales</th>
-                                </tr>
-                            </thead>
-                            <tbody id="topItemsTableBody"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-
-            <!-- MTD COMPARISON: GRABFOOD vs GOFOOD -->
-            <section id="mtdPlatformSection" class="hidden space-y-3">
-                <div class="panel p-3 sm:p-4">
-                    <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-3 mb-3">
-                        <div>
-                            <h3 class="section-title mb-1">MTD Comparison — GrabFood vs GoFood</h3>
-                            <p id="mtdPlatformSubtitle" class="text-[10px] text-slate-500">Menggunakan tanggal transaksi terbaru yang tersedia sebagai cut-off MTD.</p>
-                            <div class="flex flex-wrap items-end gap-2">
-
-    <div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            Start Date
-        </label>
-        <input
-            type="date"
-            id="mtdStartDate"
-            class="pro-select text-[10px] w-[125px] p-1.5"
-        >
-    </div>
-
-    <div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            End Date
-        </label>
-        <input
-            type="date"
-            id="mtdEndDate"
-            class="pro-select text-[10px] w-[125px] p-1.5"
-        >
-    </div>
-
-    <button
-        id="mtdApplyBtn"
-        class="px-3 py-1.5 text-[10px] font-bold rounded border border-blue-200 bg-blue-50 text-blue-700"
-    >
-        Apply
-    </button>
-
-    <button
-        id="mtdResetBtn"
-        class="px-3 py-1.5 text-[10px] font-bold rounded border border-slate-200 bg-white text-slate-600"
-    >
-        Reset
-    </button>
-
+<div class="hidden absolute top-full right-0 mt-1 w-56 bg-white border border-gray-200 shadow-2xl rounded z-[60] text-[11px]" id="filterSettingsMenu">
+<div class="p-2 border-b border-gray-200 font-bold flex justify-between items-center bg-gray-50 rounded-t">
+<div class="flex flex-col">
+<span>Atur Filter (Drag & Drop)</span>
+<button class="text-[9px] text-fr-blue hover:underline text-left mt-0.5 font-normal" id="resetFilterOrderBtn">Reset ke Default</button>
 </div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            Start Date
-        </label>
-        <input
-            type="date"
-            id="mtdStartDate"
-            class="pro-select text-[10px] w-[125px] p-1.5"
-        >
-    </div>
-
-    <div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            End Date
-        </label>
-        <input
-            type="date"
-            id="mtdEndDate"
-            class="pro-select text-[10px] w-[125px] p-1.5"
-        >
-    </div>
-
-    <button
-        id="mtdApplyBtn"
-        class="px-3 py-1.5 text-[10px] font-bold rounded border border-blue-200 bg-blue-50 text-blue-700"
-    >
-        Apply
-    </button>
-
-    <button
-        id="mtdResetBtn"
-        class="px-3 py-1.5 text-[10px] font-bold rounded border border-slate-200 bg-white text-slate-600"
-    >
-        Reset
-    </button>
-
+<button class="text-gray-500 hover:text-red-500 text-sm leading-none" id="closeFilterMenu">×</button>
 </div>
-                        </div>
-                        <div class="flex flex-wrap items-end gap-2">
-
-    <div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            Start Date
-        </label>
-        <input
-            type="date"
-            id="mtdStartDate"
-            class="pro-select text-[10px] w-[125px] p-1.5"
-        >
-    </div>
-
-    <div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            End Date
-        </label>
-        <input
-            type="date"
-            id="mtdEndDate"
-            class="pro-select text-[10px] w-[125px] p-1.5"
-        >
-    </div>
-
-    <button
-        id="mtdApplyBtn"
-        class="px-3 py-1.5 text-[10px] font-bold rounded border border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100"
-    >
-        Apply
-    </button>
-
-    <button
-        id="mtdResetBtn"
-        class="px-3 py-1.5 text-[10px] font-bold rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50"
-    >
-        Reset
-    </button>
-
-    <div>
-        <label class="block text-[9px] font-bold uppercase text-slate-500 mb-1">
-            Top Item
-        </label>
-        <select id="mtdItemPlatformSelect" class="pro-select text-[10px] w-[120px] p-1.5">
-            <option value="GrabFood">GrabFood</option>
-            <option value="GoFood">GoFood</option>
-            <option value="Combined">Combined</option>
-        </select>
-    </div>
-
+<ul class="max-h-64 overflow-y-auto p-1 bg-gray-50" id="filterSettingsList"></ul>
 </div>
-                                <option value="GrabFood">GrabFood</option>
-                                <option value="GoFood">GoFood</option>
-                                <option value="Combined">Combined</option>
-                            </select>
-                        </div>
-                    </div>
+</div>
+</div>
+<div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:flex lg:flex-wrap items-end gap-3 transition-all duration-300 origin-top" id="filterWrapper">
+<div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="daterange" id="dateRangeContainer">
+<label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Date Range</label>
+<div class="flex flex-wrap sm:flex-nowrap items-center gap-1">
+<select class="pro-select text-[11px] w-full sm:w-[110px] p-1.5" id="quickDateSelect">
+<option value="custom">Custom</option>
+<option value="today">Today</option>
+<option value="yesterday">Yesterday</option>
+<option value="this_week">This Week</option>
+<option value="last_week">Last Week</option>
+<option value="7days">Last 7 Days</option>
+<option value="this_month">This Month</option>
+<option value="last_month">Last Month</option>
+<option value="this_year">This Year</option>
+<option value="choose_month">Choose Month ▸</option>
+</select>
+<div class="flex items-center gap-1 w-full sm:w-auto mt-1 sm:mt-0">
+<input class="pro-input text-[11px] p-1.5 w-full sm:w-[110px]" id="filterDateStart" type="date"/>
+<span class="text-fr-muted">-</span>
+<input class="pro-input text-[11px] p-1.5 w-full sm:w-[110px]" id="filterDateEnd" type="date"/>
+</div>
+</div>
+<div class="month-submenu absolute top-full left-0 sm:left-[110px] mt-1 w-48 bg-white border border-gray-200 shadow-2xl rounded z-[70]" id="monthSubmenu">
+<div class="p-2 border-b border-gray-200 bg-gray-50 font-bold text-[10px] text-gray-600 rounded-t">Pilih Bulan</div>
+<div class="p-1 max-h-[350px] overflow-y-auto" id="monthList"></div>
+</div>
+</div>
+<div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="compare" id="compareContainer">
+<label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Compare Vs</label>
+<div class="flex flex-wrap sm:flex-nowrap items-center gap-1">
+<select class="pro-select text-[11px] w-full sm:w-[100px] p-1.5 text-gray-700 border-gray-300 bg-white" id="compareSelect">
+<option value="prev_period">Prev Period</option>
+<option value="prev_year">Prev Year</option>
+<option value="custom">Custom</option>
+</select>
+<div class="hidden items-center gap-1 w-full sm:w-auto mt-1 sm:mt-0" id="customCompareWrapper">
+<input class="pro-input text-[11px] p-1.5 w-full sm:w-[110px] border-gray-300 bg-white" id="compareDateStart" type="date"/>
+<span class="text-fr-muted">-</span>
+<input class="pro-input text-[11px] p-1.5 w-full sm:w-[110px] border-gray-300 bg-white" id="compareDateEnd" type="date"/>
+</div>
+</div>
+</div>
+<div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="search" id="itemSearchContainer">
+<label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Search</label>
+<div class="flex items-center w-full">
+<select class="pro-select text-[11px] p-1.5 w-[85px] rounded-r-none border-r-0 bg-gray-50 text-gray-700 outline-none focus:ring-0" id="searchMode">
+<option value="item">Items</option>
+<option value="receipt">Receipts</option>
+</select>
+<input autocomplete="off" class="pro-input text-[11px] p-1.5 w-full lg:w-[260px] rounded-l-none" id="filterItemSearch" placeholder="Search..." type="text"/>
+</div>
+<div class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1" id="itemDropdown">
+<div id="clearBtnContainer"></div>
+<div id="itemOptionsContainer"></div>
+</div>
+</div>
+<div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="outlet" id="outletSearchContainer">
+<label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Outlet</label>
+<input autocomplete="off" class="pro-input text-[11px] p-1.5 w-full lg:w-[140px] cursor-pointer" id="filterOutletSearch" placeholder="All Outlets..." type="text"/>
+<div class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1" id="outletDropdown">
+<div id="clearOutletBtnContainer"></div>
+<div id="outletOptionsContainer"></div>
+</div>
+</div>
+<div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="area" id="areaSearchContainer">
+<label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Area</label>
+<input autocomplete="off" class="pro-input text-[11px] p-1.5 w-full lg:w-[120px] cursor-pointer" id="filterAreaSearch" placeholder="All Areas..." type="text"/>
+<div class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1" id="areaDropdown">
+<div id="clearAreaBtnContainer"></div>
+<div id="areaOptionsContainer"></div>
+</div>
+</div>
+<div class="filter-item flex flex-col shrink-0 w-full lg:w-auto" data-id="dept"><label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Dept</label><select class="pro-select text-[11px] p-1.5 w-full lg:w-[100px]" id="filterDept"><option value="ALL">All</option></select></div>
+<div class="filter-item flex flex-col shrink-0 w-full lg:w-auto" data-id="event"><label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Event Type</label><select class="pro-select text-[11px] p-1.5 w-full lg:w-[120px]" id="filterEventType"><option value="ALL">All</option></select></div>
+<div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="discount" id="discountSearchContainer">
+<label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Discount Applied</label>
+<input autocomplete="off" class="pro-input text-[11px] p-1.5 w-full lg:w-[200px] cursor-pointer" id="filterDiscountSearch" placeholder="All Discounts..." type="text"/>
+<div class="hidden absolute top-full left-0 min-w-full w-max max-w-[90vw] lg:max-w-md max-h-60 overflow-y-auto overflow-x-hidden bg-white border border-gray-200 shadow-xl z-[60] rounded mt-1" id="discountDropdown">
+<div id="clearDiscountBtnContainer"></div>
+<div id="discountOptionsContainer"></div>
+</div>
+</div>
+</div>
+</div>
+<!-- KPI -->
+<div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+<div class="panel p-3 border-l-2 border-l-fr-blue flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Sales</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total penjualan keseluruhan sebelum dikurangi diskon atau refund.</div></div></div><h3 class="kpi-value text-fr-blue text-lg sm:text-xl" id="kpiGrossSales">0</h3></div><div class="mt-2" id="growGrossSales"></div></div>
+<div class="panel p-3 border-l-2 border-l-fr-blue flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Net Sales</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total pendapatan bersih setelah dikurangi diskon dan refund.</div></div></div><h3 class="kpi-value text-fr-blue text-lg sm:text-xl" id="kpiNetSales">0</h3></div><div class="mt-2" id="growNetSales"></div></div>
+<div class="panel p-3 border-l-2 border-l-fr-blue bg-white flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Collected</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total uang yang diterima dari pelanggan (termasuk pajak & layanan).</div></div></div><h3 class="kpi-value text-fr-blue text-lg sm:text-xl" id="kpiTotalCollected">0</h3></div><div class="mt-2" id="growTotalCollected"></div></div>
+<div class="panel p-3 border-l-2 border-l-gray-400 flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Transactions</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Jumlah struk/transaksi unik yang terjadi.</div></div></div><h3 class="kpi-value text-gray-900 text-lg sm:text-xl" id="kpiTransactions">0</h3></div><div class="mt-2" id="growTransactions"></div></div>
+<div class="panel p-3 border-l-2 border-l-gray-400 flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Items Sold</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total kuantitas barang/produk yang terjual.</div></div></div><h3 class="kpi-value text-gray-900 text-lg sm:text-xl" id="kpiItems">0</h3></div><div class="mt-2" id="growItems"></div></div>
+<div class="panel p-3 border-l-2 border-l-fr-red flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Discounts</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total nilai potongan harga/diskon yang diberikan.</div></div></div><h3 class="kpi-value text-fr-red text-lg sm:text-xl" id="kpiDiscounts">0</h3></div><div class="mt-2" id="growDiscounts"></div></div>
+<div class="panel p-3 border-l-2 border-l-fr-red flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Refunds</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total pengembalian dana kepada pelanggan.</div></div></div><h3 class="kpi-value text-fr-red text-lg sm:text-xl" id="kpiRefunds">0</h3></div><div class="mt-2" id="growRefunds"></div></div>
+<div class="panel p-3 border-l-2 border-l-gray-400 flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Tax</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total pajak yang dipungut dari penjualan.</div></div></div><h3 class="kpi-value text-gray-700 text-lg sm:text-xl" id="kpiTax">0</h3></div><div class="mt-2" id="growTax"></div></div>
+<div class="panel p-3 border-l-2 border-l-gray-400 flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Total Gratuity</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Total biaya layanan/gratuity yang dipungut.</div></div></div><h3 class="kpi-value text-gray-700 text-lg sm:text-xl" id="kpiGratuity">0</h3></div><div class="mt-2" id="growGratuity"></div></div>
+<div class="panel p-3 border-l-2 border-l-blue-400 flex flex-col justify-between overflow-visible"><div><div class="flex justify-between items-start"><p class="kpi-title">Average Transaction</p><div class="group relative cursor-help text-gray-400 hover:text-fr-blue flex items-center justify-center w-3.5 h-3.5 rounded-full border border-gray-300 hover:border-fr-blue transition-colors ml-1"><span class="text-[11px] font-bold leading-[0] -mt-[1px]">⋮</span><div class="hidden group-hover:block absolute bottom-full left-1/2 transform -translate-x-1/2 mb-1 z-[150] bg-gray-800 text-white p-2 rounded w-48 shadow-xl text-[10px] text-center font-normal normal-case tracking-normal">Rata-rata nilai Net Sales per transaksi.</div></div></div><h3 class="kpi-value text-blue-600 text-lg sm:text-xl" id="kpiAvgTx">0</h3></div><div class="mt-2" id="growAvgTx"></div></div>
+</div>
+<!-- CHARTS ROW 1 -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+<div class="panel p-3 sm:p-4 lg:col-span-2 flex flex-col">
+<div class="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
+<h3 class="section-title mb-0" id="trendTitle">Trend (Net Sales)</h3>
+<div class="flex flex-wrap items-center gap-2">
+<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="trendNetBtn">NET SALES</button>
+<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="trendQtyBtn">QTY</button>
+<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="trendTxBtn">TRANSACTIONS</button>
+</div>
+<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="trendDayBtn">DAY</button>
+<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="trendWeekBtn">WEEK</button>
+<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="trendMonthBtn">MONTH</button>
+<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="trendQuarterBtn">QUARTERLY</button>
+</div>
+<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="trendLineBtn">LINE</button>
+<button class="px-2 sm:px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="trendBarBtn">BAR</button>
+</div>
+</div>
+</div>
+<div class="chart-container flex-grow"><canvas id="trendChart"></canvas></div>
+</div>
+<div class="panel p-3 sm:p-4 flex flex-col">
+<div class="flex justify-between items-start mb-4">
+<h3 class="section-title mb-0">Sales by Category</h3>
+<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+<button class="px-2 py-0.5 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="catNetBtn">NET</button>
+<button class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="catQtyBtn">QTY</button>
+<button class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="catTxBtn">TX</button>
+</div>
+</div>
+<div class="chart-container flex-grow"><canvas id="categoryChart"></canvas></div>
+</div>
+</div>
+<!-- CHARTS ROW 2 -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+<div class="panel p-3 sm:p-4 flex flex-col">
+<div class="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
+<h3 class="section-title mb-0">Location Mapping</h3>
+<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+<button class="px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="toggleAreaBtn">AREA</button>
+<button class="px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="toggleOutletBtn">OUTLET</button>
+</div>
+</div>
+<div class="chart-container flex-grow relative" style="height: 230px;">
+<canvas id="locationChart"></canvas>
+</div>
+</div>
+<div class="panel p-3 sm:p-4">
+<div class="flex flex-col sm:flex-row justify-between items-start mb-4 gap-2">
+<h3 class="section-title mb-0">Sales by Dept</h3>
+<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+<button class="px-3 py-1 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="deptDoughnutBtn">DOUGHNUT</button>
+<button class="px-3 py-1 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="deptBarBtn">BAR</button>
+</div>
+</div>
+<div class="chart-container" style="height: 250px;"><canvas id="deptChart"></canvas></div>
+</div>
+</div>
+<!-- CHARTS ROW 3 -->
+<div class="grid grid-cols-1 lg:grid-cols-5 gap-3 pb-2">
+<div class="panel p-3 sm:p-4 lg:col-span-3 overflow-x-auto">
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-4 min-w-[450px] gap-2">
+<h3 class="section-title mb-0">Activity Heatmap (By Hour & Day)</h3>
+<div class="text-[9px] font-semibold text-fr-muted flex items-center gap-1 uppercase"><span>Low</span><div class="w-2 h-2 bg-gray-100 border border-gray-200"></div><div class="w-2 h-2 bg-fr-blue opacity-40"></div><div class="w-2 h-2 bg-fr-blue opacity-70"></div><div class="w-2 h-2 bg-fr-blue"></div><span>High</span></div>
+</div>
+<div class="min-w-[450px]"><div class="heatmap-grid" id="heatmapContainer"></div></div>
+</div>
+<div class="panel p-3 sm:p-4 lg:col-span-2 flex flex-col h-[320px]">
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-2 gap-2">
+<h3 class="section-title mb-0">Product Ranking</h3>
+<div class="flex gap-1">
+<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+<button class="px-2 py-0.5 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="rankTopBtn">TOP</button>
+<button class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="rankBottomBtn">BOTTOM</button>
+</div>
+<div class="flex bg-gray-100 p-0.5 rounded border border-gray-200">
+<button class="px-2 py-0.5 text-[10px] font-bold rounded bg-white shadow-sm text-fr-blue transition-all" id="rankSortQtyBtn">QTY</button>
+<button class="px-2 py-0.5 text-[10px] font-bold rounded text-gray-500 hover:text-gray-700 transition-all" id="rankSortNetBtn">NET SALES</button>
+</div>
+</div>
+</div>
+<div class="overflow-y-auto flex-grow">
+<table class="min-w-full text-left">
+<thead class="bg-white sticky top-0 shadow-sm">
+<tr>
+<th class="py-2 px-2">Item</th>
+<th class="py-2 px-2 text-right">Qty</th>
+<th class="py-2 px-2 text-right">Net Sales</th>
+</tr>
+</thead>
+<tbody id="topItemsTableBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+<!-- MTD COMPARISON: GRABFOOD vs GOFOOD -->
 
-                    <div class="grid grid-cols-2 lg:grid-cols-4 gap-2 mb-3">
-                        <div class="rounded border border-slate-200 p-2.5 bg-slate-50">
-                            <div class="kpi-title">Transactions</div>
-                            <div class="grid grid-cols-2 gap-2 mt-1">
-                                <div><div class="text-[9px] text-slate-500">GrabFood</div><div id="mtdGrabTx" class="font-bold text-sm">0</div><div id="mtdGrabTxGrowth" class="text-[9px]"></div></div>
-                                <div><div class="text-[9px] text-slate-500">GoFood</div><div id="mtdGoTx" class="font-bold text-sm">0</div><div id="mtdGoTxGrowth" class="text-[9px]"></div></div>
-                            </div>
-                        </div>
-                        <div class="rounded border border-slate-200 p-2.5 bg-slate-50">
-                            <div class="kpi-title">Sales</div>
-                            <div class="grid grid-cols-2 gap-2 mt-1">
-                                <div><div class="text-[9px] text-slate-500">GrabFood</div><div id="mtdGrabSales" class="font-bold text-sm">Rp0</div><div id="mtdGrabSalesGrowth" class="text-[9px]"></div></div>
-                                <div><div class="text-[9px] text-slate-500">GoFood</div><div id="mtdGoSales" class="font-bold text-sm">Rp0</div><div id="mtdGoSalesGrowth" class="text-[9px]"></div></div>
-                            </div>
-                        </div>
-                        <div class="rounded border border-slate-200 p-2.5 bg-slate-50">
-                            <div class="kpi-title">Qty Sold</div>
-                            <div class="grid grid-cols-2 gap-2 mt-1">
-                                <div><div class="text-[9px] text-slate-500">GrabFood</div><div id="mtdGrabQty" class="font-bold text-sm">0</div><div id="mtdGrabQtyGrowth" class="text-[9px]"></div></div>
-                                <div><div class="text-[9px] text-slate-500">GoFood</div><div id="mtdGoQty" class="font-bold text-sm">0</div><div id="mtdGoQtyGrowth" class="text-[9px]"></div></div>
-                            </div>
-                        </div>
-                        <div class="rounded border border-slate-200 p-2.5 bg-slate-50">
-                            <div class="kpi-title">AOV</div>
-                            <div class="grid grid-cols-2 gap-2 mt-1">
-                                <div><div class="text-[9px] text-slate-500">GrabFood</div><div id="mtdGrabAov" class="font-bold text-sm">Rp0</div><div id="mtdGrabAovGrowth" class="text-[9px]"></div></div>
-                                <div><div class="text-[9px] text-slate-500">GoFood</div><div id="mtdGoAov" class="font-bold text-sm">Rp0</div><div id="mtdGoAovGrowth" class="text-[9px]"></div></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                        <div class="border border-slate-200 rounded p-3">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-[11px] font-bold text-slate-700">Top Performer Outlet</h4>
-                                <select id="mtdOutletMetricSelect" class="pro-select text-[10px] w-[110px] p-1">
-                                    <option value="sales">Sales</option>
-                                    <option value="tx">Transactions</option>
-                                    <option value="qty">Qty</option>
-                                </select>
-                            </div>
-                            <div class="grid grid-cols-2 gap-3">
-                                <div>
-                                    <div class="text-[9px] font-bold text-emerald-700 mb-1">GRABFOOD</div>
-                                    <div class="overflow-y-auto max-h-52"><table class="min-w-full"><thead><tr><th class="py-1 text-left">Outlet</th><th class="py-1 text-right">Value</th></tr></thead><tbody id="mtdGrabOutletBody"></tbody></table></div>
-                                </div>
-                                <div>
-                                    <div class="text-[9px] font-bold text-orange-700 mb-1">GOFOOD</div>
-                                    <div class="overflow-y-auto max-h-52"><table class="min-w-full"><thead><tr><th class="py-1 text-left">Outlet</th><th class="py-1 text-right">Value</th></tr></thead><tbody id="mtdGoOutletBody"></tbody></table></div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="border border-slate-200 rounded p-3">
-                            <div class="flex items-center justify-between mb-2">
-                                <h4 class="text-[11px] font-bold text-slate-700">Top 10 Item</h4>
-                                <span class="text-[9px] text-slate-500">Qty • Sales • Contribution</span>
-                            </div>
-                            <div class="overflow-y-auto max-h-60">
-                                <table class="min-w-full">
-                                    <thead><tr><th class="py-1 text-left">Item</th><th class="py-1 text-right">Qty</th><th class="py-1 text-right">Sales</th><th class="py-1 text-right">%</th></tr></thead>
-                                    <tbody id="mtdTopItemBody"></tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <!-- TRANSACTION TABLE -->
-            <div class="panel p-3 sm:p-4 flex flex-col mb-8">
-                <div class="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-4 gap-2">
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 relative w-full lg:w-auto">
-                        <h3 class="section-title mb-0">Transaction Details</h3>
-                        <div class="flex flex-wrap items-center gap-2 mb-0 sm:mb-2">
-                            <button id="exportTxBtn" class="px-3 py-1 bg-fr-blue hover:bg-blue-800 text-white text-[10px] font-bold rounded shadow-sm transition-colors flex items-center gap-1" title="Download Tabel sebagai File CSV">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Export
+<!-- TRANSACTION TABLE -->
+<div class="panel p-3 sm:p-4 flex flex-col mb-8">
+<div class="flex flex-col lg:flex-row justify-between items-start lg:items-end mb-4 gap-2">
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 relative w-full lg:w-auto">
+<h3 class="section-title mb-0">Transaction Details</h3>
+<div class="flex flex-wrap items-center gap-2 mb-0 sm:mb-2">
+<button class="px-3 py-1 bg-fr-blue hover:bg-blue-800 text-white text-[10px] font-bold rounded shadow-sm transition-colors flex items-center gap-1" id="exportTxBtn" title="Download Tabel sebagai File CSV">
+<svg class="w-3 h-3" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> Export
                             </button>
-                            <button id="clearAllFiltersBtn" class="px-3 py-1 bg-white hover:bg-red-50 text-fr-red text-[10px] font-bold rounded border border-gray-300 shadow-sm transition-colors flex items-center gap-1">
-                                <svg class="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg> Clear
+<button class="px-3 py-1 bg-white hover:bg-red-50 text-fr-red text-[10px] font-bold rounded border border-gray-300 shadow-sm transition-colors flex items-center gap-1" id="clearAllFiltersBtn">
+<svg class="w-3 h-3" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M6 18L18 6M6 6l12 12" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> Clear
                             </button>
-                            <button id="colSettingsBtn" class="px-3 py-1 bg-white hover:bg-gray-50 text-gray-700 text-[10px] font-bold rounded border border-gray-300 shadow-sm transition-colors flex items-center gap-1">
+<button class="px-3 py-1 bg-white hover:bg-gray-50 text-gray-700 text-[10px] font-bold rounded border border-gray-300 shadow-sm transition-colors flex items-center gap-1" id="colSettingsBtn">
                                 ⚙️ Columns
                             </button>
-                        </div>
-
-                        <div id="colSettingsMenu" class="hidden absolute top-full left-0 sm:left-[140px] mt-1 w-56 bg-white border border-gray-200 shadow-2xl rounded z-[60] text-[11px]">
-                            <div class="p-2 border-b border-gray-200 font-bold flex justify-between items-center bg-gray-50 rounded-t">
-                                <span>Atur Kolom (Drag & Drop)</span>
-                                <button id="closeColMenu" class="text-gray-500 hover:text-red-500 text-sm leading-none">&times;</button>
-                            </div>
-                            <ul id="colList" class="max-h-64 overflow-y-auto p-1 bg-gray-50"></ul>
-                        </div>
-                    </div>
-
-                    <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-[11px] w-full lg:w-auto mt-2 lg:mt-0">
-                        <div class="flex items-center gap-1.5 font-semibold text-gray-600">
+</div>
+<div class="hidden absolute top-full left-0 sm:left-[140px] mt-1 w-56 bg-white border border-gray-200 shadow-2xl rounded z-[60] text-[11px]" id="colSettingsMenu">
+<div class="p-2 border-b border-gray-200 font-bold flex justify-between items-center bg-gray-50 rounded-t">
+<span>Atur Kolom (Drag & Drop)</span>
+<button class="text-gray-500 hover:text-red-500 text-sm leading-none" id="closeColMenu">×</button>
+</div>
+<ul class="max-h-64 overflow-y-auto p-1 bg-gray-50" id="colList"></ul>
+</div>
+</div>
+<div class="flex flex-col sm:flex-row items-start sm:items-center gap-3 text-[11px] w-full lg:w-auto mt-2 lg:mt-0">
+<div class="flex items-center gap-1.5 font-semibold text-gray-600">
                             Baris:
-                            <select id="rowSelect" class="border border-gray-300 rounded px-1.5 py-1 text-[11px] bg-white outline-none cursor-pointer focus:border-fr-blue transition-colors">
-                                <option value="15" selected>15</option>
-                                <option value="30">30</option>
-                                <option value="50">50</option>
-                                <option value="75">75</option>
-                                <option value="100">100</option>
-                            </select>
-                        </div>
-                        <div class="flex flex-wrap items-center gap-1.5">
-                            <button id="firstPageBtn" class="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors" title="First Page">«</button>
-                            <button id="prevPageBtn" class="px-2 py-1 sm:px-3 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors">&lt; Prev</button>
-                            <button id="nextPageBtn" class="px-2 py-1 sm:px-3 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors">Next &gt;</button>
-                            <button id="lastPageBtn" class="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors" title="Last Page">»</button>
-                            <div class="flex items-center gap-1.5 ml-1">
-                                <span class="font-semibold text-fr-text text-[11px]">Page</span>
-                                <input type="number" id="pageJumpInput" class="border border-gray-300 rounded px-1.5 py-1 w-[50px] text-center text-[11px] font-semibold focus:border-fr-blue outline-none" min="1" value="1">
-                                <span class="font-semibold text-fr-text text-[11px]" id="totalPagesText">/ 1</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="overflow-x-auto rounded border border-gray-200">
-                    <table class="min-w-full text-left whitespace-nowrap" id="txTable">
-                        <thead class="bg-gray-50 border-b border-gray-200"><tr id="txTableHeadRow"></tr></thead>
-                        <tbody id="txTableBody"></tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </main>
-
-    <!-- Advanced Compare Modal -->
-    <div id="advCompareModal" class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[10000] hidden flex items-center justify-center p-2 sm:p-4">
-        <div class="bg-white rounded shadow-xl w-full max-w-6xl flex flex-col max-h-[95vh] h-full sm:h-[800px]">
-            <div class="px-3 sm:px-5 py-3 border-b border-gray-200 bg-gray-50 rounded-t">
-                <div class="flex justify-between items-center">
-                    <h3 id="advCompareModalTitle" class="font-bold text-fr-text text-sm">Advanced Compare</h3>
-                    <button id="closeAdvCompareBtn" class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
-                </div>
-                <div class="flex gap-1 mt-2">
-                    <button id="advCohortTabBtn" class="px-3 py-1.5 rounded border border-blue-200 bg-blue-50 text-fr-blue text-[10px] font-bold">
+                            <select class="border border-gray-300 rounded px-1.5 py-1 text-[11px] bg-white outline-none cursor-pointer focus:border-fr-blue transition-colors" id="rowSelect">
+<option selected="" value="15">15</option>
+<option value="30">30</option>
+<option value="50">50</option>
+<option value="75">75</option>
+<option value="100">100</option>
+</select>
+</div>
+<div class="flex flex-wrap items-center gap-1.5">
+<button class="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors" id="firstPageBtn" title="First Page">«</button>
+<button class="px-2 py-1 sm:px-3 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors" id="prevPageBtn">< Prev</button>
+<button class="px-2 py-1 sm:px-3 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors" id="nextPageBtn">Next ></button>
+<button class="px-2 py-1 sm:px-2.5 sm:py-1.5 bg-white border border-gray-300 rounded shadow-sm hover:bg-gray-50 font-semibold disabled:opacity-50 transition-colors" id="lastPageBtn" title="Last Page">»</button>
+<div class="flex items-center gap-1.5 ml-1">
+<span class="font-semibold text-fr-text text-[11px]">Page</span>
+<input class="border border-gray-300 rounded px-1.5 py-1 w-[50px] text-center text-[11px] font-semibold focus:border-fr-blue outline-none" id="pageJumpInput" min="1" type="number" value="1"/>
+<span class="font-semibold text-fr-text text-[11px]" id="totalPagesText">/ 1</span>
+</div>
+</div>
+</div>
+</div>
+<div class="overflow-x-auto rounded border border-gray-200">
+<table class="min-w-full text-left whitespace-nowrap" id="txTable">
+<thead class="bg-gray-50 border-b border-gray-200"><tr id="txTableHeadRow"></tr></thead>
+<tbody id="txTableBody"></tbody>
+</table>
+</div>
+</div>
+</div>
+</main>
+<!-- Advanced Compare Modal -->
+<div class="fixed inset-0 bg-slate-900 bg-opacity-50 z-[10000] hidden flex items-center justify-center p-2 sm:p-4" id="advCompareModal">
+<div class="bg-white rounded shadow-xl w-full max-w-6xl flex flex-col max-h-[95vh] h-full sm:h-[800px]">
+<div class="px-3 sm:px-5 py-3 border-b border-gray-200 bg-gray-50 rounded-t">
+<div class="flex justify-between items-center">
+<h3 class="font-bold text-fr-text text-sm" id="advCompareModalTitle">Advanced Compare</h3>
+<button class="text-gray-400 hover:text-gray-600 text-lg leading-none" id="closeAdvCompareBtn">×</button>
+</div>
+<div class="flex gap-1 mt-2">
+<button class="px-3 py-1.5 rounded border border-blue-200 bg-blue-50 text-fr-blue text-[10px] font-bold" id="advCohortTabBtn">
                         Advanced Comparison
                     </button>
-                    <button id="advMtdTabBtn" class="px-3 py-1.5 rounded border border-gray-200 bg-white text-gray-500 text-[10px] font-bold hover:bg-gray-100">
-                        MTD GrabFood vs GoFood
-                    </button>
-                </div>
-            </div>
-            <div id="advCohortPanel" class="flex flex-col sm:flex-row flex-grow overflow-hidden">
-                <div class="w-full sm:w-1/3 border-b sm:border-b-0 sm:border-r border-gray-200 bg-gray-50 flex flex-col max-h-[40vh] sm:max-h-full">
-                    <div class="p-3 border-b border-gray-200 flex justify-between items-center">
-                        <span class="font-bold text-xs text-gray-700">Cohorts / Groups</span>
-                        <button id="addAdvGroupBtn" class="px-2 py-1 bg-fr-blue text-white text-[10px] font-bold rounded hover:bg-blue-800">+ Add Group</button>
-                    </div>
-                    <div id="advGroupContainer" class="p-3 overflow-y-auto flex-grow flex flex-col gap-3"></div>
-                    <div class="p-3 border-t border-gray-200 bg-white">
-                        <button id="runAdvCompareBtn" class="w-full py-2 bg-fr-blue text-white text-xs font-bold rounded hover:bg-blue-800 shadow-sm transition-colors">Run Comparison</button>
-                    </div>
-                </div>
-                <div class="w-full sm:w-2/3 flex flex-col bg-white overflow-hidden">
-                    <div class="p-3 sm:p-4 border-b border-gray-200 bg-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
-                        <h4 class="font-bold text-xs text-gray-700">Comparison Results <span class="text-[10px] font-normal text-gray-500 block sm:inline sm:ml-2">(Group 1 otomatis menjadi Baseline persentase)</span></h4>
-                        <button id="exportAdvCompareBtn" class="px-3 py-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded text-[10px] font-bold shadow-sm hidden transition-colors flex items-center gap-1">
-                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path></svg> Export CSV
+
+</div>
+</div>
+<div class="flex flex-col sm:flex-row flex-grow overflow-hidden" id="advCohortPanel">
+<div class="w-full sm:w-1/3 border-b sm:border-b-0 sm:border-r border-gray-200 bg-gray-50 flex flex-col max-h-[40vh] sm:max-h-full">
+<div class="p-3 border-b border-gray-200 flex justify-between items-center">
+<span class="font-bold text-xs text-gray-700">Cohorts / Groups</span>
+<button class="px-2 py-1 bg-fr-blue text-white text-[10px] font-bold rounded hover:bg-blue-800" id="addAdvGroupBtn">+ Add Group</button>
+</div>
+<div class="p-3 overflow-y-auto flex-grow flex flex-col gap-3" id="advGroupContainer"></div>
+<div class="p-3 border-t border-gray-200 bg-white">
+<button class="w-full py-2 bg-fr-blue text-white text-xs font-bold rounded hover:bg-blue-800 shadow-sm transition-colors" id="runAdvCompareBtn">Run Comparison</button>
+</div>
+</div>
+<div class="w-full sm:w-2/3 flex flex-col bg-white overflow-hidden">
+<div class="p-3 sm:p-4 border-b border-gray-200 bg-white flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+<h4 class="font-bold text-xs text-gray-700">Comparison Results <span class="text-[10px] font-normal text-gray-500 block sm:inline sm:ml-2">(Group 1 otomatis menjadi Baseline persentase)</span></h4>
+<button class="px-3 py-1 bg-white border border-gray-300 text-gray-700 hover:bg-gray-100 rounded text-[10px] font-bold shadow-sm hidden transition-colors flex items-center gap-1" id="exportAdvCompareBtn">
+<svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewbox="0 0 24 24"><path d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path></svg> Export CSV
                         </button>
-                    </div>
-                    <div class="p-3 sm:p-4 overflow-auto flex-grow">
-                        <table class="min-w-full text-left whitespace-nowrap border-collapse" id="advCompareTable">
-                            <thead class="bg-gray-50 border-b border-gray-200 sticky top-0" id="advCompareHead"></thead>
-                            <tbody id="advCompareBody">
-                                <tr><td class="text-center py-12 text-gray-400 text-xs italic">Tambahkan minimal 2 group di panel kiri, lalu klik "Run Comparison"</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-
-            <div id="advMtdPanel" class="hidden flex-grow overflow-y-auto bg-slate-50 p-2 sm:p-4"></div>
-        </div>
-    </div>
-
-    <script>
+</div>
+<div class="p-3 sm:p-4 overflow-auto flex-grow">
+<table class="min-w-full text-left whitespace-nowrap border-collapse" id="advCompareTable">
+<thead class="bg-gray-50 border-b border-gray-200 sticky top-0" id="advCompareHead"></thead>
+<tbody id="advCompareBody">
+<tr><td class="text-center py-12 text-gray-400 text-xs italic">Tambahkan minimal 2 group di panel kiri, lalu klik "Run Comparison"</td></tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+<div class="hidden flex-grow overflow-y-auto bg-slate-50 p-2 sm:p-4" id="advMtdPanel"></div>
+</div>
+</div>
+<script>
         function showToast(msg, type='info') {
             const container = document.getElementById('toastContainer');
             const toast = document.createElement('div');
@@ -828,6 +618,17 @@
         Chart.defaults.plugins.tooltip.borderWidth = 1;
 
         let rawData = []; let filteredData = []; let charts = {}; let locationMode = 'area';
+        let activeDashboardPlatform = 'GrabFood';
+        function matchesDashboardPlatform(row) {
+            const p = String(row && row.Platform || '').toLowerCase().replace(/[\s_-]+/g, '');
+            const isGrab = p.includes('grabfood');
+            const isGo = p.includes('gofood');
+            if (activeDashboardPlatform === 'GrabFood') return isGrab;
+            if (activeDashboardPlatform === 'GoFood') return isGo;
+            if (activeDashboardPlatform === 'GrabFood+GoFood') return isGrab || isGo;
+            // Baris dari ekspor Moka dapat memiliki Platform seperti Other atau STATIC QR CHANNEL.
+            return !isGrab && !isGo;
+        }
         let currentSourceFileName = ''; let currentAggDate = {}; let trendMode = 'net'; let trendAgg = 'day'; let catMode = 'net'; let rankMode = 'top'; let rankSortBy = 'qty'; let deptChartType = 'bar'; let currentAggArea = {}; let currentAggOutlet = {}; let currentAggDept = {}; let currentAggCat = {}; let showChartLabels = false;
         let trendChartType = 'line';
         let txSortCol = 'DateStr'; let txSortAsc = true; let txCurrentPage = 1; let txRowsPerPage = 15; let txSortedData = [];
@@ -968,7 +769,7 @@
 
         function populateAreaDropdownUI() {
             const values = new Set();
-            for (let i = 0; i < rawData.length; i++) { const v = rawData[i].AREA; if (v && v !== 'Unknown') values.add(String(v)); }
+            for (let i = 0; i < rawData.length; i++) { const r = rawData[i]; if (!matchesDashboardPlatform(r)) continue; const v = r.AREA; if (v && v !== 'Unknown') values.add(String(v)); }
             allAreasList = Array.from(values).sort(); renderAreaDropdown();
         }
         function renderAreaDropdown(searchStr = '') {
@@ -1022,6 +823,7 @@
 
         function getAvailableOptions(targetColumn, excludeSearchMode = false) {
             let tempFiltered = rawData.filter(r => {
+                if (!matchesDashboardPlatform(r)) return false;
                 let m = true; const sv = (v) => v ? v.toString().trim() : '';
                 const sStart = filters.dStart.value; const sEnd = filters.dEnd.value;
 
@@ -1252,6 +1054,23 @@
             return i === undefined ? undefined : row[i];
         };
 
+        // Ambil nilai dari beberapa kemungkinan nama kolom item/menu.
+        // Export GrabFood/GoFood tidak selalu memakai nama header yang sama.
+        const getAny = (row, keys) => {
+            for (const key of keys) {
+                const value = get(row, key);
+                if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+            }
+            return undefined;
+        };
+
+        const itemValue = row => getAny(row, [
+            'Items', 'Item', 'Item Name', 'ItemName', 'Product', 'Product Name',
+            'ProductName', 'Menu', 'Menu Item', 'MenuItem', 'Order Item',
+            'OrderItem', 'Item Description', 'ItemDescription', 'Description',
+            'Nama Item', 'Nama Produk', 'Nama Menu'
+        ]);
+
         const numFields = [
             'Net Sales','Gross Sales','Quantity','Tax','Gratuity','Discounts',
             'Refunds','Total Collected','Total Collected Exc Rounding','Discount Applied (Rp)'
@@ -1269,7 +1088,7 @@
                 ?? get(row, 'Order Date')
                 ?? get(row, 'Transaction Date')
                 ?? get(row, 'Created At');
-            const rawItems = get(row, 'Items') ?? get(row, 'Description');
+            const rawItems = itemValue(row);
             const rawReceipt = get(row, 'Receipt Number')
                 ?? get(row, 'Transaction ID')
                 ?? get(row, 'Order ID');
@@ -1285,7 +1104,8 @@
             set('AREA', get(row,'AREA') ? String(get(row,'AREA')).trim() : 'Unknown');
             set('DEPT', get(row,'DEPT') ? String(get(row,'DEPT')).trim() : 'Unknown');
             set('Event Type', get(row,'Event Type') ? String(get(row,'Event Type')).trim() : 'Unknown');
-            set('Items', get(row,'Items') ? String(get(row,'Items')).trim() : 'Unknown');
+            const baseItem = itemValue(row);
+            set('Items', baseItem ? String(baseItem).trim() : 'Unknown');
 
             // Platform: gunakan kolom platform bila tersedia; jika tidak, infer dari nama file sumber.
             const explicitPlatform = get(row,'Platform') ?? get(row,'platform') ?? get(row,'Channel') ?? get(row,'channel') ?? '';
@@ -1321,10 +1141,12 @@
                     set('Outlet', String(outlet).trim());
                 }
 
-                // Item description
-                const description = get(row, 'Description');
+                // Item / menu: setiap export platform bisa memakai header berbeda.
+                const description = itemValue(row);
                 if (description !== undefined && description !== null && String(description).trim()) {
                     set('Items', String(description).trim());
+                } else {
+                    set('Items', 'Unknown');
                 }
 
                 // One platform row = one transaction.
@@ -1530,7 +1352,7 @@
         const discountSearch = document.getElementById('filterDiscountSearch'); const discountDropdown = document.getElementById('discountDropdown'); const discountOptContainer = document.getElementById('discountOptionsContainer'); const clearDiscountBtnContainer = document.getElementById('clearDiscountBtnContainer');
         function populateDiscountDropdownUI() {
             const values = new Set();
-            for (let i = 0; i < rawData.length; i++) { const v = rawData[i]['Discount Applied']; if (v && v !== 'Unknown') values.add(String(v)); }
+            for (let i = 0; i < rawData.length; i++) { const r = rawData[i]; if (!matchesDashboardPlatform(r)) continue; const v = r['Discount Applied']; if (v && v !== 'Unknown') values.add(String(v)); }
             allDiscountsList = Array.from(values).sort(); renderDiscountDropdown();
         }
         function renderDiscountDropdown(searchStr = '') {
@@ -1587,6 +1409,7 @@
             const values = new Set();
             for (let i = 0; i < rawData.length; i++) {
                 const r = rawData[i];
+                if (!matchesDashboardPlatform(r)) continue;
                 const value = mode === 'item' ? r.Items : r['Receipt Number'];
                 if (value && value !== 'Unknown' && value !== '-') values.add(String(value));
             }
@@ -1647,7 +1470,7 @@
         const outletSearch = document.getElementById('filterOutletSearch'); const outletDropdown = document.getElementById('outletDropdown'); const outletOptContainer = document.getElementById('outletOptionsContainer'); const clearOutletBtnContainer = document.getElementById('clearOutletBtnContainer');
         function populateOutletDropdownUI() {
             const values = new Set();
-            for (let i = 0; i < rawData.length; i++) { const v = rawData[i].Outlet; if (v && v !== 'Unknown') values.add(String(v)); }
+            for (let i = 0; i < rawData.length; i++) { const r = rawData[i]; if (!matchesDashboardPlatform(r)) continue; const v = r.Outlet; if (v && v !== 'Unknown') values.add(String(v)); }
             allOutletsList = Array.from(values).sort(); renderOutletDropdown();
         }
         function renderOutletDropdown(searchStr = '') {
@@ -1714,7 +1537,9 @@
         function getDataDateBounds() {
             let min = '', max = '';
             for (let i = 0; i < rawData.length; i++) {
-                const d = rawData[i] && rawData[i].DateStr;
+                const r = rawData[i];
+                if (!matchesDashboardPlatform(r)) continue;
+                const d = r && r.DateStr;
                 if (!d) continue;
                 if (!min || d < min) min = d;
                 if (!max || d > max) max = d;
@@ -1740,6 +1565,7 @@
             const depts = new Set(), events = new Set(), outlets = new Set(), discounts = new Set(), areas = new Set();
             for (let i = 0; i < rawData.length; i++) {
                 const r = rawData[i];
+                if (!matchesDashboardPlatform(r)) continue;
                 if (r.DEPT && r.DEPT !== 'Unknown') depts.add(String(r.DEPT).trim());
                 if (r['Event Type'] && r['Event Type'] !== 'Unknown') events.add(String(r['Event Type']).trim());
                 if (r.Outlet && r.Outlet !== 'Unknown') outlets.add(String(r.Outlet).trim());
@@ -2048,6 +1874,7 @@ document.getElementById('mtdResetBtn')?.addEventListener(
         async function executeFilterAndRender() {
             const sStart = filters.dStart.value; const sEnd = filters.dEnd.value; const sDept = filters.dept.value; const sEvt = filters.eventType.value;
             filteredData = rawData.filter(r => {
+                if (!matchesDashboardPlatform(r)) return false;
                 let m = true; const sv = (v) => v ? v.toString().trim() : '';
                 if (sStart && (!r.DateStr || r.DateStr < sStart)) m = false; if (sEnd && (!r.DateStr || r.DateStr > sEnd)) m = false;
                 if (selectedAreasSet.size > 0 && !selectedAreasSet.has(sv(r['AREA']))) m = false; if (selectedOutletsSet.size > 0 && !selectedOutletsSet.has(sv(r['Outlet']))) m = false;
@@ -2119,6 +1946,7 @@ document.getElementById('mtdResetBtn')?.addEventListener(
         // Agregasi langsung; hindari membuat array prevData besar di memori.
         for (let rowIndex = 0; rowIndex < rawData.length; rowIndex++) {
             const r = rawData[rowIndex];
+            if (!matchesDashboardPlatform(r)) continue;
             if (!r.DateStr || r.DateStr < pStartStr || r.DateStr > pEndStr) continue;
             if (selectedAreasSet.size > 0 && !selectedAreasSet.has(sv(r['AREA']))) continue;
             if (selectedOutletsSet.size > 0 && !selectedOutletsSet.has(sv(r['Outlet']))) continue;
@@ -2929,6 +2757,7 @@ document.getElementById('mtdResetBtn')?.addEventListener(
         const items = new Set(), discounts = new Set(), outlets = new Set(), areas = new Set(), depts = new Set(), events = new Set();
         for (let i = 0; i < rawData.length; i++) {
             const r = rawData[i];
+            if (!matchesDashboardPlatform(r)) continue;
             const add = (set, value) => { if (value && value !== 'Unknown' && value !== '-') set.add(String(value)); };
             add(items, r.Items); add(discounts, r['Discount Applied']); add(outlets, r.Outlet);
             add(areas, r.AREA); add(depts, r.DEPT); add(events, r['Event Type']);
@@ -2941,10 +2770,10 @@ document.getElementById('mtdResetBtn')?.addEventListener(
         advAllEventTypes = Array.from(events).sort();
     }
 
-    function getAdvAvailableItems(group) { if(!group) return []; let tempFiltered = rawData.filter(r => { const sv = (v) => v ? v.toString().trim() : ''; if(group.start && (!r.DateStr || r.DateStr < group.start)) return false; if(group.end && (!r.DateStr || r.DateStr > group.end)) return false; if(group.eventType !== 'ALL' && sv(r['Event Type']) !== group.eventType) return false; if(group.discounts.size > 0 && !group.discounts.has(sv(r['Discount Applied']))) return false; if(group.outlets.size > 0 && !group.outlets.has(sv(r['Outlet']))) return false; if(group.areas.size > 0 && !group.areas.has(sv(r['AREA']))) return false; if(group.dept !== 'ALL' && sv(r['DEPT']) !== group.dept) return false; return true; }); return Array.from(new Set(tempFiltered.map(r => r['Items']).filter(x => x && x !== 'Unknown' && x !== '-'))).sort(); }
-    function getAdvAvailableDiscounts(group) { if(!group) return []; let tempFiltered = rawData.filter(r => { const sv = (v) => v ? v.toString().trim() : ''; if(group.start && (!r.DateStr || r.DateStr < group.start)) return false; if(group.end && (!r.DateStr || r.DateStr > group.end)) return false; if(group.eventType !== 'ALL' && sv(r['Event Type']) !== group.eventType) return false; if(group.items.size > 0 && !group.items.has(sv(r['Items']))) return false; if(group.outlets.size > 0 && !group.outlets.has(sv(r['Outlet']))) return false; if(group.areas.size > 0 && !group.areas.has(sv(r['AREA']))) return false; if(group.dept !== 'ALL' && sv(r['DEPT']) !== group.dept) return false; return true; }); return Array.from(new Set(tempFiltered.map(r => r['Discount Applied']).filter(x => x && x !== 'Unknown' && x !== '-'))).sort(); }
-    function getAdvAvailableOutlets(group) { if(!group) return []; let tempFiltered = rawData.filter(r => { const sv = (v) => v ? v.toString().trim() : ''; if(group.start && (!r.DateStr || r.DateStr < group.start)) return false; if(group.end && (!r.DateStr || r.DateStr > group.end)) return false; if(group.eventType !== 'ALL' && sv(r['Event Type']) !== group.eventType) return false; if(group.items.size > 0 && !group.items.has(sv(r['Items']))) return false; if(group.discounts.size > 0 && !group.discounts.has(sv(r['Discount Applied']))) return false; if(group.areas.size > 0 && !group.areas.has(sv(r['AREA']))) return false; if(group.dept !== 'ALL' && sv(r['DEPT']) !== group.dept) return false; return true; }); return Array.from(new Set(tempFiltered.map(r => r['Outlet']).filter(x => x && x !== 'Unknown' && x !== '-'))).sort(); }
-    function getAdvAvailableAreas(group) { if(!group) return []; let tempFiltered = rawData.filter(r => { const sv = (v) => v ? v.toString().trim() : ''; if(group.start && (!r.DateStr || r.DateStr < group.start)) return false; if(group.end && (!r.DateStr || r.DateStr > group.end)) return false; if(group.eventType !== 'ALL' && sv(r['Event Type']) !== group.eventType) return false; if(group.items.size > 0 && !group.items.has(sv(r['Items']))) return false; if(group.discounts.size > 0 && !group.discounts.has(sv(r['Discount Applied']))) return false; if(group.outlets.size > 0 && !group.outlets.has(sv(r['Outlet']))) return false; if(group.dept !== 'ALL' && sv(r['DEPT']) !== group.dept) return false; return true; }); return Array.from(new Set(tempFiltered.map(r => r['AREA']).filter(x => x && x !== 'Unknown' && x !== '-'))).sort(); }
+    function getAdvAvailableItems(group) { if(!group) return []; let tempFiltered = rawData.filter(r => { if (!matchesDashboardPlatform(r)) return false; const sv = (v) => v ? v.toString().trim() : ''; if(group.start && (!r.DateStr || r.DateStr < group.start)) return false; if(group.end && (!r.DateStr || r.DateStr > group.end)) return false; if(group.eventType !== 'ALL' && sv(r['Event Type']) !== group.eventType) return false; if(group.discounts.size > 0 && !group.discounts.has(sv(r['Discount Applied']))) return false; if(group.outlets.size > 0 && !group.outlets.has(sv(r['Outlet']))) return false; if(group.areas.size > 0 && !group.areas.has(sv(r['AREA']))) return false; if(group.dept !== 'ALL' && sv(r['DEPT']) !== group.dept) return false; return true; }); return Array.from(new Set(tempFiltered.map(r => r['Items']).filter(x => x && x !== 'Unknown' && x !== '-'))).sort(); }
+    function getAdvAvailableDiscounts(group) { if(!group) return []; let tempFiltered = rawData.filter(r => { if (!matchesDashboardPlatform(r)) return false; const sv = (v) => v ? v.toString().trim() : ''; if(group.start && (!r.DateStr || r.DateStr < group.start)) return false; if(group.end && (!r.DateStr || r.DateStr > group.end)) return false; if(group.eventType !== 'ALL' && sv(r['Event Type']) !== group.eventType) return false; if(group.items.size > 0 && !group.items.has(sv(r['Items']))) return false; if(group.outlets.size > 0 && !group.outlets.has(sv(r['Outlet']))) return false; if(group.areas.size > 0 && !group.areas.has(sv(r['AREA']))) return false; if(group.dept !== 'ALL' && sv(r['DEPT']) !== group.dept) return false; return true; }); return Array.from(new Set(tempFiltered.map(r => r['Discount Applied']).filter(x => x && x !== 'Unknown' && x !== '-'))).sort(); }
+    function getAdvAvailableOutlets(group) { if(!group) return []; let tempFiltered = rawData.filter(r => { if (!matchesDashboardPlatform(r)) return false; const sv = (v) => v ? v.toString().trim() : ''; if(group.start && (!r.DateStr || r.DateStr < group.start)) return false; if(group.end && (!r.DateStr || r.DateStr > group.end)) return false; if(group.eventType !== 'ALL' && sv(r['Event Type']) !== group.eventType) return false; if(group.items.size > 0 && !group.items.has(sv(r['Items']))) return false; if(group.discounts.size > 0 && !group.discounts.has(sv(r['Discount Applied']))) return false; if(group.areas.size > 0 && !group.areas.has(sv(r['AREA']))) return false; if(group.dept !== 'ALL' && sv(r['DEPT']) !== group.dept) return false; return true; }); return Array.from(new Set(tempFiltered.map(r => r['Outlet']).filter(x => x && x !== 'Unknown' && x !== '-'))).sort(); }
+    function getAdvAvailableAreas(group) { if(!group) return []; let tempFiltered = rawData.filter(r => { if (!matchesDashboardPlatform(r)) return false; const sv = (v) => v ? v.toString().trim() : ''; if(group.start && (!r.DateStr || r.DateStr < group.start)) return false; if(group.end && (!r.DateStr || r.DateStr > group.end)) return false; if(group.eventType !== 'ALL' && sv(r['Event Type']) !== group.eventType) return false; if(group.items.size > 0 && !group.items.has(sv(r['Items']))) return false; if(group.discounts.size > 0 && !group.discounts.has(sv(r['Discount Applied']))) return false; if(group.outlets.size > 0 && !group.outlets.has(sv(r['Outlet']))) return false; if(group.dept !== 'ALL' && sv(r['DEPT']) !== group.dept) return false; return true; }); return Array.from(new Set(tempFiltered.map(r => r['AREA']).filter(x => x && x !== 'Unknown' && x !== '-'))).sort(); }
 
 
     // Advanced Compare tabs: Cohort Comparison + MTD GrabFood vs GoFood.
@@ -2987,7 +2816,6 @@ document.getElementById('mtdResetBtn')?.addEventListener(
     }
 
     advCohortTabBtn?.addEventListener('click', () => setAdvCompareTab('cohort'));
-    advMtdTabBtn?.addEventListener('click', () => setAdvCompareTab('mtd'));
 
     document.getElementById('openAdvCompareBtn').addEventListener('click', () => {
         if(rawData.length === 0) {
@@ -3081,6 +2909,7 @@ document.getElementById('mtdResetBtn')?.addEventListener(
     document.getElementById('runAdvCompareBtn').addEventListener('click', () => {
         let results = advGroups.map(g => {
             let filtered = rawData.filter(r => {
+                if (!matchesDashboardPlatform(r)) return false;
                 let match = true; const sv = (v) => v ? v.toString().trim() : '';
                 if(g.start && (!r.DateStr || r.DateStr < g.start)) match = false; if(g.end && (!r.DateStr || r.DateStr > g.end)) match = false;
                 if (g.items.size > 0 && !g.items.has(sv(r['Items']))) match = false; if (g.discounts.size > 0 && !g.discounts.has(sv(r['Discount Applied']))) match = false; if (g.outlets.size > 0 && !g.outlets.has(sv(r['Outlet']))) match = false; if (g.areas.size > 0 && !g.areas.has(sv(r['AREA']))) match = false; if (g.dept !== 'ALL' && sv(r['DEPT']) !== g.dept) match = false; if (g.eventType !== 'ALL' && sv(r['Event Type']) !== g.eventType) match = false;
@@ -3199,8 +3028,8 @@ document.getElementById('mtdResetBtn')?.addEventListener(
                                 const tokens = new Set(row.map(normalize).filter(Boolean));
                                 const has = key => tokens.has(key);
                                 const isMokaHeader = has('netsales') && (has('receiptnumber') || has('sku'));
-                                const isGrabFoodHeader = has('transactionid') && (has('netsales') || has('netamount')) && (has('storename') || has('orderid') || has('outletname'));
-                                const isGoFoodHeader = has('transactionid') && (has('amount') || has('netamount')) && (has('outletname') || has('paymentdate'));
+                                const isGrabFoodHeader = has('transactionid') && (has('netsales') || has('netamount') || has('amount')) && (has('storename') || has('orderid') || has('outletname'));
+                                const isGoFoodHeader = has('transactionid') && (has('amount') || has('netamount')) && (has('outletname') || has('paymentdate') || has('orderid'));
 
                                 if (isGrabFoodHeader || isGoFoodHeader || (detectedPlatform === 'Moka' && isMokaHeader)) {
                                     if (isGrabFoodHeader) detectedPlatform = 'GrabFood';
@@ -3279,6 +3108,7 @@ document.getElementById('mtdResetBtn')?.addEventListener(
             setLoadingProgress(95, `Menyiapkan dashboard • ${formatNum(rawData.length)} baris • GrabFood ${formatNum(grabFoodRows)} • GoFood ${formatNum(goFoodRows)}`);
             await yieldToMain();
             if (rawData.length > 0) {
+                activeDashboardPlatform = dashboardPlatformSelect?.value || 'GrabFood';
                 setupDatePickers();
                 populateDropdowns();
                 populateItemDropdown();
@@ -3292,7 +3122,10 @@ document.getElementById('mtdResetBtn')?.addEventListener(
                 setTimeout(async () => {
                     try {
                         await executeFilterAndRender();
-                        showToast(`Data selesai • ${formatNum(rawData.length)} baris • GrabFood ${formatNum(grabFoodRows)} • GoFood ${formatNum(goFoodRows)}.`);
+                        const selectedRows = countRowsForDashboardPlatform();
+                        const selectedLabel = dashboardPlatformSelect?.selectedOptions?.[0]?.textContent || 'Moka Dashboard';
+                        if (dashboardSourceStatus) dashboardSourceStatus.textContent = `${selectedLabel} • ${formatNum(selectedRows)} rows • semua sumber sudah dimuat`;
+                        showToast(`Semua data selesai • Moka ${formatNum(rawData.length - grabFoodRows - goFoodRows)} • GrabFood ${formatNum(grabFoodRows)} • GoFood ${formatNum(goFoodRows)}.`);
                     } catch (e) {
                         console.error(e);
                         showToast('Sebagian grafik gagal dirender karena data terlalu besar.', 'error');
@@ -3325,6 +3158,69 @@ document.getElementById('mtdResetBtn')?.addEventListener(
             els.main.style.display = 'block';
         }
     }
+
+    const dashboardPlatformSelect = document.getElementById('lazyPlatformSelect');
+    const dashboardSourceStatus = document.getElementById('dashboardSourceStatus');
+    if (dashboardPlatformSelect) dashboardPlatformSelect.value = 'GrabFood';
+
+    function countRowsForDashboardPlatform() {
+        let count = 0;
+        for (let i = 0; i < rawData.length; i++) if (matchesDashboardPlatform(rawData[i])) count++;
+        return count;
+    }
+
+    function updateOnlineSalesButtons(platform) {
+        const grab = document.getElementById('btnGrabFoodDashboard');
+        const go = document.getElementById('btnGoFoodDashboard');
+        const activeCls = 'px-4 py-2 rounded border border-blue-200 bg-blue-50 text-fr-blue text-[11px] font-bold shadow-sm transition-colors';
+        const idleCls = 'px-4 py-2 rounded border border-gray-300 bg-white text-gray-600 text-[11px] font-bold shadow-sm transition-colors hover:bg-gray-50';
+        if (grab) grab.className = platform === 'GrabFood' ? activeCls : idleCls;
+        if (go) go.className = platform === 'GoFood' ? activeCls : idleCls;
+    }
+
+    async function switchDashboardPlatform(platform) {
+        activeDashboardPlatform = (platform === 'GoFood') ? 'GoFood' : 'GrabFood';
+        // Reset dashboard-level selections to prevent filters from another source hiding data.
+        selectedAreasSet.clear();
+        selectedOutletsSet.clear();
+        selectedDiscountsSet.clear();
+        selectedItemsSet.clear();
+        if (filters.dept) filters.dept.value = 'ALL';
+        if (filters.eventType) filters.eventType.value = 'ALL';
+        if (searchInput) searchInput.value = '';
+        if (areaSearch) areaSearch.value = '';
+        if (outletSearch) outletSearch.value = '';
+        if (discountSearch) discountSearch.value = '';
+
+        setupDatePickers();
+        populateDropdowns();
+        populateItemDropdown();
+        await executeFilterAndRender();
+
+        const label = dashboardPlatformSelect?.selectedOptions?.[0]?.textContent || 'Dashboard';
+        const rows = countRowsForDashboardPlatform();
+        if (dashboardSourceStatus) dashboardSourceStatus.textContent = `${label} • ${formatNum(rows)} rows • data sudah dimuat otomatis`;
+        showToast(`${label}: ${formatNum(rows)} baris`);
+    }
+
+    dashboardPlatformSelect?.addEventListener('change', (e) => {
+        switchDashboardPlatform(e.target.value).catch(err => {
+            console.error('Gagal mengganti dashboard platform:', err);
+            showToast('Gagal menampilkan dashboard platform.', 'error');
+        });
+    });
+
+    document.getElementById('btnGrabFoodDashboard')?.addEventListener('click', () => {
+        if (dashboardPlatformSelect) dashboardPlatformSelect.value = 'GrabFood';
+        updateOnlineSalesButtons('GrabFood');
+        switchDashboardPlatform('GrabFood').catch(err => console.error(err));
+    });
+    document.getElementById('btnGoFoodDashboard')?.addEventListener('click', () => {
+        if (dashboardPlatformSelect) dashboardPlatformSelect.value = 'GoFood';
+        updateOnlineSalesButtons('GoFood');
+        switchDashboardPlatform('GoFood').catch(err => console.error(err));
+    });
+    updateOnlineSalesButtons('GrabFood');
 
     window.addEventListener('DOMContentLoaded', loadAllCsvFromGithub);
     </script>
