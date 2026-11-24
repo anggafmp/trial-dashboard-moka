@@ -2662,9 +2662,13 @@
     }
 
     window.addEventListener('DOMContentLoaded', loadAllCsvFromGithub);
-                         // ====================================================
-        // FIX TOTAL V2: PARSING GRABFOOD & GOFOOD (SESUAI CSV ASLI)
+            // ====================================================
+        // FIX TOTAL V3: PARSING GRABFOOD & GOFOOD (ANTI BENTROK MOKA)
         // ====================================================
+        
+        // Simpan fungsi asli Moka kamu
+        const originalProcessParsedRows = window.processParsedRows;
+
         window.processParsedRows = function(rows, headers) {
             if (!rows || !rows.length || !headers) return;
 
@@ -2672,25 +2676,24 @@
             const isGrab = sourceName.includes('grabfood');
             const isGo = sourceName.includes('gofood');
 
-            // Jika ini file Moka, biarkan fungsi asli yang menangani
-            if (!isGrab && !isGo) return; 
+            // JIKA INI FILE MOKA, KEMBALIKAN KE FUNGSI ASLI
+            if (!isGrab && !isGo) {
+                if (typeof originalProcessParsedRows === 'function') {
+                    return originalProcessParsedRows(rows, headers);
+                }
+                return;
+            }
 
-            // Helper mencari index kolom
+            // --- LOGIKA GRABFOOD & GOFOOD DI BAWAH INI ---
             const getIdx = (name) => headers.findIndex(h => String(h).trim().toLowerCase() === name.toLowerCase().trim());
-            
-            // Helper mengambil nilai
             const getVal = (row, name) => {
                 const idx = getIdx(name);
                 return idx !== -1 ? row[idx] : undefined;
             };
 
-            // Helper konversi angka (khusus GoFood pakai koma "32,500")
             const toNum = (val) => {
                 if (val === undefined || val === null || val === '') return 0;
-                // Hapus semua karakter selain angka, minus, dan titik/koma
                 let str = String(val).replace(/[^0-9.,-]/g, '');
-                // Jika ada koma dan titik (misal 1,200.50), hapus koma
-                // Jika hanya ada koma (misal 32,500), ubah koma jadi titik
                 if (str.includes(',') && str.includes('.')) {
                     str = str.replace(/,/g, ''); 
                 } else if (str.includes(',')) {
@@ -2700,36 +2703,18 @@
                 return isNaN(num) ? 0 : num;
             };
 
-            // Helper parsing tanggal (Handle format DD/MM/YYYY dan M/D/YY)
             const parseDate = (dateStr) => {
                 if (!dateStr) return { iso: '', formatted: '' };
-                // Ambil hanya bagian tanggal (abaikan jam jika ada)
                 const cleanDate = String(dateStr).trim().split(' ')[0];
                 const parts = cleanDate.split('/');
-                
                 if (parts.length === 3) {
-                    let p1 = parseInt(parts[0], 10);
-                    let p2 = parseInt(parts[1], 10);
-                    let p3 = parseInt(parts[2], 10);
-                    
+                    let p1 = parseInt(parts[0], 10), p2 = parseInt(parts[1], 10), p3 = parseInt(parts[2], 10);
                     let d, m, y;
-                    
-                    // Jika tahun di depan (YYYY/MM/DD)
-                    if (p1 > 2000) {
-                        y = p1; m = p2; d = p3;
-                    } 
-                    // Format DD/MM/YYYY atau M/D/YY
+                    if (p1 > 2000) { y = p1; m = p2; d = p3; } 
                     else {
-                        if (p3 < 100) p3 = p3 >= 50 ? 1900 + p3 : 2000 + p3; // 23 -> 2023
-                        // Tebak apakah formatnya M/D atau D/M
-                        if (p1 > 12) { // Jika p1 > 12, berarti ini pasti Tanggal (DD/MM)
-                            d = p1; m = p2; y = p3;
-                        } else { 
-                            // Asumsi DD/MM/YYYY karena standar Indonesia
-                            d = p1; m = p2; y = p3;
-                        }
+                        if (p3 < 100) p3 = p3 >= 50 ? 1900 + p3 : 2000 + p3;
+                        d = p1; m = p2; y = p3;
                     }
-                    
                     const dd = String(d).padStart(2, '0');
                     const mm = String(m).padStart(2, '0');
                     return { iso: `${y}-${mm}-${dd}`, formatted: `${dd}/${mm}/${y}` };
@@ -2741,7 +2726,6 @@
                 const row = rows[i];
                 if (!row || row.length === 0) continue;
 
-                // Bersihkan Transaction ID dari tanda petik
                 let txId = getVal(row, 'Transaction ID') || getVal(row, 'Order ID');
                 if (txId) txId = String(txId).replace(/'/g, '').trim();
                 if (!txId) continue;
@@ -2753,21 +2737,15 @@
                 const set = (key, value) => { if (value !== undefined && value !== null) compact[key] = value; };
 
                 set('Receipt Number', txId);
-                
-                // Outlet Name
-                const outletName = getVal(row, 'Store Name') || getVal(row, 'Outlet name') || 'Unknown';
-                set('Outlet', outletName);
+                set('Outlet', getVal(row, 'Store Name') || getVal(row, 'Outlet name') || 'Unknown');
                 set('AREA', getVal(row, 'AREA') || 'Unknown');
                 set('DEPT', 'Unknown');
                 set('Event Type', isGrab ? 'GrabFood' : 'GoFood');
                 set('Platform', isGrab ? 'GrabFood' : 'GoFood');
-                
-                // Kolom non-item
                 set('Items', 'Unknown');
                 set('Quantity', 0); 
                 set('Category', getVal(row, 'Category') || 'Online Sales');
 
-                // Nominal
                 const amount = toNum(getVal(row, 'Amount'));
                 const netSales = isGrab ? toNum(getVal(row, 'Net Sales')) : toNum(getVal(row, 'Net Amount'));
                 const total = toNum(getVal(row, 'Total')) || amount;
@@ -2778,51 +2756,38 @@
                 set('Tax', toNum(getVal(row, 'Tax on Order Value')) || toNum(getVal(row, 'Value added tax')));
                 set('Discounts', Math.abs(toNum(getVal(row, 'Discount (Merchant-Funded)')) || toNum(getVal(row, 'GoFood discount'))));
                 set('Refunds', 0);
-                
                 set('Payment Method', getVal(row, 'Payment Method') || getVal(row, 'Payment Type') || '-');
-                set('Collected By', '-');
-                set('Served By', '-');
-                set('Customer', '-');
-
-                // Tanggal & Waktu
+                
                 let dateStrRaw = getVal(row, 'Date');
                 let dateObj = parseDate(dateStrRaw);
-                
-                // Fallback jika kolom Date kosong (ambil dari Transaction time GoFood)
                 if (!dateObj.iso) {
                     const txTime = getVal(row, 'Transaction time');
                     if (txTime) dateObj = parseDate(txTime);
                 }
-                
-                if (!dateObj.iso) continue; // Lewati jika tanggal benar-benar tidak ada
+                if (!dateObj.iso) continue; 
 
                 set('DateStr', dateObj.iso);
                 set('FormattedDate', dateObj.formatted);
                 
-                // Jam
                 let timeStr = getVal(row, 'Time') || getVal(row, 'Transaction time') || '00:00:00';
                 timeStr = String(timeStr).trim();
-                // Ekstrak format jam:menit:detik
                 const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
                 if (timeMatch) {
                     const hh = timeMatch[1].padStart(2, '0');
-                    const mm = timeMatch[2];
-                    const ss = timeMatch[3] || '00';
-                    set('ExactTime', `${hh}:${mm}:${ss}`);
+                    set('ExactTime', `${hh}:${timeMatch[2]}:${timeMatch[3] || '00'}`);
                     set('ParsedHour', hh);
                 } else {
                     set('ExactTime', '00:00:00');
                     set('ParsedHour', '00');
                 }
                 
-                // Hari
-                const dayStr = getVal(row, 'Day') || 'Unknown';
-                set('ParsedDay', dayStr);
+                set('ParsedDay', getVal(row, 'Day') || 'Unknown');
 
                 window.rawData.push(compact);
             }
         };
         // ====================================================
+          
     </script>
 </body>
 </html>
