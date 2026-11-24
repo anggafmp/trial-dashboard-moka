@@ -59,18 +59,7 @@
         /* Custom Tooltip Global */
         #customMultiTooltip { position: absolute; background: #1e293b; color: white; padding: 8px 12px; border-radius: 6px; font-size: 11px; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 9999; border: 1px solid #334155; max-height: 250px; overflow-y: auto; width: max-content; max-width: 300px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
     
-<style id="sales-channel-force-visible">
-#salesChannelContainer {
-    display: none !important;
-    visibility: visible !important;
-    opacity: 1 !important;
-    order: 1 !important;
-}
-#filterSalesChannel {
-    min-width: 145px !important;
-    font-weight: 600;
-}
-</style>
+<style id="sales-channel-force-visible">#salesChannelContainer{display:none !important;}</style>
 </style>
 </head>
 <body class="antialiased min-h-screen flex flex-col">
@@ -557,43 +546,115 @@
 
             </div>
 
+
             <!-- ONLINE SALES DASHBOARD -->
             <section id="onlineDashboardContent" class="hidden space-y-3">
-                <div class="panel p-3 border-l-4 border-purple-500 bg-gradient-to-r from-purple-50 to-white">
-                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                <div class="panel p-4 border-l-4 border-purple-500 bg-gradient-to-r from-purple-50 via-white to-white">
+                    <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                         <div>
-                            <div class="text-[10px] font-bold uppercase tracking-wider text-purple-700">Online Sales Performance</div>
-                            <h2 class="text-lg font-bold text-gray-800">GrabFood + GoFood</h2>
-                            <p class="text-[10px] text-gray-500">Dashboard khusus penjualan online. Data Moka tidak ikut dihitung.</p>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-purple-700">ONLINE SALES PERFORMANCE</div>
+                            <h2 class="text-xl font-bold text-gray-900 mt-1">GrabFood + GoFood</h2>
+                            <p class="text-xs text-gray-500 mt-1">Dashboard khusus online sales — fokus pada revenue, growth, top performer, dan perbandingan terhadap bulan sebelumnya.</p>
                         </div>
-                        <div class="text-[10px] font-semibold text-purple-700 bg-purple-100 border border-purple-200 rounded px-3 py-1.5">ONLINE ONLY</div>
+                        <div class="flex gap-2">
+                            <span class="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">GRABFOOD</span>
+                            <span class="text-[10px] font-bold text-orange-700 bg-orange-50 border border-orange-200 rounded px-3 py-2">GOFOOD</span>
+                        </div>
                     </div>
                 </div>
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div class="panel p-3 border-l-4 border-purple-500"><p class="kpi-title">Online Net Sales</p><h3 id="onlineKpiSales" class="kpi-value text-purple-700 text-lg sm:text-xl">Rp 0</h3></div>
-                    <div class="panel p-3 border-l-4 border-indigo-500"><p class="kpi-title">Orders</p><h3 id="onlineKpiOrders" class="kpi-value text-indigo-700 text-lg sm:text-xl">0</h3></div>
-                    <div class="panel p-3 border-l-4 border-blue-500"><p class="kpi-title">Items / Qty</p><h3 id="onlineKpiQty" class="kpi-value text-blue-700 text-lg sm:text-xl">0</h3></div>
-                    <div class="panel p-3 border-l-4 border-gray-500"><p class="kpi-title">Avg Order Value</p><h3 id="onlineKpiAov" class="kpi-value text-gray-700 text-lg sm:text-xl">Rp 0</h3></div>
+
+                <!-- ONLINE KPI -->
+                <div class="grid grid-cols-2 lg:grid-cols-5 gap-3">
+                    <div class="panel p-4 border-l-4 border-purple-500">
+                        <p class="kpi-title">ONLINE SALES</p>
+                        <h3 id="onlineKpiSales" class="kpi-value text-purple-700 text-lg sm:text-xl">Rp 0</h3>
+                        <div id="onlineKpiSalesGrowth" class="text-[10px] mt-2 text-gray-400">— vs last month</div>
+                    </div>
+                    <div class="panel p-4 border-l-4 border-blue-500">
+                        <p class="kpi-title">LAST MONTH SALES</p>
+                        <h3 id="onlineKpiLastMonth" class="kpi-value text-blue-700 text-lg sm:text-xl">Rp 0</h3>
+                        <div class="text-[10px] mt-2 text-gray-400">comparison baseline</div>
+                    </div>
+                    <div class="panel p-4 border-l-4 border-indigo-500">
+                        <p class="kpi-title">ORDERS</p>
+                        <h3 id="onlineKpiOrders" class="kpi-value text-indigo-700 text-lg sm:text-xl">0</h3>
+                        <div id="onlineKpiOrdersGrowth" class="text-[10px] mt-2 text-gray-400">— vs last month</div>
+                    </div>
+                    <div class="panel p-4 border-l-4 border-gray-500">
+                        <p class="kpi-title">AOV</p>
+                        <h3 id="onlineKpiAov" class="kpi-value text-gray-700 text-lg sm:text-xl">Rp 0</h3>
+                        <div id="onlineKpiAovGrowth" class="text-[10px] mt-2 text-gray-400">— vs last month</div>
+                    </div>
+                    <div class="panel p-4 border-l-4 border-emerald-500">
+                        <p class="kpi-title">TOP PERFORMER</p>
+                        <h3 id="onlineKpiTopOutlet" class="text-sm sm:text-base font-bold text-emerald-700 mt-2 truncate">-</h3>
+                        <div id="onlineKpiTopOutletSales" class="text-[10px] mt-1 text-gray-400">Rp 0 sales</div>
+                    </div>
                 </div>
-                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                    <div class="panel p-3"><p class="kpi-title">GrabFood Sales</p><h3 id="onlineKpiGrabSales" class="kpi-value text-green-700 text-lg sm:text-xl">Rp 0</h3></div>
-                    <div class="panel p-3"><p class="kpi-title">GoFood Sales</p><h3 id="onlineKpiGoSales" class="kpi-value text-orange-600 text-lg sm:text-xl">Rp 0</h3></div>
-                    <div class="panel p-3"><p class="kpi-title">GrabFood Orders</p><h3 id="onlineKpiGrabOrders" class="kpi-value text-green-700 text-lg sm:text-xl">0</h3></div>
-                    <div class="panel p-3"><p class="kpi-title">GoFood Orders</p><h3 id="onlineKpiGoOrders" class="kpi-value text-orange-600 text-lg sm:text-xl">0</h3></div>
-                </div>
+
+                <!-- SALES VS LAST MONTH -->
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
-                    <div class="panel p-3 sm:p-4 lg:col-span-2 flex flex-col"><div class="flex justify-between items-center mb-3"><h3 class="section-title mb-0">Online Sales Trend</h3><span class="text-[9px] font-semibold text-gray-400">GRABFOOD vs GOFOOD</span></div><div class="chart-container flex-grow"><canvas id="onlineTrendChart"></canvas></div></div>
-                    <div class="panel p-3 sm:p-4 flex flex-col"><h3 class="section-title mb-3">Platform Mix</h3><div class="chart-container flex-grow"><canvas id="onlinePlatformChart"></canvas></div></div>
+                    <div class="panel p-4 lg:col-span-2">
+                        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                            <div>
+                                <h3 class="section-title mb-0">Sales vs Last Month</h3>
+                                <p id="onlineComparePeriod" class="text-[9px] text-gray-400 mt-1">Current period vs previous month</p>
+                            </div>
+                            <div class="flex gap-3 text-[9px] font-semibold">
+                                <span class="text-purple-700">● CURRENT</span>
+                                <span class="text-gray-400">● LAST MONTH</span>
+                            </div>
+                        </div>
+                        <div class="chart-container" style="height:330px"><canvas id="onlineSalesVsLastMonthChart"></canvas></div>
+                    </div>
+                    <div class="panel p-4">
+                        <h3 class="section-title mb-3">Platform Sales</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <div class="flex justify-between text-[10px] mb-1"><span class="font-semibold text-green-700">GrabFood</span><span id="onlineGrabShare">0%</span></div>
+                                <div class="h-3 bg-gray-100 rounded overflow-hidden"><div id="onlineGrabBar" class="h-full bg-green-500 rounded" style="width:0%"></div></div>
+                                <div id="onlineGrabSales" class="text-xs font-bold mt-1">Rp 0</div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-[10px] mb-1"><span class="font-semibold text-orange-700">GoFood</span><span id="onlineGoShare">0%</span></div>
+                                <div class="h-3 bg-gray-100 rounded overflow-hidden"><div id="onlineGoBar" class="h-full bg-orange-500 rounded" style="width:0%"></div></div>
+                                <div id="onlineGoSales" class="text-xs font-bold mt-1">Rp 0</div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
+
+                <!-- TOP PERFORMERS -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    <div class="panel p-3 sm:p-4 flex flex-col"><h3 class="section-title mb-3">Top Outlet — Online Sales</h3><div class="chart-container" style="height:300px"><canvas id="onlineOutletChart"></canvas></div></div>
-                    <div class="panel p-3 sm:p-4 flex flex-col"><h3 class="section-title mb-3">Top Items — Online Sales</h3><div class="chart-container" style="height:300px"><canvas id="onlineItemChart"></canvas></div></div>
+                    <div class="panel p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <div><h3 class="section-title mb-0">Top Performer Outlet</h3><p class="text-[9px] text-gray-400">Rank berdasarkan online sales</p></div>
+                            <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">TOP 10</span>
+                        </div>
+                        <div class="chart-container" style="height:320px"><canvas id="onlineTopOutletChart"></canvas></div>
+                    </div>
+                    <div class="panel p-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <div><h3 class="section-title mb-0">Top Performer Item</h3><p class="text-[9px] text-gray-400">Item dengan sales online tertinggi</p></div>
+                            <span class="text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-200 rounded px-2 py-1">TOP 10</span>
+                        </div>
+                        <div class="chart-container" style="height:320px"><canvas id="onlineTopItemChart"></canvas></div>
+                    </div>
                 </div>
-                <div class="panel p-3 sm:p-4 overflow-x-auto">
-                    <div class="flex justify-between items-center mb-3"><h3 class="section-title mb-0">Platform Performance by Outlet</h3><span class="text-[9px] text-gray-400">NET SALES / ORDERS / AOV</span></div>
-                    <table class="w-full text-[10px]" id="onlineOutletTable"><thead><tr class="text-left border-b border-gray-200"><th class="py-2">Outlet</th><th class="py-2 text-right">GrabFood Sales</th><th class="py-2 text-right">GoFood Sales</th><th class="py-2 text-right">Total Sales</th><th class="py-2 text-right">Orders</th><th class="py-2 text-right">AOV</th></tr></thead><tbody></tbody></table>
+
+                <!-- OUTLET PERFORMANCE VS LAST MONTH -->
+                <div class="panel p-4 overflow-x-auto">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
+                        <div><h3 class="section-title mb-0">Outlet Performance vs Last Month</h3><p class="text-[9px] text-gray-400">Sales, growth, orders dan AOV</p></div>
+                    </div>
+                    <table class="w-full text-[10px]" id="onlineOutletTable">
+                        <thead><tr class="text-left border-b border-gray-200">
+                            <th class="py-2">#</th><th class="py-2">Outlet</th><th class="py-2 text-right">Sales</th><th class="py-2 text-right">Last Month</th><th class="py-2 text-right">Growth</th><th class="py-2 text-right">Orders</th><th class="py-2 text-right">AOV</th>
+                        </tr></thead><tbody></tbody>
+                    </table>
                 </div>
-            </section>        </div>
+            </section>
+        </div>
     </main>
 
     <!-- Advanced Compare Modal -->
@@ -1293,6 +1354,7 @@
         }
 
         function renderDashboard() {
+            if (activeDashboard === 'online') { renderOnlineDashboard(); return; }
             const channel = filters.salesChannel ? filters.salesChannel.value : 'ALL';
             const channelLabel = channel === 'Moka' ? 'MOKA' : (channel === 'Online Sales' ? 'ONLINE SALES • GRABFOOD + GOFOOD' : 'ALL SOURCES');
             document.title = `Analytic Performance • ${channelLabel}`;
@@ -1332,28 +1394,131 @@
             calculateAndRenderGrowth(); drawTrend(); drawCat(currentAggCat); drawLocationChart(); drawDeptChart(aggDept); drawHeatmap(heatMatrix, maxHeatValue); drawItemsTable(aggItems); applyTableSortAndRender(); 
         }
         
+
         function renderOnlineDashboard() {
-            const stats = { sales:0, qty:0, orders:new Set(), grabSales:0, goSales:0, grabOrders:new Set(), goOrders:new Set() };
-            const outlets = {}, items = {}, days = {};
-            const gs = (r,k) => r[k] ? String(r[k]).trim() : '';
-            filteredData.forEach(r => {
-                const p=gs(r,'Platform'), net=getCleanNum(r,'Net Sales'), qty=getCleanNum(r,'Quantity')||1, rec=gs(r,'Receipt Number'), out=gs(r,'Outlet')||'Unknown', it=gs(r,'Items')||'Unknown', dt=gs(r,'DateStr');
-                stats.sales+=net; stats.qty+=qty; if(rec) stats.orders.add(rec);
-                if(p==='GrabFood'){stats.grabSales+=net;if(rec)stats.grabOrders.add(rec);} if(p==='GoFood'){stats.goSales+=net;if(rec)stats.goOrders.add(rec);}
-                if(!outlets[out]) outlets[out]={sales:0,grab:0,go:0,orders:new Set()}; outlets[out].sales+=net;if(rec)outlets[out].orders.add(rec);if(p==='GrabFood')outlets[out].grab+=net;if(p==='GoFood')outlets[out].go+=net;
-                if(!items[it])items[it]={sales:0,qty:0};items[it].sales+=net;items[it].qty+=qty;
-                if(dt){if(!days[dt])days[dt]={grab:0,go:0};if(p==='GrabFood')days[dt].grab+=net;if(p==='GoFood')days[dt].go+=net;}
+            const gs = (r,k) => r[k] != null ? String(r[k]).trim() : '';
+            const money = v => formatRp(v || 0);
+            const pct = v => (v == null || !isFinite(v)) ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
+            const growth = (cur, prev) => prev === 0 ? (cur === 0 ? 0 : null) : ((cur - prev) / Math.abs(prev)) * 100;
+
+            // Current period comes from the normal dashboard filters.
+            const current = filteredData.filter(r => gs(r,'Sales Channel') === 'Online Sales');
+
+            // Build the previous-month period by shifting the selected date window one calendar month.
+            let startStr = filters.dStart.value, endStr = filters.dEnd.value;
+            let prevStartStr = '', prevEndStr = '';
+            if (startStr && endStr) {
+                const a = new Date(startStr + 'T00:00:00'), b = new Date(endStr + 'T00:00:00');
+                a.setMonth(a.getMonth() - 1); b.setMonth(b.getMonth() - 1);
+                const iso = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+                prevStartStr = iso(a); prevEndStr = iso(b);
+            }
+
+            // Apply all non-date filters to the previous month, so comparison is like-for-like.
+            const sv = v => v != null ? String(v).trim() : '';
+            const prev = rawData.filter(r => {
+                if (sv(r['Sales Channel']) !== 'Online Sales') return false;
+                if (prevStartStr && (!r.DateStr || r.DateStr < prevStartStr || r.DateStr > prevEndStr)) return false;
+                if (selectedAreasSet.size > 0 && !selectedAreasSet.has(sv(r['AREA']))) return false;
+                if (selectedOutletsSet.size > 0 && !selectedOutletsSet.has(sv(r['Outlet']))) return false;
+                if (filters.dept.value !== 'ALL' && sv(r['DEPT']) !== filters.dept.value) return false;
+                if (filters.eventType.value !== 'ALL' && sv(r['Event Type']) !== filters.eventType.value) return false;
+                if (selectedItemsSet.size > 0) {
+                    if (searchMode.value === 'item') { if (!selectedItemsSet.has(sv(r['Items']))) return false; }
+                    else { if (!selectedItemsSet.has(sv(r['Receipt Number']))) return false; }
+                }
+                if (selectedDiscountsSet.size > 0 && !selectedDiscountsSet.has(sv(r['Discount Applied']))) return false;
+                return true;
             });
-            const orders=stats.orders.size,aov=orders?stats.sales/orders:0;
-            document.getElementById('onlineKpiSales').innerText=formatRp(stats.sales);document.getElementById('onlineKpiOrders').innerText=formatNum(orders);document.getElementById('onlineKpiQty').innerText=formatNum(stats.qty);document.getElementById('onlineKpiAov').innerText=formatRp(aov);
-            document.getElementById('onlineKpiGrabSales').innerText=formatRp(stats.grabSales);document.getElementById('onlineKpiGoSales').innerText=formatRp(stats.goSales);document.getElementById('onlineKpiGrabOrders').innerText=formatNum(stats.grabOrders.size);document.getElementById('onlineKpiGoOrders').innerText=formatNum(stats.goOrders.size);
-            const dates=Object.keys(days).sort();
-            if(charts.onlineTrend)charts.onlineTrend.destroy();charts.onlineTrend=new Chart(document.getElementById('onlineTrendChart').getContext('2d'),{type:'line',data:{labels:dates,datasets:[{label:'GrabFood',data:dates.map(d=>days[d].grab),borderColor:'#16a34a',tension:.25},{label:'GoFood',data:dates.map(d=>days[d].go),borderColor:'#ea580c',tension:.25}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{y:{ticks:{callback:v=>'Rp '+formatRp(v)}}}}});
-            if(charts.onlinePlatform)charts.onlinePlatform.destroy();charts.onlinePlatform=new Chart(document.getElementById('onlinePlatformChart').getContext('2d'),{type:'doughnut',data:{labels:['GrabFood','GoFood'],datasets:[{data:[stats.grabSales,stats.goSales],backgroundColor:['#16a34a','#ea580c'],borderWidth:1,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
-            const topOut=Object.entries(outlets).sort((a,b)=>b[1].sales-a[1].sales).slice(0,10);if(charts.onlineOutlet)charts.onlineOutlet.destroy();charts.onlineOutlet=new Chart(document.getElementById('onlineOutletChart').getContext('2d'),{type:'bar',data:{labels:topOut.map(x=>x[0]),datasets:[{label:'Net Sales',data:topOut.map(x=>x[1].sales),backgroundColor:'#6366f1'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'Rp '+formatRp(v)}}}}});
-            const topItems=Object.entries(items).sort((a,b)=>b[1].sales-a[1].sales).slice(0,10);if(charts.onlineItem)charts.onlineItem.destroy();charts.onlineItem=new Chart(document.getElementById('onlineItemChart').getContext('2d'),{type:'bar',data:{labels:topItems.map(x=>x[0]),datasets:[{label:'Net Sales',data:topItems.map(x=>x[1].sales),backgroundColor:'#8b5cf6'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'Rp '+formatRp(v)}}}}});
-            document.querySelector('#onlineOutletTable tbody').innerHTML=topOut.map(([name,v])=>{const o=v.orders.size;return `<tr class="border-b border-gray-100"><td class="py-2 font-semibold">${name}</td><td class="py-2 text-right">${formatRp(v.grab)}</td><td class="py-2 text-right">${formatRp(v.go)}</td><td class="py-2 text-right font-bold">${formatRp(v.sales)}</td><td class="py-2 text-right">${formatNum(o)}</td><td class="py-2 text-right">${formatRp(o?v.sales/o:0)}</td></tr>`}).join('');
-            document.title='Analytic Performance • ONLINE SALES';const t=document.querySelector('header h1, header h2');if(t)t.textContent='LA MAISON DE PIERRE BOULANGERIE ANALYTIC PERFORMANCE • ONLINE SALES';
+
+            const summarize = rows => {
+                const o = { sales:0, qty:0, orders:new Set(), outlet:{}, item:{}, platform:{GrabFood:{sales:0,orders:new Set()},GoFood:{sales:0,orders:new Set()}}, days:{} };
+                rows.forEach(r => {
+                    const net=getCleanNum(r,'Net Sales'), qty=getCleanNum(r,'Quantity') || 1, rec=sv(r,'Receipt Number');
+                    const out=sv(r,'Outlet') || 'Unknown', item=sv(r,'Items') || 'Unknown', p=sv(r,'Platform'), dt=sv(r,'DateStr');
+                    o.sales += net; o.qty += qty; if(rec) o.orders.add(rec);
+                    if (!o.outlet[out]) o.outlet[out]={sales:0,orders:new Set(),items:0};
+                    o.outlet[out].sales += net; o.outlet[out].items += qty; if(rec)o.outlet[out].orders.add(rec);
+                    if (!o.item[item]) o.item[item]={sales:0,qty:0,orders:new Set()};
+                    o.item[item].sales += net; o.item[item].qty += qty; if(rec)o.item[item].orders.add(rec);
+                    if (o.platform[p]) { o.platform[p].sales += net; if(rec)o.platform[p].orders.add(rec); }
+                    if(dt) { if(!o.days[dt])o.days[dt]={sales:0}; o.days[dt].sales += net; }
+                });
+                o.ordersCount=o.orders.size; o.aov=o.ordersCount?o.sales/o.ordersCount:0;
+                return o;
+            };
+
+            const cur=summarize(current), prv=summarize(prev);
+            const salesGrowth=growth(cur.sales,prv.sales), ordersGrowth=growth(cur.ordersCount,prv.ordersCount), aovGrowth=growth(cur.aov,prv.aov);
+
+            document.getElementById('onlineKpiSales').innerText=money(cur.sales);
+            document.getElementById('onlineKpiLastMonth').innerText=money(prv.sales);
+            document.getElementById('onlineKpiOrders').innerText=formatNum(cur.ordersCount);
+            document.getElementById('onlineKpiAov').innerText=money(cur.aov);
+
+            const growthHtml=(v)=>v===null?'— no prior sales':`${v>=0?'↑':'↓'} ${pct(v)} vs last month`;
+            const setGrowth=(id,v)=>{const el=document.getElementById(id);el.innerText=growthHtml(v);el.className=`text-[10px] mt-2 ${v===null?'text-gray-400':v>=0?'text-green-600':'text-red-500'}`;};
+            setGrowth('onlineKpiSalesGrowth',salesGrowth); setGrowth('onlineKpiOrdersGrowth',ordersGrowth); setGrowth('onlineKpiAovGrowth',aovGrowth);
+
+            const topOutlet=Object.entries(cur.outlet).sort((a,b)=>b[1].sales-a[1].sales)[0];
+            document.getElementById('onlineKpiTopOutlet').innerText=topOutlet ? topOutlet[0] : '-';
+            document.getElementById('onlineKpiTopOutletSales').innerText=topOutlet ? `${money(topOutlet[1].sales)} sales` : 'Rp 0 sales';
+
+            const grab=cur.platform.GrabFood.sales, go=cur.platform.GoFood.sales, totalPlat=grab+go;
+            document.getElementById('onlineGrabSales').innerText=money(grab);
+            document.getElementById('onlineGoSales').innerText=money(go);
+            document.getElementById('onlineGrabShare').innerText=totalPlat?(grab/totalPlat*100).toFixed(1)+'%':'0%';
+            document.getElementById('onlineGoShare').innerText=totalPlat?(go/totalPlat*100).toFixed(1)+'%':'0%';
+            document.getElementById('onlineGrabBar').style.width=totalPlat?(grab/totalPlat*100)+'%':'0%';
+            document.getElementById('onlineGoBar').style.width=totalPlat?(go/totalPlat*100)+'%':'0%';
+
+            const fmtDate = x => x ? x.split('-').reverse().join('/') : '-';
+            document.getElementById('onlineComparePeriod').innerText=`${fmtDate(startStr)} – ${fmtDate(endStr)} vs ${fmtDate(prevStartStr)} – ${fmtDate(prevEndStr)}`;
+
+            // Sales line: current vs last month, aligned by day-of-month.
+            const curDays={}, prevDays={};
+            current.forEach(r=>{const d=sv(r,'DateStr'); if(d)curDays[d]=(curDays[d]||0)+getCleanNum(r,'Net Sales');});
+            prev.forEach(r=>{const d=sv(r,'DateStr'); if(d)prevDays[d]=(prevDays[d]||0)+getCleanNum(r,'Net Sales');});
+            const maxDays=Math.max(Object.keys(curDays).length,Object.keys(prevDays).length,1);
+            const labels=Array.from({length:Math.max(31,Math.min(31,maxDays))},(_,i)=>String(i+1).padStart(2,'0'));
+            const getDay=(obj,day)=>{const k=Object.keys(obj).find(d=>String(parseInt(d.slice(-2),10))===String(day));return k?obj[k]:0;};
+            if(charts.onlineSalesVsLastMonth)charts.onlineSalesVsLastMonth.destroy();
+            charts.onlineSalesVsLastMonth=new Chart(document.getElementById('onlineSalesVsLastMonthChart').getContext('2d'),{
+                type:'line',
+                data:{labels,datasets:[
+                    {label:'Current',data:labels.map(d=>getDay(curDays,d)),borderColor:'#7c3aed',backgroundColor:'rgba(124,58,237,.08)',fill:true,tension:.28,pointRadius:2},
+                    {label:'Last Month',data:labels.map(d=>getDay(prevDays,d)),borderColor:'#94a3b8',backgroundColor:'rgba(148,163,184,.04)',fill:false,tension:.28,pointRadius:2,borderDash:[5,5]}
+                ]},
+                options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'Day of Month'}},y:{beginAtZero:true,ticks:{callback:v=>'Rp '+formatRp(v)}}}}
+            });
+
+            const topOut=Object.entries(cur.outlet).sort((a,b)=>b[1].sales-a[1].sales).slice(0,10);
+            if(charts.onlineTopOutlet)charts.onlineTopOutlet.destroy();
+            charts.onlineTopOutlet=new Chart(document.getElementById('onlineTopOutletChart').getContext('2d'),{
+                type:'bar',data:{labels:topOut.map(x=>x[0]),datasets:[{label:'Online Sales',data:topOut.map(x=>x[1].sales),backgroundColor:'#8b5cf6'}]},
+                options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'Rp '+formatRp(v)}}}}
+            });
+
+            const topItems=Object.entries(cur.item).sort((a,b)=>b[1].sales-a[1].sales).slice(0,10);
+            if(charts.onlineTopItem)charts.onlineTopItem.destroy();
+            charts.onlineTopItem=new Chart(document.getElementById('onlineTopItemChart').getContext('2d'),{
+                type:'bar',data:{labels:topItems.map(x=>x[0]),datasets:[{label:'Online Sales',data:topItems.map(x=>x[1].sales),backgroundColor:'#6366f1'}]},
+                options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'Rp '+formatRp(v)}}}}
+            });
+
+            const prevOut=prv.outlet;
+            document.querySelector('#onlineOutletTable tbody').innerHTML=topOut.map(([name,v],i)=>{
+                const prevSales=prevOut[name]?.sales||0, g=growth(v.sales,prevSales), orders=v.orders.size, aov=orders?v.sales/orders:0;
+                return `<tr class="border-b border-gray-100 hover:bg-gray-50">
+                    <td class="py-2 font-bold">${i+1}</td><td class="py-2 font-semibold">${name}</td>
+                    <td class="py-2 text-right font-bold">${money(v.sales)}</td><td class="py-2 text-right">${money(prevSales)}</td>
+                    <td class="py-2 text-right font-semibold ${g===null?'text-gray-400':g>=0?'text-green-600':'text-red-500'}">${g===null?'—':pct(g)}</td>
+                    <td class="py-2 text-right">${formatNum(orders)}</td><td class="py-2 text-right">${money(aov)}</td>
+                </tr>`;
+            }).join('');
+
+            document.title='Analytic Performance • ONLINE SALES';
+            const t=document.querySelector('header h1, header h2'); if(t)t.textContent='LA MAISON DE PIERRE BOULANGERIE ANALYTIC PERFORMANCE • ONLINE SALES';
         }
 
         function calculateAndRenderGrowth() { 
