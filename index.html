@@ -255,7 +255,7 @@
             </select>
             <span id="lazyStatus" class="text-[10px] text-slate-500">Menyiapkan daftar data...</span>
         </div>
-        <div id="onlineDataNote" class="max-w-[1500px] mx-auto mt-1 text-[10px] text-slate-500">Catatan: file ekspor GrabFood/GoFood berisi data penjualan dan transaksi, bukan rincian menu atau jumlah item.</div>
+        <div id="onlineDataNote" class="max-w-[1500px] mx-auto mt-1 text-[10px] text-slate-500">Catatan: file ekspor GrabFood/GoFood berisi data penjualan dan transaksi; file yang diberikan tidak memiliki kolom nama item atau quantity.</div>
     </section>
     <!-- MAIN CONTENT DISEMBUNYIKAN SEJAK AWAL MENGGUNAKAN INLINE CSS -->
     <main style="display: none;" id="mainContent" class="flex-grow max-w-[1500px] mx-auto w-full px-2 sm:px-4 lg:px-8 py-4 space-y-4">
@@ -2406,72 +2406,107 @@
         const isGrabFoodFile = sourceToken.includes('grabfood');
         const isGoFoodFile = sourceToken.includes('gofood');
         const isMokaFile = !isGrabFoodFile && !isGoFoodFile;
-        const res = await fetch(GH_BASE_URL + encodeURIComponent(fileName) + '?t=' + Date.now());
-        if (!res.ok) throw new Error(`${sourceFileName}: HTTP ${res.status}`);
-
-        let csvText = await res.text();
+        const fileUrl = GH_BASE_URL + encodeURIComponent(sourceFileName) + '?t=' + Date.now();
         let headerFound = false;
         let headers = null;
-        let parsedRowsBefore = rawData.length;
+        const parsedRowsBefore = rawData.length;
 
+        // Keep the CSV as a Blob/File instead of converting a 100 MB response
+        // into a large UTF-16 string. Papa Parse reads this File in chunks.
+        const response = await fetch(fileUrl, { cache: 'no-store' });
+        if (!response.ok) throw new Error(`${sourceFileName}: HTTP ${response.status} saat mengunduh dari GitHub`);
+        const csvBlob = await response.blob();
+        if (!csvBlob || !csvBlob.size) throw new Error(`${sourceFileName}: file kosong dari GitHub`);
+        const csvFile = new File([csvBlob], sourceFileName, { type: 'text/csv' });
+        const loadStatus = document.getElementById('loadingSubText');
+        if (loadStatus) loadStatus.textContent = `Parsing ${sourceFileName} • ${(csvFile.size / 1048576).toFixed(1)} MB`;
+
+        // Stream the File in small asynchronous chunks on the page thread.
+        // Pause/resume yields between chunks, keeping the dashboard responsive.
         await new Promise((resolve, reject) => {
-            Papa.parse(csvText, {
-                header: false,
-                skipEmptyLines: true,
-                delimiter: '',
-                dynamicTyping: false,
-                chunkSize: 1024 * 1024,
-                chunk: function(results, parser) {
-                    try {
-                        currentSourceFileName = sourceFileName;
-                        const rows = results && results.data ? results.data : [];
-                        if (!headerFound) {
-                            for (let j = 0; j < Math.min(rows.length, 100); j++) {
-                                const row = rows[j] || [];
-                                const tokens = new Set(row.map(v => String(v == null ? '' : v).replace(/^\uFEFF/, '').trim().toLowerCase().replace(/[^a-z0-9]/g, '')).filter(Boolean));
-                                const has = name => tokens.has(name);
-                                const isMokaHeader = has('netsales') && (has('receiptnumber') || has('sku'));
-                                // Exact header signatures verified against the two uploaded platform CSVs.
-                                const isGrabHeader = isGrabFoodFile && has('transactionid') && has('storename') && has('netsales') && has('date');
-                                const isGoHeader = isGoFoodFile && has('transactionid') && has('outletname') && has('amount') && has('date');
-                                if ((isMokaFile && isMokaHeader) || isGrabHeader || isGoHeader) {
-                                    headerFound = true;
-                                    headers = row;
-                                    const firstPayload = rows.slice(j + 1);
-                                    if (firstPayload.length) processParsedRows(firstPayload, headers);
-                                    break;
+            let settled = false;
+            const fail = (err) => {
+                if (settled) return;
+                settled = true;
+                reject(err instanceof Error ? err : new Error(String(err || 'CSV parse failed')));
+            };
+            const finish = () => {
+                if (settled) return;
+                settled = true;
+                resolve();
+            };
+
+            try {
+                Papa.parse(csvFile, {
+                    worker: false,
+                    header: false,
+                    skipEmptyLines: 'greedy',
+                    dynamicTyping: false,
+                    chunkSize: 512 * 1024,
+                    chunk: function(results, parser) {
+                        try {
+                            currentSourceFileName = sourceFileName;
+                            const rows = results && Array.isArray(results.data) ? results.data : [];
+                            if (!headerFound) {
+                                for (let j = 0; j < Math.min(rows.length, 100); j++) {
+                                    const row = rows[j] || [];
+                                    const tokens = new Set(row.map(v => String(v == null ? '' : v)
+                                        .replace(/^\uFEFF/, '').trim().toLowerCase()
+                                        .replace(/[^a-z0-9]/g, '')).filter(Boolean));
+                                    const has = name => tokens.has(name);
+                                    const isMokaHeader = has('netsales') && (has('receiptnumber') || has('sku'));
+                                    // Header names below are verified against the uploaded source CSVs.
+                                    const isGrabHeader = isGrabFoodFile && has('transactionid') && has('storename') && has('netsales') && has('date');
+                                    const isGoHeader = isGoFoodFile && has('transactionid') && has('outletname') && has('amount') && has('date');
+                                    if ((isMokaFile && isMokaHeader) || isGrabHeader || isGoHeader) {
+                                        headerFound = true;
+                                        headers = row;
+                                        const firstPayload = rows.slice(j + 1);
+                                        if (firstPayload.length) processParsedRows(firstPayload, headers);
+                                        break;
+                                    }
                                 }
+                            } else if (rows.length) {
+                                processParsedRows(rows, headers);
                             }
-                        } else if (rows.length) {
-                            processParsedRows(rows, headers);
+
+                            const status = document.getElementById('loadingSubText');
+                            if (status) {
+                                status.textContent = headerFound
+                                    ? `Memproses ${sourceFileName} • ${formatNum(rawData.length - parsedRowsBefore)} transaksi valid`
+                                    : `Mencari header CSV ${sourceFileName}...`;
+                            }
+                            if (parser && typeof parser.pause === 'function') {
+                                parser.pause();
+                                setTimeout(() => { if (!settled) parser.resume(); }, 0);
+                            }
+                        } catch (err) {
+                            if (parser && typeof parser.abort === 'function') parser.abort();
+                            fail(new Error(`${sourceFileName}: ${err && err.message ? err.message : err}`));
                         }
-                        const loadingStatus = document.getElementById('loadingSubText');
-                        if (loadingStatus) loadingStatus.textContent = `Memproses ${sourceFileName} • ${formatNum(rawData.length - parsedRowsBefore)} baris valid`;
-                        if (parser && typeof parser.pause === 'function') {
-                            parser.pause();
-                            setTimeout(() => parser.resume(), 0);
+                    },
+                    complete: function() {
+                        if (!headerFound) {
+                            fail(new Error(`${sourceFileName}: header tidak dikenali. Pastikan file di GitHub sama dengan CSV sumber.`));
+                            return;
                         }
-                    } catch (err) {
-                        if (parser && typeof parser.abort === 'function') parser.abort();
-                        reject(err);
+                        const addedRows = rawData.length - parsedRowsBefore;
+                        if (addedRows <= 0) {
+                            fail(new Error(`${sourceFileName}: 0 transaksi valid terbaca. Periksa file yang tersimpan di GitHub dan filter tahun 2025–2026.`));
+                            return;
+                        }
+                        finish();
+                    },
+                    error: function(err) {
+                        fail(new Error(`${sourceFileName}: gagal diunduh/diparse (${err && err.message ? err.message : 'periksa file GitHub dan koneksi'}).`));
                     }
-                },
-                complete: function() {
-                    if (!headerFound) {
-                        reject(new Error(`Header CSV tidak dikenali: ${sourceFileName}`));
-                        return;
-                    }
-                    resolve();
-                },
-                error: function(err) {
-                    reject(new Error(`${sourceFileName}: ${err && err.message ? err.message : 'gagal diparse'}`));
-                }
-            });
+                });
+            } catch (err) {
+                fail(err);
+            }
         });
 
-        csvText = '';
         const addedRows = rawData.length - parsedRowsBefore;
-        if (addedRows <= 0) throw new Error(`${sourceFileName}: header ditemukan tetapi tidak ada transaksi valid tahun 2025-2026`);
         await yieldToMain();
         return addedRows;
     }
@@ -2526,6 +2561,9 @@
             }
         } catch (err) {
             console.error(err);
+            const statusEl = document.getElementById('lazyStatus');
+            const platform = document.getElementById('lazyPlatformSelect')?.value || 'Moka';
+            if (statusEl) statusEl.textContent = `GAGAL ${platform}: ${err.message}`;
             showToast('Gagal memuat data: ' + err.message, 'error');
             els.main.style.display = 'block';
         } finally {
@@ -2548,6 +2586,9 @@
             const statusEl = document.getElementById('lazyStatus');
             const counts = `Moka ${lazyFileGroups.Moka.length} file • GrabFood ${lazyFileGroups.GrabFood.length} file • GoFood ${lazyFileGroups.GoFood.length} file`;
             if (statusEl) statusEl.textContent = `${counts} tersedia • pilih dashboard`;
+            if (!lazyFileGroups.Moka.length || !lazyFileGroups.GrabFood.length || !lazyFileGroups.GoFood.length) {
+                throw new Error(`Manifest tidak lengkap: ${counts}`);
+            }
 
             // Ganti dashboard akan memuat ulang hanya sumber yang dipilih secara otomatis.
             // Moka tetap menjadi pilihan awal; file Moka tidak dibuang dari manifest.
