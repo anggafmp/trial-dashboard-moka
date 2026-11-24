@@ -59,7 +59,11 @@
         /* Custom Tooltip Global */
         #customMultiTooltip { position: absolute; background: #1e293b; color: white; padding: 8px 12px; border-radius: 6px; font-size: 11px; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 9999; border: 1px solid #334155; max-height: 250px; overflow-y: auto; width: max-content; max-width: 300px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
     
-<style id="sales-channel-force-visible">#salesChannelContainer{display:none !important;}</style>
+<style id="sales-channel-force-visible">#salesChannelContainer{display:none !important;}<style id="online-dashboard-fixes">
+#dashboardBackBtn { display: none; }
+body.online-mode #dashboardBackBtn { display: inline-flex !important; }
+</style>
+</style>
 </style>
 </head>
 <body class="antialiased min-h-screen flex flex-col">
@@ -225,7 +229,7 @@
                     <label class="flex items-center gap-1.5 cursor-pointer bg-purple-50 text-purple-700 border border-purple-200 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><input type="checkbox" id="toggleVsLineCheckbox" class="w-3.5 h-3.5 text-purple-700 rounded focus:ring-purple-700 cursor-pointer">Show VS Line</label>
                     
                     <button id="openAdvCompareBtn" class="flex items-center gap-1 cursor-pointer bg-blue-50 text-fr-blue border border-blue-200 hover:bg-blue-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0">📊 Adv. Compare</button>
-                    <button id="openVsTableBtn" class="flex items-center gap-1 cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> VS Table</button>
+                    <button id="openVsTableBtn" class="flex items-center gap-1 cursor-pointer bg-indigo-50 text-indigo-700 border border-indigo-200 hover:bg-indigo-100 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-semibold whitespace-nowrap shrink-0"><svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 10h18M3 14h18m-9-4v8m-7 0h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path></svg> VS Table</button>\n                    <button id="dashboardBackBtn" class="hidden flex items-center gap-1 cursor-pointer bg-white text-fr-blue border border-fr-blue hover:bg-blue-50 px-2 py-1.5 rounded transition-colors text-[10px] sm:text-[11px] font-bold whitespace-nowrap shrink-0">← Moka Dashboard</button>
                 </div>
             </div>
         </div>
@@ -1088,12 +1092,32 @@
         return {dateStr:str,formattedDate:str};
     }
 
+    // Pastikan field channel/outlet/item/receipt selalu scalar string.
+    // Beberapa CSV online dapat terbaca sebagai object pada field tertentu.
+    function toScalar(v, fallback='') {
+        if (v === undefined || v === null) return fallback;
+        if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') return String(v);
+        if (Array.isArray(v)) {
+            const vals = v.map(x => toScalar(x, '')).filter(Boolean);
+            return vals.join(' | ') || fallback;
+        }
+        if (typeof v === 'object') {
+            for (const k of ['name','label','value','text','title','displayName','display_name','outlet_name','store_name','item_name','transaction_id','id']) {
+                if (v[k] !== undefined && v[k] !== null && String(v[k]).trim() !== '') return toScalar(v[k], fallback);
+            }
+            try { return JSON.stringify(v); } catch(e) { return fallback; }
+        }
+        return fallback;
+    }
+
     function processParsedJSON(json) {
         for (let i = 0; i < json.length; i++) {
             let row = json[i]; let nr = {}; for(let k in row) nr[k.trim()] = row[k]; if(!nr['Date'] && !nr['Items'] && !nr['Receipt Number']) continue;
-            if (!nr['Platform']) nr['Platform'] = 'Moka';
-            if (!nr['Sales Channel']) nr['Sales Channel'] = nr['Platform'] === 'GoFood' || nr['Platform'] === 'GrabFood' ? 'Online Sales' : 'Moka';
-            let rawOutlet = nr['Outlet'] ? String(nr['Outlet']).trim() : ''; nr['Outlet'] = rawOutlet.split(',')[0].trim();
+            nr['Platform'] = toScalar(nr['Platform'], 'Moka');
+            nr['Sales Channel'] = toScalar(nr['Sales Channel'], (nr['Platform'] === 'GoFood' || nr['Platform'] === 'GrabFood') ? 'Online Sales' : 'Moka');
+            nr['Outlet'] = toScalar(nr['Outlet'], '').split(',')[0].trim();
+            nr['Items'] = toScalar(nr['Items'], 'Unknown').trim();
+            nr['Receipt Number'] = toScalar(nr['Receipt Number'], '').trim();
             nr['AREA'] = nr['AREA'] ? String(nr['AREA']).trim() : 'Unknown'; nr['DEPT'] = nr['DEPT'] ? String(nr['DEPT']).trim() : 'Unknown';
             nr['Event Type'] = nr['Event Type'] ? String(nr['Event Type']).trim() : 'Unknown'; nr['Items'] = nr['Items'] ? String(nr['Items']).trim() : 'Unknown';
             nr['Collected By'] = nr['Collected By'] ? String(nr['Collected By']).trim() : (nr['CollectedBy'] || nr['collected by'] || '-');
@@ -1434,7 +1458,7 @@
 
             // Online dashboard owns its own dataset: Online Sales only + shared filters.
             const current = rawData.filter(r => {
-                if (gs(r,'Sales Channel') !== 'Online Sales') return false;
+                if (toScalar(r['Sales Channel'],'') !== 'Online Sales') return false;
                 if (filters.dStart.value && (!r.DateStr || r.DateStr < filters.dStart.value)) return false;
                 if (filters.dEnd.value && (!r.DateStr || r.DateStr > filters.dEnd.value)) return false;
                 if (selectedOutletsSet.size > 0 && !selectedOutletsSet.has(gs(r,'Outlet'))) return false;
@@ -1475,8 +1499,11 @@
             const summarize = rows => {
                 const o = { sales:0, qty:0, orders:new Set(), outlet:{}, item:{}, platform:{GrabFood:{sales:0,orders:new Set()},GoFood:{sales:0,orders:new Set()}}, days:{} };
                 rows.forEach(r => {
-                    const net=getCleanNum(r,'Net Sales'), qty=getCleanNum(r,'Quantity') || 1, rec=sv(r,'Receipt Number');
-                    const out=sv(r,'Outlet') || 'Unknown', item=sv(r,'Items') || 'Unknown', p=sv(r,'Platform'), dt=sv(r,'DateStr');
+                    const net=getCleanNum(r,'Net Sales'), qty=getCleanNum(r,'Quantity') || 1, rec=toScalar(r['Receipt Number'],'').trim();
+                    const out=toScalar(r['Outlet'],'Unknown').trim() || 'Unknown';
+                    const item=toScalar(r['Items'],'Unknown').trim() || 'Unknown';
+                    const p=toScalar(r['_OnlinePlatform'] || r['Platform'],'').trim();
+                    const dt=toScalar(r['DateStr'],'').trim();
                     o.sales += net; o.qty += qty; if(rec) o.orders.add(rec);
                     if (!o.outlet[out]) o.outlet[out]={sales:0,orders:new Set(),items:0};
                     o.outlet[out].sales += net; o.outlet[out].items += qty; if(rec)o.outlet[out].orders.add(rec);
@@ -2519,19 +2546,23 @@
     // ============================================================
     function setDashboardTab(mode) {
         activeDashboard=mode;
+        document.body.classList.toggle('online-mode', mode === 'online');
         const m=document.getElementById('dashboardMokaBtn'),o=document.getElementById('dashboardOnlineBtn'),
               mc=document.getElementById('dashboardMokaContent'),oc=document.getElementById('onlineDashboardContent'),
               fp=document.getElementById('globalFiltersPanel');
+        const backNav=document.getElementById('dashboardBackBtn');
         if(mode==='online'){
             // Online feed does not carry the same Moka-only Area/Dept/Event/Discount dimensions.
             selectedAreasSet.clear(); selectedDiscountsSet.clear();
             filters.dept.value='ALL'; filters.eventType.value='ALL';
             filters.salesChannel.value='Online Sales';
+            if(backNav) backNav.classList.remove('hidden');
             m.className='dashboard-tab panel p-3 text-left border-2 border-transparent hover:border-blue-300 hover:bg-blue-50 transition-all';
             o.className='dashboard-tab panel p-3 text-left border-2 border-purple-500 bg-purple-50 transition-all';
             mc.classList.add('hidden'); oc.classList.remove('hidden');
         } else {
             filters.salesChannel.value='Moka';
+            if(backNav) backNav.classList.add('hidden');
             m.className='dashboard-tab panel p-3 text-left border-2 border-fr-blue bg-blue-50 transition-all';
             o.className='dashboard-tab panel p-3 text-left border-2 border-transparent hover:border-purple-300 hover:bg-purple-50 transition-all';
             mc.classList.remove('hidden'); oc.classList.add('hidden');
@@ -2541,6 +2572,7 @@
     }
     document.getElementById('dashboardMokaBtn').addEventListener('click',()=>setDashboardTab('moka'));
     document.getElementById('dashboardOnlineBtn').addEventListener('click',()=>setDashboardTab('online'));
+    document.getElementById('dashboardBackBtn').addEventListener('click',()=>setDashboardTab('moka'));
         const onlineBackBtn=document.getElementById('onlineBackToMokaBtn'); if(onlineBackBtn) onlineBackBtn.addEventListener('click',()=>setDashboardTab('moka'));
 
     // AUTO-LOAD CSV DARI GITHUB
@@ -2591,8 +2623,9 @@
         nr['Total Collected'] = num(get('Total Collected', 'Total Amount', 'Net Amount', 'Amount')) || sales;
         nr['Total Collected Exc Rounding'] = num(get('Total Collected Exc Rounding', 'Net Amount', 'Amount')) || nr['Total Collected'];
         nr['Payment Method'] = get('Payment Method', 'Payment method', 'Payment Type', 'Payment type') || '-';
-        nr['Platform'] = source;
+        nr['Platform'] = String(source);
         nr['Sales Channel'] = 'Online Sales';
+        nr['_OnlinePlatform'] = String(source);
         nr['AREA'] = String(get('AREA', 'Area') || 'Unknown').trim();
         nr['DEPT'] = String(get('DEPT', 'Dept', 'Department') || 'Unknown').trim();
         nr['Event Type'] = String(get('Event Type', 'Order Type', 'Order Channel', 'Channel') || 'Unknown').trim();
