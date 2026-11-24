@@ -2662,106 +2662,24 @@
     }
 
     window.addEventListener('DOMContentLoaded', loadAllCsvFromGithub);
-    </script>
-            // ====================================================
-        // FIX INSTAN: TIMPA FUNGSI LOAD MOKA & TAMBAH GRAB/GO
+            // ... kode-kode kamu sebelumnya ...
+
+        window.addEventListener('DOMContentLoaded', loadAllCsvFromGitHub); // <--- INI BARIS 2664
+
+        // ====================================================
+        // FIX INSTAN V2: ANTI-FREEZE & BISA LOAD BARENGAN
         // ====================================================
         window.loadAllCsvFromGitHub = async function() {
-            const platformSelect = document.getElementById('lazyPlatformSelect');
-            const platform = platformSelect ? platformSelect.value : 'Moka';
-            const statusEl = document.getElementById('lazyStatus');
-            const loadUI = document.getElementById('loadingOverlay');
-            const progressBar = document.getElementById('loadingProgressBar');
-            
-            let filesToLoad = [];
-            if (platform === 'Moka') {
-                filesToLoad = [
-                    'master_sales_detail_moka_januari_2026.csv', 'master_sales_detail_moka_februari_2026.csv',
-                    'master_sales_detail_moka_maret_2026.csv', 'master_sales_detail_moka_april_2026.csv',
-                    'master_sales_detail_moka_mei_2026.csv', 'master_sales_detail_moka_juni_2026.csv',
-                    'master_sales_detail_moka_juli_2026.csv', 'master_sales_detail_moka_agustus_2026.csv',
-                    'master_sales_detail_moka_september_2026.csv', 'master_sales_detail_moka_oktober_2026.csv'
-                ];
-            } else if (platform === 'GrabFood') {
-                filesToLoad = ['master_sales_grabfood.csv'];
-            } else if (platform === 'GoFood') {
-                filesToLoad = ['master_sales_gofood.csv'];
-            } else if (platform === 'GrabFood+GoFood') {
-                filesToLoad = ['master_sales_grabfood.csv', 'master_sales_gofood.csv'];
-            }
-
-            if (filesToLoad.length === 0) return;
-
-            if(loadUI) loadUI.classList.add('active');
-            if(statusEl) statusEl.innerText = `Memuat ${platform}...`;
-            if(progressBar) progressBar.style.width = '0%';
-
-            try {
-                window.rawData = [];
-                let totalFiles = filesToLoad.length;
-
-                for (let i = 0; i < totalFiles; i++) {
-                    let fileUrl = filesToLoad[i];
-                    let pct = Math.round((i / totalFiles) * 100);
-                    if(document.getElementById('loadingSubText')) document.getElementById('loadingSubText').innerText = `Mengunduh file ${i + 1} dari ${totalFiles}...`;
-                    if(progressBar) progressBar.style.width = pct + '%';
-
-                    const response = await fetch(fileUrl);
-                    if (!response.ok) {
-                        console.warn(`File ${fileUrl} gagal diunduh (404).`);
-                        continue;
-                    }
-                    
-                    const blob = await response.blob();
-                    // Cek apakah isinya kosong
-                    if (blob.size < 10) continue; 
-                    
-                    const file = new File([blob], fileUrl, { type: 'text/csv' });
-                    window.currentSourceFileName = fileUrl;
-                    
-                    // Panggil fungsi processExcel bawaan kodemu
-                    if (typeof processExcel === 'function') {
-                        await processExcel(file);
-                    }
-                }
-
-                if(document.getElementById('loadingSubText')) document.getElementById('loadingSubText').innerText = 'Menyiapkan dasbor...';
-                if(progressBar) progressBar.style.width = '95%';
-                await new Promise(r => setTimeout(r, 150));
-
-                if (window.rawData.length > 0) {
-                    // Panggil fungsi render bawaan kodemu
-                    if (typeof setupDatePickers === 'function') setupDatePickers();
-                    if (typeof populateDropdowns === 'function') populateDropdowns();
-                    if (typeof populateItemDropdown === 'function') populateItemDropdown();
-                    
-                    if(loadUI) loadUI.classList.remove('active');
-                    document.getElementById('mainContent').style.display = 'block';
-                    document.getElementById('dashboardContent').classList.remove('hidden');
-                    
-                    const navCtrl = document.getElementById('navDashboardControls');
-                    if(navCtrl) { navCtrl.classList.remove('hidden'); navCtrl.classList.add('flex'); }
-                    
-                    if (typeof executeFilterAndRender === 'function') await executeFilterAndRender();
-                    
-                    if(statusEl) statusEl.innerText = `Berhasil memuat ${window.rawData.length.toLocaleString('id-ID')} baris data ${platform}.`;
-                    if (typeof showToast === 'function') showToast(`Data ${platform} berhasil dimuat!`, 'success');
-                } else {
-                    throw new Error("Data kosong. Cek apakah header CSV GrabFood/GoFood dikenali.");
-                }
-            } catch (err) {
-                console.error(err);
-                if(loadUI) loadUI.classList.remove('active');
-                if(statusEl) statusEl.innerText = `Gagal memuat ${platform}.`;
-                if (typeof showToast === 'function') showToast(err.message, 'error');
-            }
+            // ... (tempel kode panjang yang saya kasih di atas di sini) ...
         };
 
-        // Pasang event listener saat dropdown diganti
         document.getElementById('lazyPlatformSelect').addEventListener('change', window.loadAllCsvFromGitHub);
-
-        // Panggil ulang saat pertama kali load
         setTimeout(() => { window.loadAllCsvFromGitHub(); }, 500);
         // ====================================================
+
+    </script> <!-- <--- INI TAG PENUTUP SCRIPT, BIARKAN DI BAWAHNYA -->
+</body>
+</html>
+    </script>
 </body>
 </html>
