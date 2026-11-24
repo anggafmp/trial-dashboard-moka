@@ -2192,69 +2192,237 @@
     const GH_REPO = 'lmdp-b2c-analytic-performance';
     const GH_BASE_URL = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/main/`;
 
+    // ============================================================
+    // OPTIMIZED CSV LOADER
+    // - Tidak lagi membuat rawSheet raksasa untuk setiap CSV.
+    // - CSV diproses per chunk agar browser tidak freeze.
+    // - Parser dijalankan di Web Worker.
+    // - Progress bergerak berdasarkan byte yang benar-benar sudah diproses.
+    // ============================================================
+    function processGithubCsvBlob(fileName, fileIndex, totalFiles) {
+        return new Promise(async (resolve, reject) => {
+            try {
+                const res = await fetch(
+                    GH_BASE_URL + encodeURIComponent(fileName) + '?t=' + Date.now(),
+                    { cache: 'no-store' }
+                );
+                if (!res.ok) throw new Error('HTTP ' + res.status);
+
+                const blob = await res.blob();
+                const totalBytes = blob.size || 1;
+
+                let headers = null;
+                let headerFound = false;
+                let pendingRows = [];
+                let processedRows = 0;
+                let parserRef = null;
+                let finished = false;
+
+                const makeObjects = (rows) => {
+                    if (!headers || rows.length === 0) return [];
+                    const json = new Array(rows.length);
+
+                    for (let r = 0; r < rows.length; r++) {
+                        const row = rows[r] || [];
+                        const obj = {};
+                        const max = Math.min(headers.length, row.length);
+                        for (let c = 0; c < max; c++) {
+                            if (headers[c]) obj[headers[c]] = row[c];
+                        }
+                        json[r] = obj;
+                    }
+                    return json;
+                };
+
+                const processRowsAsync = async (rows) => {
+                    if (!rows || rows.length === 0) return;
+
+                    // Batch kecil supaya UI tetap responsif walaupun satu CSV sangat besar.
+                    const BATCH = 2000;
+                    for (let start = 0; start < rows.length; start += BATCH) {
+                        const batch = rows.slice(start, start + BATCH);
+                        processParsedJSON(makeObjects(batch));
+                        processedRows += batch.length;
+
+                        // Beri browser kesempatan repaint / update progress.
+                        await new Promise(r => setTimeout(r, 0));
+                    }
+                };
+
+                const fail = (err) => {
+                    if (finished) return;
+                    finished = true;
+                    reject(err);
+                };
+
+                Papa.parse(blob, {
+                    header: false,
+                    skipEmptyLines: true,
+                    worker: true,
+                    chunkSize: 2 * 1024 * 1024,
+
+                    chunk: function(results, parser) {
+                        parserRef = parser;
+                        parser.pause();
+
+                        const rows = results.data || [];
+
+                        // Header biasanya berada di awal file. Tetap buffer sampai
+                        // maksimal 50 row agar kompatibel dengan file MOKA yang
+                        // memiliki beberapa baris metadata sebelum header.
+                        if (!headerFound) {
+                            pendingRows.push(...rows);
+
+                            let headerIdx = -1;
+                            const limit = Math.min(pendingRows.length, 50);
+
+                            for (let j = 0; j < limit; j++) {
+                                const rowStr = (pendingRows[j] || []).join(' ');
+                                if (
+                                    rowStr.includes('Net Sales') &&
+                                    (rowStr.includes('Receipt Number') || rowStr.includes('SKU'))
+                                ) {
+                                    headerIdx = j;
+                                    break;
+                                }
+                            }
+
+                            if (headerIdx === -1) {
+                                // Kalau sudah lewat 50 baris dan header tidak ketemu,
+                                // file dianggap tidak kompatibel.
+                                if (pendingRows.length >= 50) {
+                                    pendingRows = [];
+                                    showToast(`Header tidak ditemukan: ${fileName}`, 'error');
+                                    parser.abort();
+                                    finished = true;
+                                    resolve();
+                                    return;
+                                }
+
+                                parser.resume();
+                                return;
+                            }
+
+                            headers = pendingRows[headerIdx];
+                            headerFound = true;
+
+                            const dataRows = pendingRows.slice(headerIdx + 1);
+                            pendingRows = [];
+
+                            processRowsAsync(dataRows)
+                                .then(() => parser.resume())
+                                .catch(fail);
+
+                        } else {
+                            processRowsAsync(rows)
+                                .then(() => parser.resume())
+                                .catch(fail);
+                        }
+
+                        // Progress per file + global progress.
+                        const cursor = Number(results.meta?.cursor || 0);
+                        const filePct = Math.min(99, Math.round((cursor / totalBytes) * 100));
+                        const overallPct = Math.min(
+                            94,
+                            Math.round(((fileIndex + filePct / 100) / totalFiles) * 100)
+                        );
+
+                        setLoadingProgress(
+                            overallPct,
+                            `Memuat ${fileName} (${fileIndex + 1}/${totalFiles}) — ${filePct}%`
+                        );
+                    },
+
+                    complete: function() {
+                        if (finished) return;
+                        finished = true;
+
+                        if (!headerFound) {
+                            showToast(`Header tidak ditemukan: ${fileName}`, 'error');
+                        }
+
+                        resolve({
+                            fileName,
+                            rows: processedRows,
+                            size: totalBytes
+                        });
+                    },
+
+                    error: function(err) {
+                        fail(err);
+                    }
+                });
+            } catch (err) {
+                reject(err);
+            }
+        });
+    }
+
     async function loadAllCsvFromGithub() {
         try {
-            const manifestRes = await fetch(GH_BASE_URL + 'manifest.json?t=' + Date.now());
+            const manifestRes = await fetch(GH_BASE_URL + 'manifest.json?t=' + Date.now(), {
+                cache: 'no-store'
+            });
+
             if (!manifestRes.ok) throw new Error('manifest.json tidak ditemukan');
+
             const fileList = await manifestRes.json();
-            if (fileList.length === 0) { showToast('Manifest kosong.', 'error'); return; }
+
+            if (!Array.isArray(fileList) || fileList.length === 0) {
+                showToast('Manifest kosong.', 'error');
+                return;
+            }
 
             els.loadUI.classList.add('active');
-            setLoadingProgress(0, `Memuat ${fileList.length} file CSV...`);
+            setLoadingProgress(0, `Menyiapkan ${fileList.length} file CSV...`);
             rawData = [];
 
+            // Tetap sequential agar RAM tidak melonjak karena beberapa CSV besar
+            // diproses bersamaan.
             for (let i = 0; i < fileList.length; i++) {
                 const fileName = fileList[i];
-                const pct = Math.round((i / fileList.length) * 100);
-                setLoadingProgress(pct, `Memuat ${fileName} (${i+1}/${fileList.length})...`);
+
                 try {
-                    const res = await fetch(GH_BASE_URL + encodeURIComponent(fileName) + '?t=' + Date.now());
-                    if (!res.ok) throw new Error('HTTP ' + res.status);
-                    const csvText = await res.text();
-                    const parsed = Papa.parse(csvText.trim(), { header: false, skipEmptyLines: true, delimiter: "" });
-                    const rawSheet = parsed.data;
-                    let headerIdx = -1;
-                    for (let j = 0; j < Math.min(rawSheet.length, 50); j++) {
-                        const rowStr = (rawSheet[j] || []).join(' ');
-                        if (rowStr.includes('Net Sales') && (rowStr.includes('Receipt Number') || rowStr.includes('SKU'))) { headerIdx = j; break; }
-                    }
-                    if (headerIdx !== -1) {
-                        const headers = rawSheet[headerIdx];
-                        const json = [];
-                        for (let r = headerIdx + 1; r < rawSheet.length; r++) {
-                            const obj = {};
-                            for (let c = 0; c < headers.length; c++) { if (headers[c]) obj[headers[c]] = rawSheet[r][c]; }
-                            json.push(obj);
-                        }
-                        processParsedJSON(json);
-                    }
+                    await processGithubCsvBlob(fileName, i, fileList.length);
+
+                    // Paksa browser melakukan repaint setelah satu file selesai.
+                    await new Promise(r => requestAnimationFrame(() => r()));
+
                 } catch (err) {
                     console.warn(`Gagal memuat ${fileName}:`, err);
-                    showToast(`Gagal memuat ${fileName}`, 'error');
+                    showToast(`Gagal memuat ${fileName}: ${err.message}`, 'error');
                 }
             }
 
             setLoadingProgress(95, 'Menyiapkan dasbor...');
+            await new Promise(r => setTimeout(r, 50));
+
             if (rawData.length > 0) {
                 setupDatePickers();
                 populateDropdowns();
                 populateItemDropdown();
-                
-                // PAKSA SEMBUNYIKAN LOADING DAN TAMPILKAN DASHBOARD SEBELUM RENDER BERAT
-                document.getElementById('loadingOverlay').style.display = 'none'; 
-                els.main.style.display = 'block'; 
+
+                // Tampilkan dashboard lebih cepat; grafik dirender setelah browser
+                // mendapat satu kesempatan untuk repaint.
+                document.getElementById('loadingOverlay').style.display = 'none';
+                els.main.style.display = 'block';
                 els.content.classList.remove('hidden');
-                
-                const navCtrl = document.getElementById('navDashboardControls'); navCtrl.classList.remove('hidden'); navCtrl.classList.add('flex');
-                
-                // JEDA 100MS SEBELUM MENGGAMBAR GRAFIK AGAR BROWSER BERNAFAS
+
+                const navCtrl = document.getElementById('navDashboardControls');
+                navCtrl.classList.remove('hidden');
+                navCtrl.classList.add('flex');
+
                 setTimeout(async () => {
                     try {
-                        await executeFilterAndRender(); 
-                        showToast(`Berhasil memuat ${formatNum(rawData.length)} baris.`); 
-                    } catch(e) { 
-                        console.error(e); 
-                        showToast('Sebagian grafik gagal dirender karena data terlalu besar.', 'error');
+                        await executeFilterAndRender();
+                        setLoadingProgress(100, 'Selesai!');
+                        showToast(`Berhasil memuat ${formatNum(rawData.length)} baris.`);
+                    } catch (e) {
+                        console.error(e);
+                        showToast(
+                            'Data berhasil dimuat, tetapi sebagian grafik gagal dirender karena data besar.',
+                            'error'
+                        );
                     }
                 }, 100);
 
@@ -2262,6 +2430,7 @@
                 showToast('Tidak ada data valid. Periksa format CSV.', 'error');
                 els.main.style.display = 'block';
             }
+
         } catch (err) {
             console.error(err);
             showToast('Gagal memuat data: ' + err.message, 'error');
