@@ -912,146 +912,50 @@
         });
     }
 
-    // ============================================================
-    // MEMORY COMPACTION
-    // ============================================================
-    // CSV MOKA berisi banyak kolom dan string berulang. Untuk dashboard
-    // kita hanya simpan kolom yang benar-benar dipakai. String kategori
-    // juga di-intern agar nilai seperti Outlet/Dept/Category tidak dibuat
-    // berulang-ulang di memory.
-    const INTERN_LIMIT = 150000;
-    const internCaches = new Map();
-    function internValue(key, value) {
-        if (value === null || value === undefined) return '';
-        const s = String(value).trim();
-        if (!s) return '';
-        let cache = internCaches.get(key);
-        if (!cache) { cache = new Map(); internCaches.set(key, cache); }
-        const old = cache.get(s);
-        if (old !== undefined) return old;
-        if (cache.size < INTERN_LIMIT) cache.set(s, s);
-        return s;
-    }
-
-    const KEEP_FIELDS = new Set([
-        'Receipt Number','AREA','Outlet','SKU','Items','Category','DEPT','Quantity',
-        'Net Sales','Gross Sales','Total Collected','Total Collected Exc Rounding',
-        'Tax','Gratuity','Discounts','Refunds','Discount Applied','Payment Method',
-        'Sales Type','Event Type','Collected By','Served By','Customer','Reason of Refund'
-    ]);
-    const NUM_FIELDS = new Set([
-        'Net Sales','Gross Sales','Quantity','Tax','Gratuity','Discounts','Refunds',
-        'Total Collected','Total Collected Exc Rounding','Discount Applied (Rp)'
-    ]);
-    const INTERN_FIELDS = new Set([
-        'AREA','Outlet','SKU','Items','Category','DEPT','Discount Applied','Payment Method',
-        'Sales Type','Event Type','Collected By','Served By'
-    ]);
-
-    function normalizeCompactRow(source) {
-        const nr = {};
-        if (!source) return null;
-        for (const k in source) {
-            const key = String(k).trim();
-            if (!KEEP_FIELDS.has(key) && key !== 'Date' && key !== 'Time' && key !== 'HOUR' && key !== 'DAY OF WEEK') continue;
-            if (source[k] === undefined || source[k] === null) continue;
-            nr[key] = source[k];
-        }
-        return finalizeCompactRow(nr);
-    }
-
-    function finalizeCompactRow(nr) {
-        if (!nr || (!nr['Date'] && !nr['Items'] && !nr['Receipt Number'])) return null;
-
-        // Normalisasi field kategori yang sering berulang.
-        nr['Outlet'] = internValue('Outlet', nr['Outlet'] ? String(nr['Outlet']).split(',')[0] : '');
-        nr['AREA'] = internValue('AREA', nr['AREA'] || 'Unknown') || 'Unknown';
-        nr['DEPT'] = internValue('DEPT', nr['DEPT'] || 'Unknown') || 'Unknown';
-        nr['Event Type'] = internValue('Event Type', nr['Event Type'] || 'Unknown') || 'Unknown';
-        nr['Items'] = internValue('Items', nr['Items'] || 'Unknown') || 'Unknown';
-        nr['Category'] = internValue('Category', nr['Category'] || 'Unknown') || 'Unknown';
-        nr['SKU'] = internValue('SKU', nr['SKU'] || '');
-        nr['Discount Applied'] = internValue('Discount Applied', nr['Discount Applied'] || '');
-        nr['Payment Method'] = internValue('Payment Method', nr['Payment Method'] || '');
-        nr['Sales Type'] = internValue('Sales Type', nr['Sales Type'] || '');
-        nr['Collected By'] = internValue('Collected By', nr['Collected By'] || nr['CollectedBy'] || nr['collected by'] || '-');
-        nr['Served By'] = internValue('Served By', nr['Served By'] || nr['ServedBy'] || nr['served by'] || '-');
-        nr['Customer'] = nr['Customer'] ? String(nr['Customer']).trim() : (nr['customer'] || nr['CUSTOMER'] || '-');
-        nr['Reason of Refund'] = nr['Reason of Refund'] || nr['Reason Of Refund'] || nr['ReasonofRefund'] || nr['reason of refund'] || '-';
-
-        const rawDate = nr['Date'];
-        let dateStr = '', formattedDate = '';
-        if (typeof rawDate === 'number') {
-            const d = new Date(Math.round((rawDate - 25569) * 86400 * 1000));
-            const y = d.getUTCFullYear(), m = String(d.getUTCMonth()+1).padStart(2,'0'), day = String(d.getUTCDate()).padStart(2,'0');
-            dateStr = `${y}-${m}-${day}`; formattedDate = `${day}/${m}/${y}`;
-        } else if (typeof rawDate === 'string') {
-            const str = rawDate.split(' ')[0]; const parts = str.split(/[-\/]/);
-            if (parts.length === 3) {
-                if (parts[0].length === 4) { dateStr=`${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`; formattedDate=`${parts[2].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[0]}`; }
-                else if (parts[2].length === 4) { dateStr=`${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`; formattedDate=`${parts[0].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[2]}`; }
-                else { dateStr=str; formattedDate=str; }
-            } else { dateStr=str; formattedDate=str; }
-        }
-        nr['DateStr'] = dateStr; nr['FormattedDate'] = formattedDate;
-
-        const rawTime = nr['Time']; let hrStr = nr['HOUR'] ? String(nr['HOUR']).trim() : ''; let exactTime='-';
-        if (typeof rawDate === 'number' && rawDate % 1 !== 0) {
-            const d = new Date(Math.round((rawDate - 25569) * 86400 * 1000)); hrStr=d.getUTCHours().toString(); exactTime=String(d.getUTCHours()).padStart(2,'0')+':'+String(d.getUTCMinutes()).padStart(2,'0');
-        } else if (typeof rawTime === 'number') {
-            const totalMins=Math.round((rawTime%1)*24*60); hrStr=Math.floor(totalMins/60).toString(); exactTime=String(Math.floor(totalMins/60)).padStart(2,'0')+':'+String(totalMins%60).padStart(2,'0');
-        } else if (typeof rawTime === 'string') { hrStr=rawTime.split(':')[0]; exactTime=rawTime; }
-        else if (hrStr) exactTime=hrStr.padStart(2,'0')+':00';
-        nr['ParsedHour']=(hrStr||'').padStart(2,'0'); nr['ExactTime']=exactTime;
-
-        let dayStr = nr['DAY OF WEEK'] ? String(nr['DAY OF WEEK']).trim() : '';
-        if (dateStr) { const p=dateStr.split('-'); if(p.length===3){ const d=new Date(+p[0],+p[1]-1,+p[2],12); const di=d.getDay(); dayStr=DAYS[di===0?6:di-1]; } }
-        nr['ParsedDay']=dayStr;
-
-        for (const c of NUM_FIELDS) {
-            if (nr[c] !== undefined && typeof nr[c] === 'string') nr[c]=parseFloat(nr[c].replace(/,/g,'').trim())||0;
-        }
-
-        // Setelah Date/Time dipakai, buang kolom sumber mentah agar object jauh lebih kecil.
-        delete nr['Date']; delete nr['Time']; delete nr['HOUR']; delete nr['DAY OF WEEK'];
-        delete nr['CollectedBy']; delete nr['collected by']; delete nr['ServedBy']; delete nr['served by'];
-        delete nr['customer']; delete nr['CUSTOMER']; delete nr['Reason Of Refund']; delete nr['ReasonofRefund']; delete nr['reason of refund'];
-        return nr;
-    }
-
     function processParsedJSON(json) {
-        for (let i=0; i<json.length; i++) {
-            const nr = normalizeCompactRow(json[i]);
-            if (nr) rawData.push(nr);
-        }
-    }
-
-    // Versi khusus GitHub: langsung dari array CSV -> object compact.
-    // Tidak membuat object per baris penuh terlebih dahulu.
-    function processParsedRows(rows, headers) {
-        if (!rows || !headers) return 0;
-        const idx = Object.create(null);
-        for (let i=0; i<headers.length; i++) {
-            const h = String(headers[i] ?? '').trim();
-            if (h) idx[h] = i;
-        }
-        let added=0;
-        for (let i=0; i<rows.length; i++) {
-            const row=rows[i]; if(!row || !row.length) continue;
-            const source={};
-            // Hanya ambil kolom yang diperlukan; tidak membuat object berisi seluruh CSV.
-            for (const key of KEEP_FIELDS) {
-                const ci=idx[key]; if(ci !== undefined) source[key]=row[ci];
+        for (let i = 0; i < json.length; i++) {
+            let row = json[i]; let nr = {}; for(let k in row) nr[k.trim()] = row[k]; if(!nr['Date'] && !nr['Items'] && !nr['Receipt Number']) continue;
+            let rawOutlet = nr['Outlet'] ? String(nr['Outlet']).trim() : ''; nr['Outlet'] = rawOutlet.split(',')[0].trim();
+            nr['AREA'] = nr['AREA'] ? String(nr['AREA']).trim() : 'Unknown'; nr['DEPT'] = nr['DEPT'] ? String(nr['DEPT']).trim() : 'Unknown';
+            nr['Event Type'] = nr['Event Type'] ? String(nr['Event Type']).trim() : 'Unknown'; nr['Items'] = nr['Items'] ? String(nr['Items']).trim() : 'Unknown';
+            nr['Collected By'] = nr['Collected By'] ? String(nr['Collected By']).trim() : (nr['CollectedBy'] || nr['collected by'] || '-');
+            nr['Served By'] = nr['Served By'] ? String(nr['Served By']).trim() : (nr['ServedBy'] || nr['served by'] || '-');
+            nr['Customer'] = nr['Customer'] ? String(nr['Customer']).trim() : (nr['customer'] || nr['CUSTOMER'] || '-');
+            nr['Reason of Refund'] = nr['Reason of Refund'] ? String(nr['Reason of Refund']).trim() : (nr['Reason Of Refund'] || nr['ReasonofRefund'] || nr['reason of refund'] || '-');
+            
+            let rawDate = nr['Date']; let dateStr = ''; let formattedDate = '';
+            if (typeof rawDate === 'number') {
+                let d = new Date(Math.round((rawDate - 25569) * 86400 * 1000)); let y = d.getUTCFullYear(); let m = String(d.getUTCMonth() + 1).padStart(2, '0'); let day = String(d.getUTCDate()).padStart(2, '0');
+                dateStr = `${y}-${m}-${day}`; formattedDate = `${day}/${m}/${y}`;
+            } else if (typeof rawDate === 'string') {
+                let str = rawDate.split(' ')[0]; let parts = str.split(/[-/]/);
+                if(parts.length === 3) {
+                    if(parts[0].length === 4) { dateStr = `${parts[0]}-${parts[1].padStart(2,'0')}-${parts[2].padStart(2,'0')}`; formattedDate = `${parts[2].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[0]}`; }
+                    else if(parts[2].length === 4) { dateStr = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`; formattedDate = `${parts[0].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${parts[2]}`; }
+                    else { dateStr = str; formattedDate = str; }
+                } else { dateStr = str; formattedDate = str; }
             }
-            if(idx['Date'] !== undefined) source.Date=row[idx.Date];
-            if(idx['Time'] !== undefined) source.Time=row[idx.Time];
-            if(idx['HOUR'] !== undefined) source.HOUR=row[idx.HOUR];
-            if(idx['DAY OF WEEK'] !== undefined) source['DAY OF WEEK']=row[idx['DAY OF WEEK']];
-            const nr=finalizeCompactRow(source); if(nr){ rawData.push(nr); added++; }
-        }
-        return added;
-    }
+            nr['DateStr'] = dateStr; nr['FormattedDate'] = formattedDate;
 
+            let hrStr = nr['HOUR'] ? String(nr['HOUR']).trim() : ''; let exactTime = '-'; let rawTime = nr['Time'];
+            if (typeof rawDate === 'number' && rawDate % 1 !== 0) {
+                let d = new Date(Math.round((rawDate - 25569) * 86400 * 1000)); hrStr = d.getUTCHours().toString();
+                exactTime = String(d.getUTCHours()).padStart(2,'0') + ':' + String(d.getUTCMinutes()).padStart(2,'0');
+            } else if (typeof rawTime === 'number') {
+                let totalMins = Math.round((rawTime % 1) * 24 * 60); hrStr = Math.floor(totalMins / 60).toString();
+                exactTime = String(Math.floor(totalMins / 60)).padStart(2,'0') + ':' + String(totalMins % 60).padStart(2,'0');
+            } else if (typeof rawTime === 'string') { hrStr = rawTime.split(':')[0]; exactTime = rawTime; } 
+            else if (hrStr) { exactTime = hrStr.padStart(2, '0') + ':00'; }
+            nr['ParsedHour'] = hrStr.padStart(2, '0'); nr['ExactTime'] = exactTime;
+            
+            let dayStr = nr['DAY OF WEEK'] ? String(nr['DAY OF WEEK']).trim() : '';
+            if(nr['DateStr']) { let parts = nr['DateStr'].split('-'); if (parts.length === 3) { let safeDate = new Date(parseInt(parts[0]), parseInt(parts[1])-1, parseInt(parts[2]), 12, 0, 0); let dayIdx = safeDate.getDay(); let isoDay = dayIdx === 0 ? 6 : dayIdx - 1; dayStr = DAYS[isoDay]; } }
+            nr['ParsedDay'] = dayStr;
+            const nCols = ['Net Sales', 'Gross Sales', 'Quantity', 'Tax', 'Gratuity', 'Discounts', 'Refunds', 'Total Collected', 'Total Collected Exc Rounding', 'Discount Applied (Rp)'];
+            nCols.forEach(c => { if(nr[c] !== undefined && typeof nr[c] === 'string') { let s = nr[c].replace(/,/g, '').trim(); nr[c] = parseFloat(s) || 0; } });
+            rawData.push(nr);
+        }
+    }
         const getCleanNum = (r, key) => { let val = r[key]; if(typeof val === 'number') return val; if(!val) return 0; let p = parseFloat(val.toString().replace(/,/g, '')); return isNaN(p) ? 0 : p; };
         function getDiscountValue(r) { let discVal = getCleanNum(r, 'Discounts'); if (discVal === 0) discVal = getCleanNum(r, 'Discount Applied (Rp)'); return Math.abs(discVal); }
         function getGratuityValue(r) { return getCleanNum(r, 'Gratuity'); }
@@ -2284,128 +2188,73 @@
     // ============================================================
     // AUTO-LOAD CSV DARI GITHUB
     // ============================================================
-    const GH_USER = 'anggafmp';
-    const GH_REPO = 'trial-dashboard-moka';
+    const GH_USER = 'rohmanfahrudi';
+    const GH_REPO = 'lmdp-b2c-analytic-performance';
     const GH_BASE_URL = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/main/`;
-
-    // ============================================================
-    // OPTIMIZED CSV LOADER
-    // - Tidak lagi membuat rawSheet raksasa untuk setiap CSV.
-    // - CSV diproses per chunk agar browser tidak freeze.
-    // - Parser dijalankan per chunk di main thread agar stabil di GitHub Pages/Firefox.
-    // - Progress bergerak berdasarkan byte yang benar-benar sudah diproses.
-    // ============================================================
-    function processGithubCsvBlob(fileName, fileIndex, totalFiles) {
-        return new Promise(async (resolve, reject) => {
-            try {
-                const res = await fetch(GH_BASE_URL + encodeURIComponent(fileName) + '?t=' + Date.now(), {cache:'no-store'});
-                if(!res.ok) throw new Error('HTTP '+res.status);
-                const blob=await res.blob(); const totalBytes=blob.size||1;
-                let headers=null, headerFound=false, pendingRows=[], processedRows=0, finished=false;
-                const fail=e=>{if(finished)return;finished=true;reject(e);};
-                Papa.parse(blob, {
-                    header:false, skipEmptyLines:true, worker:false, chunkSize:2*1024*1024,
-                    chunk:function(results,parser){
-                        parser.pause();
-                        try {
-                            const rows=results.data||[];
-                            if(!headerFound){
-                                pendingRows.push(...rows);
-                                let hi=-1;
-                                for(let j=0;j<Math.min(pendingRows.length,50);j++){
-                                    const str=(pendingRows[j]||[]).join(' ');
-                                    if(str.includes('Net Sales')&&(str.includes('Receipt Number')||str.includes('SKU'))){hi=j;break;}
-                                }
-                                if(hi===-1){
-                                    if(pendingRows.length>=50){showToast(`Header tidak ditemukan: ${fileName}`,'error');parser.abort();finished=true;resolve({fileName,rows:0,size:totalBytes});return;}
-                                    parser.resume(); return;
-                                }
-                                headers=pendingRows[hi]; headerFound=true;
-                                const data=pendingRows.slice(hi+1); pendingRows=[];
-                                processedRows += processParsedRows(data,headers);
-                            } else {
-                                processedRows += processParsedRows(rows,headers);
-                            }
-                            const cursor=Number(results.meta?.cursor||0);
-                            const filePct=Math.min(99,Math.round(cursor/totalBytes*100));
-                            const overallPct=Math.min(94,Math.round(((fileIndex+filePct/100)/totalFiles)*100));
-                            setLoadingProgress(overallPct,`Memuat ${fileName} (${fileIndex+1}/${totalFiles}) — ${filePct}%`);
-                            // Beri browser kesempatan repaint di antara chunk agar UI tidak freeze.
-                            setTimeout(() => parser.resume(), 0);
-                        } catch(e){fail(e);}
-                    },
-                    complete:function(){if(finished)return;finished=true;resolve({fileName,rows:processedRows,size:totalBytes});},
-                    error:fail
-                });
-            } catch(e){reject(e);}
-        });
-    }
 
     async function loadAllCsvFromGithub() {
         try {
-            const manifestRes = await fetch(GH_BASE_URL + 'manifest.json?t=' + Date.now(), {
-                cache: 'no-store'
-            });
-
+            const manifestRes = await fetch(GH_BASE_URL + 'manifest.json?t=' + Date.now());
             if (!manifestRes.ok) throw new Error('manifest.json tidak ditemukan');
-
             const fileList = await manifestRes.json();
-
-            if (!Array.isArray(fileList) || fileList.length === 0) {
-                showToast('Manifest kosong.', 'error');
-                return;
-            }
+            if (fileList.length === 0) { showToast('Manifest kosong.', 'error'); return; }
 
             els.loadUI.classList.add('active');
-            setLoadingProgress(0, `Menyiapkan ${fileList.length} file CSV...`);
+            setLoadingProgress(0, `Memuat ${fileList.length} file CSV...`);
             rawData = [];
 
-            // Tetap sequential agar RAM tidak melonjak karena beberapa CSV besar
-            // diproses bersamaan.
             for (let i = 0; i < fileList.length; i++) {
                 const fileName = fileList[i];
-
+                const pct = Math.round((i / fileList.length) * 100);
+                setLoadingProgress(pct, `Memuat ${fileName} (${i+1}/${fileList.length})...`);
                 try {
-                    await processGithubCsvBlob(fileName, i, fileList.length);
-
-                    // Paksa browser melakukan repaint setelah satu file selesai.
-                    await new Promise(r => requestAnimationFrame(() => r()));
-
+                    const res = await fetch(GH_BASE_URL + encodeURIComponent(fileName) + '?t=' + Date.now());
+                    if (!res.ok) throw new Error('HTTP ' + res.status);
+                    const csvText = await res.text();
+                    const parsed = Papa.parse(csvText.trim(), { header: false, skipEmptyLines: true, delimiter: "" });
+                    const rawSheet = parsed.data;
+                    let headerIdx = -1;
+                    for (let j = 0; j < Math.min(rawSheet.length, 50); j++) {
+                        const rowStr = (rawSheet[j] || []).join(' ');
+                        if (rowStr.includes('Net Sales') && (rowStr.includes('Receipt Number') || rowStr.includes('SKU'))) { headerIdx = j; break; }
+                    }
+                    if (headerIdx !== -1) {
+                        const headers = rawSheet[headerIdx];
+                        const json = [];
+                        for (let r = headerIdx + 1; r < rawSheet.length; r++) {
+                            const obj = {};
+                            for (let c = 0; c < headers.length; c++) { if (headers[c]) obj[headers[c]] = rawSheet[r][c]; }
+                            json.push(obj);
+                        }
+                        processParsedJSON(json);
+                    }
                 } catch (err) {
                     console.warn(`Gagal memuat ${fileName}:`, err);
-                    showToast(`Gagal memuat ${fileName}: ${err.message}`, 'error');
+                    showToast(`Gagal memuat ${fileName}`, 'error');
                 }
             }
 
             setLoadingProgress(95, 'Menyiapkan dasbor...');
-            await new Promise(r => setTimeout(r, 50));
-
             if (rawData.length > 0) {
                 setupDatePickers();
                 populateDropdowns();
                 populateItemDropdown();
-
-                // Tampilkan dashboard lebih cepat; grafik dirender setelah browser
-                // mendapat satu kesempatan untuk repaint.
-                document.getElementById('loadingOverlay').style.display = 'none';
-                els.main.style.display = 'block';
+                
+                // PAKSA SEMBUNYIKAN LOADING DAN TAMPILKAN DASHBOARD SEBELUM RENDER BERAT
+                document.getElementById('loadingOverlay').style.display = 'none'; 
+                els.main.style.display = 'block'; 
                 els.content.classList.remove('hidden');
-
-                const navCtrl = document.getElementById('navDashboardControls');
-                navCtrl.classList.remove('hidden');
-                navCtrl.classList.add('flex');
-
+                
+                const navCtrl = document.getElementById('navDashboardControls'); navCtrl.classList.remove('hidden'); navCtrl.classList.add('flex');
+                
+                // JEDA 100MS SEBELUM MENGGAMBAR GRAFIK AGAR BROWSER BERNAFAS
                 setTimeout(async () => {
                     try {
-                        await executeFilterAndRender();
-                        setLoadingProgress(100, 'Selesai!');
-                        showToast(`Berhasil memuat ${formatNum(rawData.length)} baris.`);
-                    } catch (e) {
-                        console.error(e);
-                        showToast(
-                            'Data berhasil dimuat, tetapi sebagian grafik gagal dirender karena data besar.',
-                            'error'
-                        );
+                        await executeFilterAndRender(); 
+                        showToast(`Berhasil memuat ${formatNum(rawData.length)} baris.`); 
+                    } catch(e) { 
+                        console.error(e); 
+                        showToast('Sebagian grafik gagal dirender karena data terlalu besar.', 'error');
                     }
                 }, 100);
 
@@ -2413,7 +2262,6 @@
                 showToast('Tidak ada data valid. Periksa format CSV.', 'error');
                 els.main.style.display = 'block';
             }
-
         } catch (err) {
             console.error(err);
             showToast('Gagal memuat data: ' + err.message, 'error');
