@@ -562,11 +562,33 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
                             <h2 class="text-xl font-bold text-gray-900 mt-1">GrabFood + GoFood</h2>
                             <p class="text-xs text-gray-500 mt-1">Dashboard khusus online sales — fokus pada revenue, growth, top performer, dan perbandingan terhadap bulan sebelumnya.</p>
                         </div>
-                        <div class="flex gap-2 items-center">
+                        <div class="flex flex-wrap gap-2 items-center">
                             <button type="button" id="onlineBackToMokaBtn" class="px-3 py-2 text-[10px] font-bold rounded border border-fr-blue text-fr-blue bg-white hover:bg-blue-50">← Kembali ke Moka Dashboard</button>
-                            <span class="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 rounded px-3 py-2">GRABFOOD</span>
-                            <span class="text-[10px] font-bold text-orange-700 bg-orange-50 border border-orange-200 rounded px-3 py-2">GOFOOD</span>
+                            <button type="button" id="onlinePlatformAll" class="online-platform-btn active px-3 py-2 text-[10px] font-bold rounded border border-purple-500 bg-purple-50 text-purple-700">ALL</button>
+                            <button type="button" id="onlinePlatformGrab" class="online-platform-btn px-3 py-2 text-[10px] font-bold rounded border border-green-200 bg-white text-green-700 hover:bg-green-50">GRABFOOD</button>
+                            <button type="button" id="onlinePlatformGo" class="online-platform-btn px-3 py-2 text-[10px] font-bold rounded border border-orange-200 bg-white text-orange-700 hover:bg-orange-50">GOFOOD</button>
                         </div>
+                    </div>
+                </div>
+
+                <!-- ONLINE FILTERS -->
+                <div class="panel p-3 border border-purple-100 bg-white">
+                    <div class="flex flex-wrap items-end gap-3">
+                        <div class="flex flex-col">
+                            <label class="text-[9px] font-semibold uppercase text-gray-500 mb-1">Date Range</label>
+                            <div class="flex items-center gap-1">
+                                <select id="onlineQuickDate" class="pro-select text-[11px] p-1.5 w-[110px]">
+                                    <option value="this_month">This Month</option>
+                                    <option value="last_month">Last Month</option>
+                                    <option value="30days">Last 30 Days</option>
+                                    <option value="custom">Custom</option>
+                                </select>
+                                <input type="date" id="onlineDateStart" class="pro-input text-[11px] p-1.5 w-[120px]">
+                                <span class="text-gray-400">-</span>
+                                <input type="date" id="onlineDateEnd" class="pro-input text-[11px] p-1.5 w-[120px]">
+                            </div>
+                        </div>
+                        <div class="text-[10px] text-gray-400 pb-1" id="onlineDataStatus">Loading online data...</div>
                     </div>
                 </div>
 
@@ -631,22 +653,13 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
                     </div>
                 </div>
 
-                <!-- TOP PERFORMERS -->
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
-                    <div class="panel p-4">
-                        <div class="flex justify-between items-center mb-3">
-                            <div><h3 class="section-title mb-0">Top Performer Outlet</h3><p class="text-[9px] text-gray-400">Rank berdasarkan online sales</p></div>
-                            <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">TOP 10</span>
-                        </div>
-                        <div class="chart-container" style="height:320px"><canvas id="onlineTopOutletChart"></canvas></div>
+                <!-- TOP PERFORMER OUTLET -->
+                <div class="panel p-4">
+                    <div class="flex justify-between items-center mb-3">
+                        <div><h3 class="section-title mb-0">Top Performer Outlet</h3><p class="text-[9px] text-gray-400">Rank berdasarkan online sales</p></div>
+                        <span class="text-[9px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 rounded px-2 py-1">TOP 10</span>
                     </div>
-                    <div class="panel p-4">
-                        <div class="flex justify-between items-center mb-3">
-                            <div><h3 class="section-title mb-0">Top Category / Subcategory</h3><p class="text-[9px] text-gray-400">Category / Subcategory dengan sales online tertinggi</p></div>
-                            <span class="text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-200 rounded px-2 py-1">TOP 10</span>
-                        </div>
-                        <div class="chart-container" style="height:320px"><canvas id="onlineTopItemChart"></canvas></div>
-                    </div>
+                    <div class="chart-container" style="height:320px"><canvas id="onlineTopOutletChart"></canvas></div>
                 </div>
 
                 <!-- OUTLET PERFORMANCE VS LAST MONTH -->
@@ -1450,17 +1463,89 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
         }
         
 
+        let onlinePlatformFilter = 'ALL';
+
+        function onlineOutletAlias(name) {
+            const raw = String(name ?? '').trim();
+            if (!raw || /^unknown$/i.test(raw)) return 'Unknown';
+            const s = raw.replace(/\s+/g, ' ').trim();
+            const lower = s.toLowerCase();
+            const aliases = [
+                ['central market pik', 'Central Market PIK'],
+                ['green lake city', 'Green Lake City'],
+                ['mall of indonesia', 'Mall of Indonesia'],
+                ['harapan indah', 'Harapan Indah'],
+                ['radio dalam', 'Radio Dalam'],
+                ['citraland', 'Citraland'],
+                ['sanur', 'Sanur'],
+                ['renon', 'Renon'],
+                ['scbd', 'SCBD'],
+                ['bsd', 'BSD'],
+                ['bintaro', 'Bintaro'],
+                ['kemang', 'Kemang'],
+                ['cipete', 'Cipete'],
+                ['pik', 'PIK']
+            ];
+            for (const [needle, label] of aliases) if (lower.includes(needle)) return label;
+            const parts = s.split(/\s+-\s+/);
+            return parts.length > 1 ? parts[parts.length - 1].trim() : s;
+        }
+
+        function setupOnlineDateControls(rows) {
+            const startEl=document.getElementById('onlineDateStart'), endEl=document.getElementById('onlineDateEnd'), quickEl=document.getElementById('onlineQuickDate');
+            if(!startEl || !endEl || !quickEl) return;
+            const dates=rows.map(r=>r.DateStr).filter(Boolean).sort();
+            if(!dates.length) return;
+            startEl.min=dates[0]; startEl.max=dates[dates.length-1]; endEl.min=dates[0]; endEl.max=dates[dates.length-1];
+            const latest=new Date(dates[dates.length-1]+'T00:00:00');
+            const first=new Date(latest.getFullYear(),latest.getMonth(),1);
+            const last=new Date(latest.getFullYear(),latest.getMonth()+1,0);
+            const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            if(!startEl.value || !endEl.value || !quickEl.dataset.initialized){
+                let a=iso(first), b=iso(last);
+                if(a<dates[0]) a=dates[0]; if(b>dates[dates.length-1]) b=dates[dates.length-1];
+                startEl.value=a; endEl.value=b; quickEl.value='this_month'; quickEl.dataset.initialized='1';
+            }
+            if(!quickEl.dataset.bound){
+                quickEl.addEventListener('change',()=>{
+                    const nowDate=new Date(dates[dates.length-1]+'T00:00:00'); let st,en;
+                    if(quickEl.value==='last_month'){ st=new Date(nowDate.getFullYear(),nowDate.getMonth()-1,1); en=new Date(nowDate.getFullYear(),nowDate.getMonth(),0); }
+                    else if(quickEl.value==='30days'){ en=nowDate; st=new Date(nowDate); st.setDate(st.getDate()-29); }
+                    else if(quickEl.value==='custom') return;
+                    else { st=new Date(nowDate.getFullYear(),nowDate.getMonth(),1); en=new Date(nowDate.getFullYear(),nowDate.getMonth()+1,0); }
+                    startEl.value=iso(st)<dates[0]?dates[0]:iso(st); endEl.value=iso(en)>dates[dates.length-1]?dates[dates.length-1]:iso(en); renderOnlineDashboard();
+                });
+                [startEl,endEl].forEach(el=>el.addEventListener('change',()=>{quickEl.value='custom'; renderOnlineDashboard();}));
+                quickEl.dataset.bound='1';
+            }
+        }
+
+        function setOnlinePlatform(platform){
+            onlinePlatformFilter=platform;
+            document.querySelectorAll('.online-platform-btn').forEach(btn=>{
+                const active=(platform==='ALL'&&btn.id==='onlinePlatformAll') || (platform==='GrabFood'&&btn.id==='onlinePlatformGrab') || (platform==='GoFood'&&btn.id==='onlinePlatformGo');
+                btn.classList.toggle('active',active);
+                btn.classList.toggle('bg-purple-50',active); btn.classList.toggle('border-purple-500',active); btn.classList.toggle('text-purple-700',active);
+            });
+            renderOnlineDashboard();
+        }
+
         function renderOnlineDashboard() {
             const gs = (r,k) => r[k] != null ? String(r[k]).trim() : '';
             const money = v => formatRp(v || 0);
             const pct = v => (v == null || !isFinite(v)) ? '—' : `${v >= 0 ? '+' : ''}${v.toFixed(1)}%`;
             const growth = (cur, prev) => prev === 0 ? (cur === 0 ? 0 : null) : ((cur - prev) / Math.abs(prev)) * 100;
 
-            // Online dashboard owns its own dataset: Online Sales only + shared filters.
-            const current = rawData.filter(r => {
-                if (toScalar(r['Sales Channel'],'') !== 'Online Sales' && !/^(GrabFood|GoFood)$/i.test(toScalar(r['Platform'],''))) return false;
-                if (filters.dStart.value && (!r.DateStr || r.DateStr < filters.dStart.value)) return false;
-                if (filters.dEnd.value && (!r.DateStr || r.DateStr > filters.dEnd.value)) return false;
+            // Online dashboard owns its own dataset and filters.
+            const onlineRows = rawData.filter(r => /^(GrabFood|GoFood)$/i.test(toScalar(r['_OnlinePlatform'] || r['Platform'],'')));
+            setupOnlineDateControls(onlineRows);
+            const onlineStart = document.getElementById('onlineDateStart')?.value || filters.dStart.value;
+            const onlineEnd = document.getElementById('onlineDateEnd')?.value || filters.dEnd.value;
+            const current = onlineRows.filter(r => {
+                const platform=toScalar(r['_OnlinePlatform'] || r['Platform'],'');
+                if (onlinePlatformFilter !== 'ALL' && platform.toLowerCase() !== onlinePlatformFilter.toLowerCase()) return false;
+                if (onlineStart && (!r.DateStr || r.DateStr < onlineStart)) return false;
+                if (onlineEnd && (!r.DateStr || r.DateStr > onlineEnd)) return false;
                 if (selectedOutletsSet.size > 0 && !selectedOutletsSet.has(gs(r,'Outlet'))) return false;
                 if (selectedItemsSet.size > 0) {
                     if (searchMode.value === 'item' && !selectedItemsSet.has(gs(r,'Items'))) return false;
@@ -1470,7 +1555,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             });
 
             // Build the previous-month period by shifting the selected date window one calendar month.
-            let startStr = filters.dStart.value, endStr = filters.dEnd.value;
+            let startStr = onlineStart, endStr = onlineEnd;
             let prevStartStr = '', prevEndStr = '';
             if (startStr && endStr) {
                 const a = new Date(startStr + 'T00:00:00'), b = new Date(endStr + 'T00:00:00');
@@ -1481,8 +1566,9 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
 
             // Apply all non-date filters to the previous month, so comparison is like-for-like.
             const sv = v => v != null ? String(v).trim() : '';
-            const prev = rawData.filter(r => {
-                if (sv(r['Sales Channel']) !== 'Online Sales') return false;
+            const prev = onlineRows.filter(r => {
+                const platform=toScalar(r['_OnlinePlatform'] || r['Platform'],'');
+                if (onlinePlatformFilter !== 'ALL' && platform.toLowerCase() !== onlinePlatformFilter.toLowerCase()) return false;
                 if (prevStartStr && (!r.DateStr || r.DateStr < prevStartStr || r.DateStr > prevEndStr)) return false;
                 if (selectedAreasSet.size > 0 && !selectedAreasSet.has(sv(r['AREA']))) return false;
                 if (selectedOutletsSet.size > 0 && !selectedOutletsSet.has(sv(r['Outlet']))) return false;
@@ -1522,9 +1608,9 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             if(onlineStatus){
                 const grabRows=current.filter(r=>/grabfood/i.test(toScalar(r['_OnlinePlatform']||r['Platform'],''))).length;
                 const goRows=current.filter(r=>/gofood/i.test(toScalar(r['_OnlinePlatform']||r['Platform'],''))).length;
-                const grabSales=current.filter(r=>/grabfood/i.test(toScalar(r['_OnlinePlatform']||r['Platform'],''))).reduce((s,r)=>s+getCleanNum(r,'Net Sales'),0);
-                const goSales=current.filter(r=>/gofood/i.test(toScalar(r['_OnlinePlatform']||r['Platform'],''))).reduce((s,r)=>s+getCleanNum(r,'Net Sales'),0);
-                onlineStatus.textContent=`Rows: ${current.length.toLocaleString()} • GrabFood: ${grabRows.toLocaleString()} (${fmtMoney(grabSales)}) • GoFood: ${goRows.toLocaleString()} (${fmtMoney(goSales)}) • Orders: ${cur.ordersCount.toLocaleString()}`;
+                const loadedGrab=onlineRows.filter(r=>/grabfood/i.test(toScalar(r['_OnlinePlatform']||r['Platform'],''))).length;
+                const loadedGo=onlineRows.filter(r=>/gofood/i.test(toScalar(r['_OnlinePlatform']||r['Platform'],''))).length;
+                onlineStatus.textContent=`${onlinePlatformFilter==='ALL'?'ALL PLATFORMS':onlinePlatformFilter} • ${current.length.toLocaleString()} rows | GrabFood ${grabRows.toLocaleString()} | GoFood ${goRows.toLocaleString()} • loaded: Grab ${loadedGrab.toLocaleString()} / Go ${loadedGo.toLocaleString()}`;
             }
             const salesGrowth=growth(cur.sales,prv.sales), ordersGrowth=growth(cur.ordersCount,prv.ordersCount), aovGrowth=growth(cur.aov,prv.aov);
 
@@ -1538,7 +1624,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             setGrowth('onlineKpiSalesGrowth',salesGrowth); setGrowth('onlineKpiOrdersGrowth',ordersGrowth); setGrowth('onlineKpiAovGrowth',aovGrowth);
 
             const topOutlet=Object.entries(cur.outlet).sort((a,b)=>b[1].sales-a[1].sales)[0];
-            document.getElementById('onlineKpiTopOutlet').innerText=topOutlet ? toScalar(topOutlet[0], 'Unknown') : '-';
+            document.getElementById('onlineKpiTopOutlet').innerText=topOutlet ? onlineOutletAlias(topOutlet[0]) : '-';
             document.getElementById('onlineKpiTopOutletSales').innerText=topOutlet ? `${money(topOutlet[1].sales)} sales` : 'Rp 0 sales';
 
             const grab=cur.platform.GrabFood.sales, go=cur.platform.GoFood.sales, totalPlat=grab+go;
@@ -1572,14 +1658,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             const topOut=Object.entries(cur.outlet).sort((a,b)=>b[1].sales-a[1].sales).slice(0,10);
             if(charts.onlineTopOutlet)charts.onlineTopOutlet.destroy();
             charts.onlineTopOutlet=new Chart(document.getElementById('onlineTopOutletChart').getContext('2d'),{
-                type:'bar',data:{labels:topOut.map(x=>x[0]),datasets:[{label:'Online Sales',data:topOut.map(x=>x[1].sales),backgroundColor:'#8b5cf6'}]},
-                options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'Rp '+formatRp(v)}}}}
-            });
-
-            const topItems=Object.entries(cur.item).sort((a,b)=>b[1].sales-a[1].sales).slice(0,10);
-            if(charts.onlineTopItem)charts.onlineTopItem.destroy();
-            charts.onlineTopItem=new Chart(document.getElementById('onlineTopItemChart').getContext('2d'),{
-                type:'bar',data:{labels:topItems.length?topItems.map(x=>toScalar(x[0],'Unknown')):['Item data tidak tersedia'],datasets:[{label:'Online Sales',data:topItems.length?topItems.map(x=>x[1].sales):[0],backgroundColor:'#6366f1'}]},
+                type:'bar',data:{labels:topOut.map(x=>onlineOutletAlias(x[0])),datasets:[{label:'Online Sales',data:topOut.map(x=>x[1].sales),backgroundColor:'#8b5cf6'}]},
                 options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'Rp '+formatRp(v)}}}}
             });
 
@@ -1587,7 +1666,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             document.querySelector('#onlineOutletTable tbody').innerHTML=topOut.map(([name,v],i)=>{
                 const prevSales=prevOut[name]?.sales||0, g=growth(v.sales,prevSales), orders=v.orders.size, aov=orders?v.sales/orders:0;
                 return `<tr class="border-b border-gray-100 hover:bg-gray-50">
-                    <td class="py-2 font-bold">${i+1}</td><td class="py-2 font-semibold">${name}</td>
+                    <td class="py-2 font-bold">${i+1}</td><td class="py-2 font-semibold">${onlineOutletAlias(name)}</td>
                     <td class="py-2 text-right font-bold">${money(v.sales)}</td><td class="py-2 text-right">${money(prevSales)}</td>
                     <td class="py-2 text-right font-semibold ${g===null?'text-gray-400':g>=0?'text-green-600':'text-red-500'}">${g===null?'—':pct(g)}</td>
                     <td class="py-2 text-right">${formatNum(orders)}</td><td class="py-2 text-right">${money(aov)}</td>
@@ -2587,6 +2666,9 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
     document.getElementById('dashboardOnlineBtn').addEventListener('click',()=>setDashboardTab('online'));
     document.getElementById('dashboardBackBtn').addEventListener('click',()=>setDashboardTab('moka'));
         const onlineBackBtn=document.getElementById('onlineBackToMokaBtn'); if(onlineBackBtn) onlineBackBtn.addEventListener('click',()=>setDashboardTab('moka'));
+        document.getElementById('onlinePlatformAll')?.addEventListener('click',()=>setOnlinePlatform('ALL'));
+        document.getElementById('onlinePlatformGrab')?.addEventListener('click',()=>setOnlinePlatform('GrabFood'));
+        document.getElementById('onlinePlatformGo')?.addEventListener('click',()=>setOnlinePlatform('GoFood'));
 
     // AUTO-LOAD CSV DARI GITHUB
     // ============================================================
@@ -2674,21 +2756,17 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
         if (isGo) {
             outlet = get('Outlet name');
             receipt = get('Transaction ID', 'Order ID');
-            sales = num(get('Amount'));
+            sales = num(get('Amount', 'Net Amount'));
             date = get('Date', 'Payment Date', 'Transaction time', 'Transaction Date');
             paymentType = get('Payment Type');
             item = ''; // GoFood export supplied has no item/menu column.
         } else {
-            // EXACT GrabFood export mapping supplied by the user:
-            // Store Name | Transaction ID | Payment Method | Net Sales | Category | Subcategory | Date | Time | AREA
-            receipt = get('Transaction ID', 'Long Order ID', 'Short Order ID', 'Booking ID');
-            outlet = get('Store Name');
-            sales = num(get('Net Sales'));
-            date = get('Date', 'Transfer Date');
-            paymentType = get('Payment Method');
-            // GrabFood export has no item/menu-name column.
-            // Use Category as the most granular product-like dimension available.
-            item = get('Subcategory', 'Category');
+            receipt = get('Transaction ID', 'Order ID', 'Long Order ID', 'Short Order ID', 'Booking ID', 'Partner transaction ID 1');
+            outlet = get('Store Name', 'Outlet Name', 'Outlet', 'Store');
+            sales = num(get('Net Sales', 'Amount', 'Net Amount', 'Sales'));
+            date = get('Order Date', 'Transaction Date', 'Payment Date', 'Date', 'Created At', 'Created On');
+            paymentType = get('Payment Method', 'Payment Type');
+            item = get('Items', 'Item Name', 'Item', 'Product Name', 'Menu Name', 'Menu', 'Product', 'Item Description', 'Order Item');
         }
 
         nr['Receipt Number'] = receipt;
@@ -2713,9 +2791,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
         nr['_OnlinePlatform'] = source;
 
         nr['AREA'] = get('AREA', 'Area') || 'Unknown';
-        nr['Category'] = get('Category');
-        nr['Subcategory'] = get('Subcategory');
-        nr['DEPT'] = get('DEPT', 'Dept', 'Department') || 'Online';
+        nr['DEPT'] = get('DEPT', 'Dept', 'Department') || 'Unknown';
         nr['Event Type'] = 'Online';
         nr['Collected By'] = '-';
         nr['Served By'] = '-';
@@ -2729,8 +2805,8 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
         const s = (row || []).map(v => String(v ?? '').trim().toLowerCase());
         const has = (...keys) => keys.some(k => s.includes(k.toLowerCase()));
         if (source === 'GoFood') {
-            // Exact supplied GoFood header: Outlet name, Transaction ID, Amount, Date/Payment Date.
-            return has('transaction id') && has('amount') && has('outlet name') && has('date');
+            // Exact GoFood export supplied by user. Be tolerant of BOM/spacing and allow Date OR Payment Date.
+            return has('transaction id') && has('amount') && has('outlet name') && (has('date') || has('payment date'));
         }
         if (source === 'GrabFood') {
             return has('transaction id') && has('net sales', 'order id') && has('store name', 'order id');
