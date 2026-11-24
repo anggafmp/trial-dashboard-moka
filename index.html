@@ -2284,15 +2284,15 @@
     // ============================================================
     // AUTO-LOAD CSV DARI GITHUB
     // ============================================================
-    const GH_USER = 'rohmanfahrudi';
-    const GH_REPO = 'lmdp-b2c-analytic-performance';
+    const GH_USER = 'anggafmp';
+    const GH_REPO = 'trial-dashboard-moka';
     const GH_BASE_URL = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/main/`;
 
     // ============================================================
     // OPTIMIZED CSV LOADER
     // - Tidak lagi membuat rawSheet raksasa untuk setiap CSV.
     // - CSV diproses per chunk agar browser tidak freeze.
-    // - Parser dijalankan di Web Worker.
+    // - Parser dijalankan per chunk di main thread agar stabil di GitHub Pages/Firefox.
     // - Progress bergerak berdasarkan byte yang benar-benar sudah diproses.
     // ============================================================
     function processGithubCsvBlob(fileName, fileIndex, totalFiles) {
@@ -2304,7 +2304,7 @@
                 let headers=null, headerFound=false, pendingRows=[], processedRows=0, finished=false;
                 const fail=e=>{if(finished)return;finished=true;reject(e);};
                 Papa.parse(blob, {
-                    header:false, skipEmptyLines:true, worker:true, chunkSize:4*1024*1024,
+                    header:false, skipEmptyLines:true, worker:false, chunkSize:2*1024*1024,
                     chunk:function(results,parser){
                         parser.pause();
                         try {
@@ -2330,8 +2330,8 @@
                             const filePct=Math.min(99,Math.round(cursor/totalBytes*100));
                             const overallPct=Math.min(94,Math.round(((fileIndex+filePct/100)/totalFiles)*100));
                             setLoadingProgress(overallPct,`Memuat ${fileName} (${fileIndex+1}/${totalFiles}) — ${filePct}%`);
-                            // Jangan await/yield di setiap batch. Papa sudah chunked + worker.
-                            parser.resume();
+                            // Beri browser kesempatan repaint di antara chunk agar UI tidak freeze.
+                            setTimeout(() => parser.resume(), 0);
                         } catch(e){fail(e);}
                     },
                     complete:function(){if(finished)return;finished=true;resolve({fileName,rows:processedRows,size:totalBytes});},
