@@ -1122,7 +1122,7 @@
                 const amount = getAny(row, ['Amount','Sales Amount','Total Amount']);
                 const onlineNet = isGrabSource
                     ? getAny(row, ['Net Sales','Amount'])
-                    : getAny(row, ['Amount','Net Amount']);
+                    : getAny(row, ['Net Amount','Amount']);
                 if (amount !== undefined) set('Gross Sales', toNumber(amount));
                 if (onlineNet !== undefined) set('Net Sales', toNumber(onlineNet));
 
@@ -2413,13 +2413,48 @@
 
         // Keep the CSV as a Blob/File instead of converting a 100 MB response
         // into a large UTF-16 string. Papa Parse reads this File in chunks.
+        const platformLabel = isGrabFoodFile ? 'GrabFood' : (isGoFoodFile ? 'GoFood' : 'Moka');
+        const lazyStatusEl = document.getElementById('lazyStatus');
+        if (lazyStatusEl) lazyStatusEl.textContent = `Mengunduh ${platformLabel}: ${sourceFileName}...`;
+        const loadStatus = document.getElementById('loadingSubText');
+        if (loadStatus) loadStatus.textContent = `Mengunduh ${sourceFileName} dari GitHub...`;
+
         const response = await fetch(fileUrl, { cache: 'no-store' });
         if (!response.ok) throw new Error(`${sourceFileName}: HTTP ${response.status} saat mengunduh dari GitHub`);
-        const csvBlob = await response.blob();
+        let csvBlob;
+        if (response.body && typeof response.body.getReader === 'function') {
+            const reader = response.body.getReader();
+            const chunks = [];
+            const totalBytes = Number(response.headers.get('content-length')) || 0;
+            let loadedBytes = 0;
+            let lastUiUpdate = 0;
+            while (true) {
+                const part = await reader.read();
+                if (part.done) break;
+                if (part.value && part.value.byteLength) {
+                    chunks.push(part.value);
+                    loadedBytes += part.value.byteLength;
+                }
+                if (loadedBytes - lastUiUpdate >= 1024 * 1024) {
+                    lastUiUpdate = loadedBytes;
+                    const loadedMb = (loadedBytes / 1048576).toFixed(1);
+                    const totalMb = totalBytes ? (totalBytes / 1048576).toFixed(1) : '?';
+                    const message = `Mengunduh ${platformLabel}: ${loadedMb} / ${totalMb} MB`;
+                    if (lazyStatusEl) lazyStatusEl.textContent = message;
+                    if (loadStatus) loadStatus.textContent = message;
+                    await yieldToMain();
+                }
+            }
+            csvBlob = new Blob(chunks, { type: 'text/csv' });
+            chunks.length = 0;
+        } else {
+            csvBlob = await response.blob();
+        }
         if (!csvBlob || !csvBlob.size) throw new Error(`${sourceFileName}: file kosong dari GitHub`);
         const csvFile = new File([csvBlob], sourceFileName, { type: 'text/csv' });
-        const loadStatus = document.getElementById('loadingSubText');
-        if (loadStatus) loadStatus.textContent = `Parsing ${sourceFileName} • ${(csvFile.size / 1048576).toFixed(1)} MB`;
+        const csvSizeMb = (csvFile.size / 1048576).toFixed(1);
+        if (loadStatus) loadStatus.textContent = `Parsing ${sourceFileName} • ${csvSizeMb} MB`;
+        if (lazyStatusEl) lazyStatusEl.textContent = `Mengurai ${platformLabel}: ${csvSizeMb} MB • menyiapkan transaksi...`;
 
         // Stream the File in small asynchronous chunks on the page thread.
         // Pause/resume yields between chunks, keeping the dashboard responsive.
@@ -2440,9 +2475,14 @@
                 Papa.parse(csvFile, {
                     worker: false,
                     header: false,
-                    skipEmptyLines: 'greedy',
+                    // Online exports are padded to Excel's 1,048,576-row limit
+                    // with >1 million comma-only rows. PapaParse's greedy mode
+                    // removes them via repeated array splices and can stall the UI.
+                    // Keep blank rows here; processParsedRows rejects them in O(1)
+                    // using the platform status/category columns before any object work.
+                    skipEmptyLines: isMokaFile ? 'greedy' : false,
                     dynamicTyping: false,
-                    chunkSize: 512 * 1024,
+                    chunkSize: 1024 * 1024,
                     chunk: function(results, parser) {
                         try {
                             currentSourceFileName = sourceFileName;
@@ -2470,16 +2510,17 @@
                                 processParsedRows(rows, headers);
                             }
 
+                            const validCount = rawData.length - parsedRowsBefore;
                             const status = document.getElementById('loadingSubText');
-                            if (status) {
-                                status.textContent = headerFound
-                                    ? `Memproses ${sourceFileName} • ${formatNum(rawData.length - parsedRowsBefore)} transaksi valid`
-                                    : `Mencari header CSV ${sourceFileName}...`;
-                            }
-                            if (parser && typeof parser.pause === 'function') {
-                                parser.pause();
-                                setTimeout(() => { if (!settled) parser.resume(); }, 0);
-                            }
+                            const topStatus = document.getElementById('lazyStatus');
+                            const progressText = headerFound
+                                ? `Memproses ${platformLabel}: ${formatNum(validCount)} transaksi valid...`
+                                : `Mencari header CSV ${sourceFileName}...`;
+                            if (status) status.textContent = progressText;
+                            if (topStatus) topStatus.textContent = progressText;
+                            // Papa Parse's FileStreamer reads each chunk asynchronously.
+                            // Do not pause/resume manually: it can leave older browser
+                            // builds waiting on a parser callback after a large CSV chunk.
                         } catch (err) {
                             if (parser && typeof parser.abort === 'function') parser.abort();
                             fail(new Error(`${sourceFileName}: ${err && err.message ? err.message : err}`));
@@ -2495,6 +2536,8 @@
                             fail(new Error(`${sourceFileName}: 0 transaksi valid terbaca. Periksa file yang tersimpan di GitHub dan filter tahun 2025–2026.`));
                             return;
                         }
+                        const topStatus = document.getElementById('lazyStatus');
+                        if (topStatus) topStatus.textContent = `${platformLabel}: ${formatNum(addedRows)} transaksi terbaca • menyiapkan dashboard...`;
                         finish();
                     },
                     error: function(err) {
@@ -2512,63 +2555,70 @@
     }
 
     async function loadSelectedGithubData() {
+        const selectEl = document.getElementById('lazyPlatformSelect');
+        const platform = selectEl?.value || 'Moka';
         const files = lazySelectedFiles();
+        const statusEl = document.getElementById('lazyStatus');
         if (!files.length) {
-            showToast('Tidak ada file untuk pilihan ini.', 'error');
+            if (statusEl) statusEl.textContent = `Tidak ada file ${platform} di manifest.json.`;
+            showToast(`Tidak ada file ${platform} untuk dimuat.`, 'error');
             return;
         }
 
+        // Prevent overlapping loads that could mix rows from two platforms.
+        if (selectEl) selectEl.disabled = true;
+        // Earlier versions set an inline display:none. Remove it so the active
+        // class can show the overlay whenever the source is switched.
+        els.loadUI.style.removeProperty('display');
         els.loadUI.classList.add('active');
+        if (statusEl) statusEl.textContent = `Memuat ${platform}: ${files.length} file...`;
         rawData = [];
         filteredData = [];
         txSortedData = [];
         window.prevDataExport = null;
 
+        // Avoid displaying the old platform's KPI values while a new source loads.
+        document.querySelectorAll('.kpi-value').forEach(el => { el.textContent = '…'; });
         try {
             for (let i = 0; i < files.length; i++) {
                 const fileName = files[i];
                 const pct = Math.round((i / files.length) * 90);
-                setLoadingProgress(pct, `Memuat ${fileName} (${i+1}/${files.length})...`);
+                setLoadingProgress(pct, `Memuat ${platform}: ${fileName} (${i + 1}/${files.length})...`);
+                if (statusEl) statusEl.textContent = `Mengunduh ${platform}: ${fileName} (${i + 1}/${files.length})...`;
                 await processGithubCsvFile(fileName);
             }
 
-            setLoadingProgress(95, 'Menyiapkan dashboard...');
+            setLoadingProgress(95, `Menyiapkan dashboard ${platform}...`);
+            if (statusEl) statusEl.textContent = `${platform}: ${formatNum(rawData.length)} transaksi valid • membangun grafik...`;
             if (rawData.length > 0) {
                 setupDatePickers();
                 populateDropdowns();
                 populateItemDropdown();
-                document.getElementById('loadingOverlay').style.display = 'none';
                 els.main.style.display = 'block';
                 els.content.classList.remove('hidden');
                 const navCtrl = document.getElementById('navDashboardControls');
                 navCtrl?.classList.remove('hidden');
                 navCtrl?.classList.add('flex');
-
-                setTimeout(async () => {
-                    try {
-                        await executeFilterAndRender();
-                        const platform = document.getElementById('lazyPlatformSelect')?.value || 'Moka';
-                        const statusEl = document.getElementById('lazyStatus'); if (statusEl) statusEl.textContent = `${platform} • ${files.length} file • ${formatNum(rawData.length)} transaksi valid`;
-                        showToast(`${platform}: ${formatNum(rawData.length)} transaksi valid berhasil dimuat.`);
-                    } catch (e) {
-                        console.error(e);
-                        showToast('Sebagian grafik gagal dirender karena data terlalu besar.', 'error');
-                    }
-                }, 100);
+                await yieldToMain();
+                await executeFilterAndRender();
+                if (statusEl) statusEl.textContent = `${platform} • ${files.length} file • ${formatNum(rawData.length)} transaksi valid • selesai`;
+                setLoadingProgress(100, 'Selesai');
+                showToast(`${platform}: ${formatNum(rawData.length)} transaksi valid berhasil dimuat.`);
             } else {
+                if (statusEl) statusEl.textContent = `${platform}: tidak ada transaksi valid dalam file yang dimuat.`;
                 document.getElementById('mainContent').style.display = 'block';
-                showToast('Tidak ada data valid pada file yang dipilih.', 'error');
+                showToast(`Tidak ada data valid untuk ${platform}.`, 'error');
             }
         } catch (err) {
             console.error(err);
-            const statusEl = document.getElementById('lazyStatus');
-            const platform = document.getElementById('lazyPlatformSelect')?.value || 'Moka';
             if (statusEl) statusEl.textContent = `GAGAL ${platform}: ${err.message}`;
-            showToast('Gagal memuat data: ' + err.message, 'error');
+            showToast(`Gagal memuat ${platform}: ${err.message}`, 'error');
             els.main.style.display = 'block';
         } finally {
             els.loadUI.classList.remove('active');
+            els.loadUI.style.removeProperty('display');
             setLoadingProgress(0, '');
+            if (selectEl) selectEl.disabled = false;
         }
     }
 
