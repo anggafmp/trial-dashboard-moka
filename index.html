@@ -287,6 +287,14 @@
                             <div id="monthList" class="p-1 max-h-[350px] overflow-y-auto"></div>
                         </div>
                     </div>
+                    <div class="filter-item flex flex-col shrink-0 w-full lg:w-auto" data-id="channel" id="salesChannelContainer">
+                        <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Sales Channel</label>
+                        <select id="filterSalesChannel" class="pro-select text-[11px] p-1.5 w-full lg:w-[135px]">
+                            <option value="Moka" selected>Moka</option>
+                            <option value="Online Sales">Online Sales</option>
+                            <option value="ALL">All Sources</option>
+                        </select>
+                    </div>
                     <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="compare" id="compareContainer">
                         <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Compare Vs</label>
                         <div class="flex flex-wrap sm:flex-nowrap items-center gap-1">
@@ -620,7 +628,7 @@
         };
         
         const els = { content: document.getElementById('dashboardContent'), main: document.getElementById('mainContent'), loadUI: document.getElementById('loadingOverlay'), tooltip: document.getElementById('customTooltip') };
-        const filters = { quick: document.getElementById('quickDateSelect'), dStart: document.getElementById('filterDateStart'), dEnd: document.getElementById('filterDateEnd'), dept: document.getElementById('filterDept'), eventType: document.getElementById('filterEventType') };
+        const filters = { quick: document.getElementById('quickDateSelect'), dStart: document.getElementById('filterDateStart'), dEnd: document.getElementById('filterDateEnd'), dept: document.getElementById('filterDept'), eventType: document.getElementById('filterEventType'), salesChannel: document.getElementById('filterSalesChannel') };
         
         document.getElementById('toggleLabelsCheckbox').addEventListener('change', (e) => { showChartLabels = e.target.checked; refreshAllCharts(); });
         document.getElementById('toggleVsLineCheckbox').addEventListener('change', () => { drawTrend(); drawCat(currentAggCat); drawLocationChart(); drawDeptChart(currentAggDept); });
@@ -915,6 +923,8 @@
     function processParsedJSON(json) {
         for (let i = 0; i < json.length; i++) {
             let row = json[i]; let nr = {}; for(let k in row) nr[k.trim()] = row[k]; if(!nr['Date'] && !nr['Items'] && !nr['Receipt Number']) continue;
+            if (!nr['Platform']) nr['Platform'] = 'Moka';
+            if (!nr['Sales Channel']) nr['Sales Channel'] = nr['Platform'] === 'GoFood' || nr['Platform'] === 'GrabFood' ? 'Online Sales' : 'Moka';
             let rawOutlet = nr['Outlet'] ? String(nr['Outlet']).trim() : ''; nr['Outlet'] = rawOutlet.split(',')[0].trim();
             nr['AREA'] = nr['AREA'] ? String(nr['AREA']).trim() : 'Unknown'; nr['DEPT'] = nr['DEPT'] ? String(nr['DEPT']).trim() : 'Unknown';
             nr['Event Type'] = nr['Event Type'] ? String(nr['Event Type']).trim() : 'Unknown'; nr['Items'] = nr['Items'] ? String(nr['Items']).trim() : 'Unknown';
@@ -968,7 +978,7 @@
         });
 
         let filterUIConfig = [
-            { id: 'daterange', label: 'Date Range', visible: true }, { id: 'compare', label: 'Compare Vs', visible: true }, { id: 'search', label: 'Search Item/Receipt', visible: true }, { id: 'outlet', label: 'Outlet', visible: true }, { id: 'area', label: 'Area', visible: true }, { id: 'dept', label: 'Dept', visible: true }, { id: 'event', label: 'Event Type', visible: true }, { id: 'discount', label: 'Discount Applied', visible: true }
+            { id: 'daterange', label: 'Date Range', visible: true }, { id: 'channel', label: 'Sales Channel', visible: true }, { id: 'compare', label: 'Compare Vs', visible: true }, { id: 'search', label: 'Search Item/Receipt', visible: true }, { id: 'outlet', label: 'Outlet', visible: true }, { id: 'area', label: 'Area', visible: true }, { id: 'dept', label: 'Dept', visible: true }, { id: 'event', label: 'Event Type', visible: true }, { id: 'discount', label: 'Discount Applied', visible: true }
         ]; 
 
         let dragStartFilterIdx = -1;
@@ -990,7 +1000,7 @@
         }
 
         function applyFilterVisibility() { filterUIConfig.forEach((f, idx) => { let el = document.querySelector(`.filter-item[data-id="${f.id}"]`); if(el) { el.style.order = idx; if(f.visible) el.classList.remove('hidden'); else el.classList.add('hidden'); } }); }
-        document.getElementById('resetFilterOrderBtn').addEventListener('click', () => { const defOrder = ['daterange', 'compare', 'search', 'outlet', 'area', 'dept', 'event', 'discount']; filterUIConfig.sort((a,b) => defOrder.indexOf(a.id) - defOrder.indexOf(b.id)); initFilterSettings(); applyFilterVisibility(); });
+        document.getElementById('resetFilterOrderBtn').addEventListener('click', () => { const defOrder = ['daterange', 'channel', 'compare', 'search', 'outlet', 'area', 'dept', 'event', 'discount']; filterUIConfig.sort((a,b) => defOrder.indexOf(a.id) - defOrder.indexOf(b.id)); initFilterSettings(); applyFilterVisibility(); });
         document.getElementById('filterSettingsBtn').addEventListener('click', () => { const menu = document.getElementById('filterSettingsMenu'); menu.classList.toggle('hidden'); if(!menu.classList.contains('hidden')) initFilterSettings(); });
         document.getElementById('closeFilterMenu').addEventListener('click', () => { document.getElementById('filterSettingsMenu').classList.add('hidden'); });
         document.addEventListener('click', (e) => { const menu = document.getElementById('filterSettingsMenu'); const btn = document.getElementById('filterSettingsBtn'); if(!menu.contains(e.target) && !btn.contains(e.target)) { menu.classList.add('hidden'); } });
@@ -1046,6 +1056,7 @@
             if(rawData.length > 0) executeFilterAndRender();
         });
         document.getElementById('compareDateStart').addEventListener('change', executeFilterAndRender); document.getElementById('compareDateEnd').addEventListener('change', executeFilterAndRender);
+        if (filters.salesChannel) filters.salesChannel.addEventListener('change', () => { executeFilterAndRender(); });
         const searchMode = document.getElementById('searchMode'); searchMode.addEventListener('change', () => { selectedItemsSet.clear(); updateSelectedItemsUI(); populateItemDropdown(); executeFilterAndRender(); });
         function populateItemDropdown() { 
             let mode = searchMode.value; let list = [];
@@ -1181,9 +1192,10 @@
         function populateDropdowns() { const getU = (key) => { let s = new Set(); rawData.forEach(r => { if(r[key] && r[key] !== 'Unknown') s.add(r[key].toString().trim()); }); return Array.from(s).sort(); }; const fill = (el, vals) => { el.innerHTML = '<option value="ALL">All</option>'; vals.forEach(v => { let opt = document.createElement('option'); opt.value = v; opt.innerText = v; el.appendChild(opt); }); }; fill(filters.dept, getU('DEPT')); fill(filters.eventType, getU('Event Type')); populateOutletDropdownUI(); populateDiscountDropdownUI(); populateAreaDropdownUI(); }
 
         async function executeFilterAndRender() { 
-            const sStart = filters.dStart.value; const sEnd = filters.dEnd.value; const sDept = filters.dept.value; const sEvt = filters.eventType.value; 
+            const sStart = filters.dStart.value; const sEnd = filters.dEnd.value; const sDept = filters.dept.value; const sEvt = filters.eventType.value; const sChannel = filters.salesChannel ? filters.salesChannel.value : 'ALL';
             filteredData = rawData.filter(r => { 
                 let m = true; const sv = (v) => v ? v.toString().trim() : ''; 
+                if (sChannel !== 'ALL' && sv(r['Sales Channel']) !== sChannel) m = false;
                 if (sStart && (!r.DateStr || r.DateStr < sStart)) m = false; if (sEnd && (!r.DateStr || r.DateStr > sEnd)) m = false; 
                 if (selectedAreasSet.size > 0 && !selectedAreasSet.has(sv(r['AREA']))) m = false; if (selectedOutletsSet.size > 0 && !selectedOutletsSet.has(sv(r['Outlet']))) m = false; 
                 if (sDept !== 'ALL' && sv(r['DEPT']) !== sDept) m = false; if (sEvt !== 'ALL' && sv(r['Event Type']) !== sEvt) m = false; 
@@ -1198,7 +1210,16 @@
             }, 10); 
         }
 
-        function renderDashboard() { 
+        function renderDashboard() {
+            const channel = filters.salesChannel ? filters.salesChannel.value : 'ALL';
+            const channelLabel = channel === 'Moka' ? 'MOKA' : (channel === 'Online Sales' ? 'ONLINE SALES • GRABFOOD + GOFOOD' : 'ALL SOURCES');
+            document.title = `Analytic Performance • ${channelLabel}`;
+            const titleEl = document.querySelector('header h1, header h2');
+            if (titleEl) {
+                let badge = document.getElementById('salesChannelBadge');
+                if (!badge) { badge = document.createElement('span'); badge.id = 'salesChannelBadge'; badge.className = 'ml-2 inline-flex items-center px-2 py-1 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100 align-middle'; titleEl.appendChild(badge); }
+                badge.textContent = channelLabel;
+            }
             window.currentStats = { gross:0, net:0, coll:0, qty:0, disc:0, tax:0, grat:0, ref:0, tx:0 }; let txSet = new Set(); 
             let aggDate = {}, aggCat = {}, aggCatQty = {}, aggCatTx = {}, aggItems = {}, aggArea = {}, aggOutlet = {}, aggDept = {}; 
             let heatMatrix = {}; DAYS.forEach(d => { heatMatrix[d] = {}; HOURS.forEach(h => heatMatrix[d][h] = 0); }); let maxHeatValue = 0; 
@@ -1241,9 +1262,9 @@
         else if (compMode === 'prev_year') { let currStart = new Date(dates[0]); let currEnd = new Date(dates[dates.length-1]); currStart.setFullYear(currStart.getFullYear() - 1); currEnd.setFullYear(currEnd.getFullYear() - 1); pStartStr = toIsoLocal(currStart); pEndStr = toIsoLocal(currEnd); } 
         else { let currStart = new Date(dates[0]); let currEnd = new Date(dates[dates.length-1]); let diffTime = Math.abs(currEnd - currStart); let diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1; let prevEnd = new Date(currStart); prevEnd.setDate(prevEnd.getDate() - 1); let prevStart = new Date(prevEnd); prevStart.setDate(prevStart.getDate() - (diffDays - 1)); pStartStr = toIsoLocal(prevStart); pEndStr = toIsoLocal(prevEnd); }
 
-        const sDept = filters.dept.value; const sEvt = filters.eventType.value; const sv = (v) => v ? v.toString().trim() : ''; 
+        const sDept = filters.dept.value; const sEvt = filters.eventType.value; const sChannel = filters.salesChannel ? filters.salesChannel.value : 'ALL'; const sv = (v) => v ? v.toString().trim() : ''; 
         let prevData = rawData.filter(r => { 
-            let m = true; if(!r.DateStr || r.DateStr < pStartStr || r.DateStr > pEndStr) m = false; 
+            let m = true; if(sChannel !== 'ALL' && sv(r['Sales Channel']) !== sChannel) m = false; if(!r.DateStr || r.DateStr < pStartStr || r.DateStr > pEndStr) m = false; 
             if (selectedAreasSet.size > 0 && !selectedAreasSet.has(sv(r['AREA']))) m = false; if (selectedOutletsSet.size > 0 && !selectedOutletsSet.has(sv(r['Outlet']))) m = false; 
             if (sDept !== 'ALL' && sv(r['DEPT']) !== sDept) m = false; if (sEvt !== 'ALL' && sv(r['Event Type']) !== sEvt) m = false; 
             if (selectedItemsSet.size > 0) { if(searchMode.value === 'item') { if(!selectedItemsSet.has(sv(r['Items']))) m = false; } else { if(!selectedItemsSet.has(sv(r['Receipt Number']))) m = false; } }
@@ -1457,7 +1478,7 @@
     document.getElementById('pageJumpInput').addEventListener('change', (e) => { let totalPages = Math.ceil(txSortedData.length / txRowsPerPage) || 1; let val = parseInt(e.target.value); if (val >= 1 && val <= totalPages) { txCurrentPage = val; renderTablePage(); } else { e.target.value = txCurrentPage; } });
 
     document.getElementById('globalClearBtn').addEventListener('click', () => { document.getElementById('clearAllFiltersBtn').click(); });
-    document.getElementById('clearAllFiltersBtn').addEventListener('click', () => { selectedItemsSet.clear(); updateSelectedItemsUI(); renderItemDropdown(''); selectedOutletsSet.clear(); updateSelectedOutletsUI(); renderOutletDropdown(); selectedAreasSet.clear(); updateSelectedAreasUI(); renderAreaDropdown(''); selectedDiscountsSet.clear(); updateSelectedDiscountsUI(); renderDiscountDropdown(); filters.dept.value = 'ALL'; filters.eventType.value = 'ALL'; if(rawData.length > 0) setupDatePickers(); executeFilterAndRender(); showToast('Semua filter telah di-reset'); });
+    document.getElementById('clearAllFiltersBtn').addEventListener('click', () => { selectedItemsSet.clear(); updateSelectedItemsUI(); renderItemDropdown(''); selectedOutletsSet.clear(); updateSelectedOutletsUI(); renderOutletDropdown(); selectedAreasSet.clear(); updateSelectedAreasUI(); renderAreaDropdown(''); selectedDiscountsSet.clear(); updateSelectedDiscountsUI(); renderDiscountDropdown(); filters.dept.value = 'ALL'; filters.eventType.value = 'ALL'; if (filters.salesChannel) filters.salesChannel.value = 'Moka'; if(rawData.length > 0) setupDatePickers(); executeFilterAndRender(); showToast('Filter di-reset ke Moka'); });
 
     function drawItemsTable(data) { 
         let arr = Object.keys(data).map(k=>({k,...data[k]})); if(rankSortBy === 'qty') { arr.sort((a,b)=> rankMode === 'top' ? b.q-a.q : a.q-b.q); } else { arr.sort((a,b)=> rankMode === 'top' ? b.n-a.n : a.n-b.n); } arr = arr.slice(0, 20); let tb = document.getElementById('topItemsTableBody'); tb.innerHTML = ''; 
@@ -2126,6 +2147,8 @@
         let results = advGroups.map(g => {
             let filtered = rawData.filter(r => {
                 let match = true; const sv = (v) => v ? v.toString().trim() : '';
+                const globalChannel = filters.salesChannel ? filters.salesChannel.value : 'ALL';
+                if(globalChannel !== 'ALL' && sv(r['Sales Channel']) !== globalChannel) match = false;
                 if(g.start && (!r.DateStr || r.DateStr < g.start)) match = false; if(g.end && (!r.DateStr || r.DateStr > g.end)) match = false;
                 if (g.items.size > 0 && !g.items.has(sv(r['Items']))) match = false; if (g.discounts.size > 0 && !g.discounts.has(sv(r['Discount Applied']))) match = false; if (g.outlets.size > 0 && !g.outlets.has(sv(r['Outlet']))) match = false; if (g.areas.size > 0 && !g.areas.has(sv(r['AREA']))) match = false; if (g.dept !== 'ALL' && sv(r['DEPT']) !== g.dept) match = false; if (g.eventType !== 'ALL' && sv(r['Event Type']) !== g.eventType) match = false;
                 return match;
@@ -2235,6 +2258,7 @@
         nr['Total Collected Exc Rounding'] = num(get('Total Collected Exc Rounding', 'Net Amount', 'Amount')) || nr['Total Collected'];
         nr['Payment Method'] = get('Payment Method', 'Payment method', 'Payment Type', 'Payment type') || '-';
         nr['Platform'] = source;
+        nr['Sales Channel'] = 'Online Sales';
         nr['AREA'] = String(get('AREA', 'Area') || 'Unknown').trim();
         nr['DEPT'] = String(get('DEPT', 'Dept', 'Department') || 'Unknown').trim();
         nr['Event Type'] = String(get('Event Type', 'Order Type', 'Order Channel', 'Channel') || 'Unknown').trim();
