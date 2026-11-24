@@ -2618,30 +2618,20 @@
 
             lazyManifest = await manifestRes.json();
             lazyFileGroups = { Moka: [], GrabFood: [], GoFood: [] };
+            lazyManifest.forEach(fileName => lazyFileGroups[lazyPlatformOfFile(fileName)].push(fileName));
 
-            lazyManifest.forEach(fileName => {
-                const p = lazyPlatformOfFile(fileName);
-                lazyFileGroups[p].push(fileName);
-            });
-
-            const allFiles = [
-                ...lazyFileGroups.Moka,
+            const onlineFiles = [
                 ...lazyFileGroups.GrabFood,
                 ...lazyFileGroups.GoFood
-            ].filter(Boolean);
+            ].filter(Boolean).sort((a,b) => lazyPeriodKey(a) - lazyPeriodKey(b) || a.localeCompare(b));
 
-            const uniqueFiles = [...new Set(allFiles)].sort((a, b) =>
-                lazyPeriodKey(a) - lazyPeriodKey(b) || a.localeCompare(b)
-            );
+            const mokaFiles = [...lazyFileGroups.Moka]
+                .filter(Boolean)
+                .sort((a,b) => lazyPeriodKey(a) - lazyPeriodKey(b) || a.localeCompare(b));
 
-            const counts = `Moka ${lazyFileGroups.Moka.length} file • GrabFood ${lazyFileGroups.GrabFood.length} file • GoFood ${lazyFileGroups.GoFood.length} file`;
-            if (statusEl) statusEl.textContent = `${counts} • memuat semua data...`;
+            const counts = `Moka ${mokaFiles.length} file • GrabFood ${lazyFileGroups.GrabFood.length} file • GoFood ${lazyFileGroups.GoFood.length} file`;
+            if (!onlineFiles.length) throw new Error(`File GrabFood/GoFood tidak ditemukan di manifest. ${counts}`);
 
-            if (!lazyFileGroups.Moka.length || !lazyFileGroups.GrabFood.length || !lazyFileGroups.GoFood.length) {
-                throw new Error(`Manifest tidak lengkap: ${counts}`);
-            }
-
-            // Jangan pernah mengosongkan/memuat ulang rawData ketika selector berubah.
             rawData = [];
             filteredData = [];
             txSortedData = [];
@@ -2651,112 +2641,282 @@
             els.loadUI.classList.add('active');
             if (selectEl) selectEl.disabled = true;
 
-            // ====================================================
-            // STABIL MODE: satu file selesai download + parse, baru lanjut.
-            // Promise.all sebelumnya membuat beberapa Blob/parser besar hidup
-            // bersamaan dan memicu freeze/kehabisan memory di Chrome.
-            // Semua file tetap dimuat otomatis; hanya antreannya dibuat aman.
-            // ====================================================
-            for (let i = 0; i < uniqueFiles.length; i++) {
-                const fileName = uniqueFiles[i];
+            // ============================================================
+            // PRIORITAS 1: GRABFOOD + GOFOOD
+            // Dashboard online harus hidup terlebih dahulu.
+            // Moka TIDAK boleh menghalangi browser sampai dashboard tampil.
+            // ============================================================
+            currentDashboardPlatform = 'GrabFood+GoFood';
+            if (selectEl) selectEl.value = 'GrabFood+GoFood';
+
+            for (let i = 0; i < onlineFiles.length; i++) {
+                const fileName = onlineFiles[i];
                 const platform = lazyPlatformOfFile(fileName);
-                const pct = Math.round((i / uniqueFiles.length) * 92);
-                setLoadingProgress(pct, `Memuat ${platform}: ${fileName} (${i + 1}/${uniqueFiles.length})...`);
-                if (statusEl) statusEl.textContent = `Memuat ${platform}: ${fileName} (${i + 1}/${uniqueFiles.length})...`;
+                const pct = Math.round(((i + 1) / onlineFiles.length) * 70);
+                setLoadingProgress(pct, `LOAD ${platform}: ${fileName} (${i + 1}/${onlineFiles.length})`);
+                if (statusEl) statusEl.textContent = `LOAD ${platform}: ${fileName} • ${i + 1}/${onlineFiles.length}`;
 
                 const url = GH_BASE_URL + encodeURIComponent(fileName) + '?t=' + Date.now();
                 const response = await fetch(url, { cache: 'no-store' });
-                if (!response.ok) throw new Error(`${fileName}: HTTP ${response.status} saat mengunduh dari GitHub`);
+                if (!response.ok) throw new Error(`${fileName}: HTTP ${response.status}`);
                 const blob = await response.blob();
-                if (!blob.size) throw new Error(`${fileName}: file kosong dari GitHub`);
+                if (!blob.size) throw new Error(`${fileName}: file kosong`);
 
                 await processGithubCsvFile(fileName, blob);
-                // Release the Blob before the next file and give Chrome a frame.
                 await yieldToMain();
             }
 
-            setLoadingProgress(95, 'Semua CSV selesai diproses • menyiapkan dashboard...');
-
-            if (!rawData.length) {
-                throw new Error('Tidak ada transaksi valid dari seluruh file CSV.');
+            const onlineCount = rawData.filter(r => r.Platform === 'GrabFood' || r.Platform === 'GoFood').length;
+            if (!onlineCount) {
+                throw new Error('GrabFood/GoFood selesai diunduh tetapi 0 transaksi berhasil diparse. Cek Console untuk detail header CSV.');
             }
 
-            // Default pertama: Moka. Data online tetap sudah ada di memory.
-            currentDashboardPlatform = 'Moka';
-            if (selectEl) selectEl.value = 'Moka';
+            // ============================================================
+            // TAMPILKAN DASHBOARD ONLINE SEKARANG.
+            // User tidak perlu menunggu 10 file Moka.
+            // ============================================================
+            setLoadingProgress(75, `GrabFood + GoFood berhasil • ${formatNum(onlineCount)} transaksi`);
+            if (statusEl) statusEl.textContent = `GrabFood + GoFood LOADED • ${formatNum(onlineCount)} transaksi • Moka sedang dimuat di belakang layar...`;
 
-            setLoadingProgress(92, 'Menyiapkan dashboard semua sumber...');
-            if (statusEl) {
-                statusEl.textContent = `Semua data selesai dimuat • ${formatNum(rawData.length)} transaksi • Moka ${lazyFileGroups.Moka.length} • GrabFood ${lazyFileGroups.GrabFood.length} • GoFood ${lazyFileGroups.GoFood.length}`;
-            }
-
+            if (selectEl) selectEl.disabled = false;
             setupDatePickers();
             populateDropdowns();
             populateItemDropdown();
-
             els.main.style.display = 'block';
             els.content.classList.remove('hidden');
-
-            const navCtrl = document.getElementById('navDashboardControls');
-            navCtrl?.classList.remove('hidden');
-            navCtrl?.classList.add('flex');
+            document.getElementById('navDashboardControls')?.classList.remove('hidden');
+            document.getElementById('navDashboardControls')?.classList.add('flex');
 
             await yieldToMain();
             await executeFilterAndRender();
 
-            setLoadingProgress(100, 'Semua data selesai dimuat');
-            if (statusEl) statusEl.textContent = `ALL DATA LOADED • ${formatNum(rawData.length)} transaksi • pilih dashboard di atas`;
-            showToast(`Semua data berhasil dimuat: ${formatNum(rawData.length)} transaksi.`);
-
-        } catch (err) {
-            console.error(err);
-            if (statusEl) statusEl.textContent = `GAGAL MEMUAT SEMUA DATA: ${err.message}`;
-            showToast(`Gagal memuat data: ${err.message}`, 'error');
-            els.main.style.display = 'block';
-        } finally {
+            // Hilangkan overlay. Moka dilanjutkan tanpa mengunci halaman.
             els.loadUI.classList.remove('active');
             els.loadUI.style.removeProperty('display');
             setLoadingProgress(0, '');
-            if (selectEl) selectEl.disabled = false;
+
+            // ============================================================
+            // PRIORITAS 2: MOKA DI BACKGROUND
+            // Tetap ALL DATA LOAD, tetapi tidak menghalangi dashboard online.
+            // ============================================================
+            (async () => {
+                try {
+                    for (let i = 0; i < mokaFiles.length; i++) {
+                        const fileName = mokaFiles[i];
+                        const pct = Math.round(((i + 1) / Math.max(1, mokaFiles.length)) * 100);
+                        if (statusEl) statusEl.textContent = `Dashboard online aktif • memuat Moka ${i + 1}/${mokaFiles.length}: ${fileName}`;
+
+                        const url = GH_BASE_URL + encodeURIComponent(fileName) + '?t=' + Date.now();
+                        const response = await fetch(url, { cache: 'no-store' });
+                        if (!response.ok) throw new Error(`${fileName}: HTTP ${response.status}`);
+                        const blob = await response.blob();
+                        if (!blob.size) throw new Error(`${fileName}: file kosong`);
+
+                        await processGithubCsvFile(fileName, blob);
+                        await yieldToMain();
+                    }
+
+                    setupDatePickers();
+                    populateDropdowns();
+                    populateItemDropdown();
+                    if (statusEl) statusEl.textContent = `ALL DATA LOADED • ${formatNum(rawData.length)} transaksi • Moka ${mokaFiles.length} • GrabFood ${lazyFileGroups.GrabFood.length} • GoFood ${lazyFileGroups.GoFood.length}`;
+
+                    // Hanya render ulang jika user masih berada di dashboard Moka.
+                    if (currentDashboardPlatform === 'Moka') {
+                        await executeFilterAndRender();
+                    }
+                    showToast(`Semua data berhasil dimuat: ${formatNum(rawData.length)} transaksi.`);
+                } catch (mokaErr) {
+                    console.error('Moka background load error:', mokaErr);
+                    if (statusEl) statusEl.textContent = `GrabFood + GoFood tetap aktif • Moka gagal pada proses background: ${mokaErr.message}`;
+                    showToast(`GrabFood/GoFood berhasil. Moka gagal dimuat: ${mokaErr.message}`, 'error');
+                }
+            })();
+
+        } catch (err) {
+            console.error(err);
+            if (statusEl) statusEl.textContent = `GAGAL LOAD GRABFOOD/GOFOOD: ${err.message}`;
+            showToast(`Gagal memuat GrabFood/GoFood: ${err.message}`, 'error');
+            els.main.style.display = 'block';
         }
     }
 
     async function loadAllCsvFromGithub() {
-        await loadAllGithubDataOnce();
+        try {
+            const manifestRes = await fetch(GH_BASE_URL + 'manifest.json?t=' + Date.now(), { cache: 'no-store' });
+            if (!manifestRes.ok) throw new Error('manifest.json tidak ditemukan');
+            const manifest = await manifestRes.json();
+            const fileList = Array.isArray(manifest) ? manifest : [];
+            if (!fileList.length) { showToast('Manifest kosong.', 'error'); return; }
 
-        const sourceSelect = document.getElementById('lazyPlatformSelect');
-        const onlineNote = document.getElementById('onlineDataNote');
-        const syncOnlineNote = () => {
-            if (!onlineNote || !sourceSelect) return;
-            onlineNote.style.display = sourceSelect.value === 'Moka' ? 'none' : 'block';
-        };
+            els.loadUI.classList.add('active');
+            rawData = [];
+            filteredData = [];
+            txSortedData = [];
+            window.prevDataExport = null;
 
-        syncOnlineNote();
+            // Load ONLINE first so GrabFood/GoFood become available quickly.
+            // Moka files are loaded afterward. Parsing is done in PapaParse Web Worker
+            // so large GrabFood/GoFood CSVs do not freeze the browser.
+            const onlineFiles = fileList.filter(f => /grabfood|gofood/i.test(String(f)));
+            const mokaFiles = fileList.filter(f => !/grabfood|gofood/i.test(String(f)));
+            const orderedFiles = [...onlineFiles, ...mokaFiles];
 
-        sourceSelect?.addEventListener('change', async () => {
-            // INI HANYA GANTI VIEW — TIDAK ADA FETCH / DOWNLOAD ULANG.
-            currentDashboardPlatform = sourceSelect.value;
-            syncOnlineNote();
+            setLoadingProgress(0, `Memuat ${orderedFiles.length} file CSV...`);
 
-            selectedItemsSet.clear();
-            selectedOutletsSet.clear();
-            selectedAreasSet.clear();
-            selectedDiscountsSet.clear();
+            const parseOneCsv = async (fileName, index) => {
+                const sourceFileName = String(fileName || '');
+                const sourceLower = sourceFileName.toLowerCase();
+                currentSourceFileName = sourceFileName;
 
-            populateDropdowns();
-            populateItemDropdown();
-            setupDatePickers();
+                setLoadingProgress(
+                    Math.round((index / orderedFiles.length) * 90),
+                    `Memuat ${sourceFileName} (${index + 1}/${orderedFiles.length})...`
+                );
 
-            const status = document.getElementById('lazyStatus');
-            if (status) {
-                const label = currentDashboardPlatform === 'GrabFood+GoFood'
-                    ? 'Online Sales (GrabFood + GoFood)'
-                    : currentDashboardPlatform;
-                status.textContent = `Dashboard ${label} • data sudah tersedia di memory • tidak download ulang`;
+                const res = await fetch(
+                    GH_BASE_URL + encodeURIComponent(sourceFileName) + '?t=' + Date.now(),
+                    { cache: 'no-store' }
+                );
+                if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+                const csvText = await res.text();
+                if (!csvText || !csvText.trim()) return 0;
+
+                let headerIdx = -1;
+                let headers = null;
+                let validCount = 0;
+
+                await new Promise((resolve, reject) => {
+                    Papa.parse(csvText, {
+                        header: false,
+                        skipEmptyLines: 'greedy',
+                        delimiter: '',
+                        chunkSize: 256 * 1024,
+                        worker: true,
+                        chunk: function(results) {
+                            currentSourceFileName = sourceFileName;
+                            const rows = results.data || [];
+                            if (!rows.length) return;
+
+                            // Header is normally in the first chunk. Keep the
+                            // detection tolerant to the actual GrabFood/GoFood headers.
+                            if (headerIdx === -1) {
+                                for (let j = 0; j < Math.min(rows.length, 50); j++) {
+                                    const row = rows[j] || [];
+                                    const rowNorm = row.join(' ').toLowerCase();
+                                    const isGrab = sourceLower.includes('grabfood');
+                                    const isGo = sourceLower.includes('gofood');
+                                    const isMoka = !isGrab && !isGo;
+
+                                    const isMokaHeader =
+                                        isMoka && rowNorm.includes('net sales') &&
+                                        (rowNorm.includes('receipt number') || rowNorm.includes('sku'));
+
+                                    const isGrabHeader =
+                                        isGrab && rowNorm.includes('transaction id') &&
+                                        rowNorm.includes('net sales') && rowNorm.includes('store name');
+
+                                    const isGoHeader =
+                                        isGo && rowNorm.includes('transaction id') &&
+                                        (rowNorm.includes('amount') || rowNorm.includes('net amount')) &&
+                                        (rowNorm.includes('outlet name') || rowNorm.includes('payment date'));
+
+                                    if (isMokaHeader || isGrabHeader || isGoHeader) {
+                                        headerIdx = j;
+                                        headers = row;
+                                        const dataRows = rows.slice(j + 1);
+                                        if (dataRows.length) {
+                                            const before = rawData.length;
+                                            processParsedRows(dataRows, headers);
+                                            validCount += Math.max(0, rawData.length - before);
+                                        }
+                                        return;
+                                    }
+                                }
+                            } else if (headers) {
+                                const before = rawData.length;
+                                processParsedRows(rows, headers);
+                                validCount += Math.max(0, rawData.length - before);
+                            }
+                        },
+                        complete: function() {
+                            resolve();
+                        },
+                        error: function(err) {
+                            reject(err);
+                        }
+                    });
+                });
+
+                return validCount;
+            };
+
+            let onlineDone = 0;
+            let totalLoaded = 0;
+
+            for (let i = 0; i < orderedFiles.length; i++) {
+                const fileName = orderedFiles[i];
+                try {
+                    const count = await parseOneCsv(fileName, i);
+                    totalLoaded += count;
+
+                    if (/grabfood|gofood/i.test(String(fileName))) {
+                        onlineDone++;
+                    }
+
+                    // Once both online files are loaded, expose the dashboard.
+                    // Moka continues loading afterward without blocking the UI.
+                    if (onlineFiles.length && onlineDone === onlineFiles.length && !window.__onlineDashboardShown) {
+                        window.__onlineDashboardShown = true;
+                        setLoadingProgress(50, `GrabFood + GoFood selesai • ${formatNum(rawData.length)} transaksi. Menyiapkan dashboard...`);
+                        setupDatePickers();
+                        populateDropdowns();
+                        populateItemDropdown();
+                        document.getElementById('loadingOverlay').style.display = 'none';
+                        els.main.style.display = 'block';
+                        els.content.classList.remove('hidden');
+                        const navCtrl = document.getElementById('navDashboardControls');
+                        if (navCtrl) { navCtrl.classList.remove('hidden'); navCtrl.classList.add('flex'); }
+                        setTimeout(() => executeFilterAndRender().catch(e => console.error('Initial online render:', e)), 0);
+                    }
+                } catch (err) {
+                    console.error(`Gagal memuat ${fileName}:`, err);
+                    showToast(`Gagal memuat ${fileName}`, 'error');
+                }
             }
 
-            await executeFilterAndRender();
-        });
+            setLoadingProgress(95, 'Menyiapkan dasbor...');
+            if (rawData.length > 0) {
+                setupDatePickers();
+                populateDropdowns();
+                populateItemDropdown();
+                document.getElementById('loadingOverlay').style.display = 'none';
+                els.main.style.display = 'block';
+                els.content.classList.remove('hidden');
+                const navCtrl = document.getElementById('navDashboardControls');
+                if (navCtrl) { navCtrl.classList.remove('hidden'); navCtrl.classList.add('flex'); }
+                setTimeout(async () => {
+                    try {
+                        await executeFilterAndRender();
+                        showToast(`Berhasil memuat ${formatNum(rawData.length)} baris.`);
+                    } catch (e) {
+                        console.error(e);
+                        showToast('Sebagian grafik gagal dirender karena data terlalu besar.', 'error');
+                    }
+                }, 0);
+            } else {
+                showToast('Tidak ada data valid. Periksa format CSV.', 'error');
+                els.main.style.display = 'block';
+            }
+        } catch (err) {
+            console.error(err);
+            showToast('Gagal memuat data: ' + err.message, 'error');
+            els.main.style.display = 'block';
+        } finally {
+            els.loadUI.classList.remove('active');
+            setLoadingProgress(0, '');
+        }
     }
 
     window.addEventListener('DOMContentLoaded', loadAllCsvFromGithub);
