@@ -2188,16 +2188,148 @@
     // ============================================================
     // AUTO-LOAD CSV DARI GITHUB
     // ============================================================
-    const GH_USER = 'rohmanfahrudi';
-    const GH_REPO = 'lmdp-b2c-analytic-performance';
+    const GH_USER = 'anggafmp';
+    const GH_REPO = 'trial-dashboard-moka';
     const GH_BASE_URL = `https://raw.githubusercontent.com/${GH_USER}/${GH_REPO}/main/`;
+
+    // Normalisasi data channel delivery agar kompatibel dengan struktur dashboard Moka.
+    function normalizeDeliveryRow(row, source) {
+        const get = (...keys) => {
+            for (const key of keys) {
+                if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') return row[key];
+            }
+            return '';
+        };
+        const num = (v) => {
+            if (typeof v === 'number') return v;
+            if (v === undefined || v === null || v === '') return 0;
+            const n = parseFloat(String(v).replace(/,/g, '').replace(/[^0-9.\-]/g, ''));
+            return Number.isFinite(n) ? n : 0;
+        };
+
+        const nr = {};
+        for (const k in row) if (k) nr[String(k).trim()] = row[k];
+
+        const isGo = source === 'GoFood';
+        const sales = num(isGo
+            ? get('Amount', 'Net Amount', 'Net amount', 'Sales', 'Total Amount')
+            : get('Net Sales', 'Net sales', 'Amount', 'Sales'));
+        const date = get(
+            ...(isGo
+                ? ['Payment Date', 'Payment date', 'Order Date', 'Transaction Date', 'Date', 'Created At']
+                : ['Order Date', 'Order date', 'Transaction Date', 'Payment Date', 'Date', 'Created At'])
+        );
+
+        nr['Receipt Number'] = String(get('Transaction ID', 'Transaction Id', 'transaction id', 'Order ID', 'Order Id', 'order id') || '').trim();
+        nr['Outlet'] = String(get(isGo ? 'Outlet Name' : 'Store Name', 'Outlet', 'Store Name', 'Outlet Name') || '').trim();
+        nr['Items'] = String(get('Items', 'Item Name', 'Item', 'Product Name', 'Menu Name', 'Menu') || 'Unknown').trim();
+        nr['Date'] = date;
+        nr['Quantity'] = num(get('Quantity', 'Qty')) || 1;
+        nr['Net Sales'] = sales;
+        nr['Gross Sales'] = num(get('Gross Sales', 'Gross sales', 'Subtotal', 'Sub Total')) || sales;
+        nr['Tax'] = num(get('Tax', 'Tax Amount', 'Tax amount'));
+        nr['Gratuity'] = num(get('Gratuity', 'Service Fee', 'Service fee'));
+        nr['Discounts'] = num(get('Discounts', 'Discount', 'Discount Amount', 'Discount amount'));
+        nr['Refunds'] = num(get('Refunds', 'Refund', 'Refund Amount', 'Refund amount'));
+        nr['Total Collected'] = num(get('Total Collected', 'Total Amount', 'Net Amount', 'Amount')) || sales;
+        nr['Total Collected Exc Rounding'] = num(get('Total Collected Exc Rounding', 'Net Amount', 'Amount')) || nr['Total Collected'];
+        nr['Payment Method'] = get('Payment Method', 'Payment method', 'Payment Type', 'Payment type') || '-';
+        nr['Platform'] = source;
+        nr['AREA'] = String(get('AREA', 'Area') || 'Unknown').trim();
+        nr['DEPT'] = String(get('DEPT', 'Dept', 'Department') || 'Unknown').trim();
+        nr['Event Type'] = String(get('Event Type', 'Order Type', 'Order Channel', 'Channel') || 'Unknown').trim();
+        nr['Collected By'] = get('Collected By', 'CollectedBy', 'collected by') || '-';
+        nr['Served By'] = get('Served By', 'ServedBy', 'served by') || '-';
+        nr['Customer'] = get('Customer', 'customer', 'CUSTOMER') || '-';
+        nr['Reason of Refund'] = get('Reason of Refund', 'Reason Of Refund', 'ReasonofRefund', 'reason of refund') || '-';
+        return nr;
+    }
+
+    function isDeliveryHeader(row, source) {
+        const s = (row || []).map(v => String(v ?? '').trim().toLowerCase());
+        const has = (...keys) => keys.some(k => s.includes(k.toLowerCase()));
+        if (source === 'GoFood') {
+            return has('transaction id') && has('amount', 'net amount') && has('outlet name', 'payment date');
+        }
+        if (source === 'GrabFood') {
+            return has('transaction id') && has('net sales', 'order id') && has('store name', 'order id');
+        }
+        return has('net sales') && has('receipt number', 'sku');
+    }
+
+    // Parse CSV sebagai Blob + chunk. Ini sengaja tidak memakai response.text() / array besar,
+    // sehingga file 65-95 MB tidak dibuat menjadi string raksasa di RAM browser.
+    function parseGithubCsvInChunks(fileName, blob, source) {
+        return new Promise((resolve, reject) => {
+            let headers = null;
+            let headerFound = false;
+            let rowCount = 0;
+            let firstRows = 0;
+
+            Papa.parse(blob, {
+                header: false,
+                skipEmptyLines: true,
+                delimiter: '',
+                dynamicTyping: false,
+                chunkSize: 1024 * 1024,
+                chunk: (results) => {
+                    const rows = results.data || [];
+                    if (!rows.length) return;
+
+                    let start = 0;
+                    if (!headerFound) {
+                        const limit = Math.min(rows.length, 80);
+                        for (let j = 0; j < limit; j++) {
+                            firstRows++;
+                            if (isDeliveryHeader(rows[j], source)) {
+                                headers = rows[j].map(h => String(h ?? '').trim());
+                                headerFound = true;
+                                start = j + 1;
+                                break;
+                            }
+                        }
+                    }
+                    if (!headerFound || !headers) return;
+
+                    const normalizedRows = [];
+                    for (let r = start; r < rows.length; r++) {
+                        const values = rows[r];
+                        if (!values || !values.length) continue;
+                        const obj = {};
+                        for (let c = 0; c < headers.length; c++) {
+                            const h = headers[c];
+                            if (h) obj[h] = values[c] ?? '';
+                        }
+                        if (source === 'Moka') normalizedRows.push(obj);
+                        else normalizedRows.push(normalizeDeliveryRow(obj, source));
+                    }
+                    if (normalizedRows.length) {
+                        processParsedJSON(normalizedRows);
+                        rowCount += normalizedRows.length;
+                    }
+                },
+                complete: () => {
+                    if (!headerFound) {
+                        console.warn(`Header tidak ditemukan: ${fileName}`);
+                    } else {
+                        console.log(`${fileName}: ${rowCount.toLocaleString()} baris diproses.`);
+                    }
+                    resolve(rowCount);
+                },
+                error: (err) => reject(err)
+            });
+        });
+    }
 
     async function loadAllCsvFromGithub() {
         try {
             const manifestRes = await fetch(GH_BASE_URL + 'manifest.json?t=' + Date.now());
             if (!manifestRes.ok) throw new Error('manifest.json tidak ditemukan');
             const fileList = await manifestRes.json();
-            if (fileList.length === 0) { showToast('Manifest kosong.', 'error'); return; }
+            if (!Array.isArray(fileList) || fileList.length === 0) {
+                showToast('Manifest kosong.', 'error');
+                return;
+            }
 
             els.loadUI.classList.add('active');
             setLoadingProgress(0, `Memuat ${fileList.length} file CSV...`);
@@ -2206,28 +2338,14 @@
             for (let i = 0; i < fileList.length; i++) {
                 const fileName = fileList[i];
                 const pct = Math.round((i / fileList.length) * 100);
-                setLoadingProgress(pct, `Memuat ${fileName} (${i+1}/${fileList.length})...`);
+                const source = /gofood/i.test(fileName) ? 'GoFood' : (/grabfood/i.test(fileName) ? 'GrabFood' : 'Moka');
+                setLoadingProgress(pct, `Memuat ${fileName} (${i + 1}/${fileList.length})...`);
+
                 try {
                     const res = await fetch(GH_BASE_URL + encodeURIComponent(fileName) + '?t=' + Date.now());
                     if (!res.ok) throw new Error('HTTP ' + res.status);
-                    const csvText = await res.text();
-                    const parsed = Papa.parse(csvText.trim(), { header: false, skipEmptyLines: true, delimiter: "" });
-                    const rawSheet = parsed.data;
-                    let headerIdx = -1;
-                    for (let j = 0; j < Math.min(rawSheet.length, 50); j++) {
-                        const rowStr = (rawSheet[j] || []).join(' ');
-                        if (rowStr.includes('Net Sales') && (rowStr.includes('Receipt Number') || rowStr.includes('SKU'))) { headerIdx = j; break; }
-                    }
-                    if (headerIdx !== -1) {
-                        const headers = rawSheet[headerIdx];
-                        const json = [];
-                        for (let r = headerIdx + 1; r < rawSheet.length; r++) {
-                            const obj = {};
-                            for (let c = 0; c < headers.length; c++) { if (headers[c]) obj[headers[c]] = rawSheet[r][c]; }
-                            json.push(obj);
-                        }
-                        processParsedJSON(json);
-                    }
+                    const blob = await res.blob();
+                    await parseGithubCsvInChunks(fileName, blob, source);
                 } catch (err) {
                     console.warn(`Gagal memuat ${fileName}:`, err);
                     showToast(`Gagal memuat ${fileName}`, 'error');
@@ -2239,25 +2357,29 @@
                 setupDatePickers();
                 populateDropdowns();
                 populateItemDropdown();
-                
-                // PAKSA SEMBUNYIKAN LOADING DAN TAMPILKAN DASHBOARD SEBELUM RENDER BERAT
-                document.getElementById('loadingOverlay').style.display = 'none'; 
-                els.main.style.display = 'block'; 
+
+                document.getElementById('loadingOverlay').style.display = 'none';
+                els.main.style.display = 'block';
                 els.content.classList.remove('hidden');
-                
-                const navCtrl = document.getElementById('navDashboardControls'); navCtrl.classList.remove('hidden'); navCtrl.classList.add('flex');
-                
-                // JEDA 100MS SEBELUM MENGGAMBAR GRAFIK AGAR BROWSER BERNAFAS
+                const navCtrl = document.getElementById('navDashboardControls');
+                navCtrl.classList.remove('hidden');
+                navCtrl.classList.add('flex');
+
                 setTimeout(async () => {
                     try {
-                        await executeFilterAndRender(); 
-                        showToast(`Berhasil memuat ${formatNum(rawData.length)} baris.`); 
-                    } catch(e) { 
-                        console.error(e); 
-                        showToast('Sebagian grafik gagal dirender karena data terlalu besar.', 'error');
+                        await executeFilterAndRender();
+                        const platformCount = rawData.reduce((a, r) => {
+                            const p = r.Platform || 'Other';
+                            a[p] = (a[p] || 0) + 1;
+                            return a;
+                        }, {});
+                        console.log('Platform loaded:', platformCount);
+                        showToast(`Berhasil memuat ${formatNum(rawData.length)} baris.`);
+                    } catch (e) {
+                        console.error(e);
+                        showToast('Data berhasil dimuat, tetapi sebagian grafik gagal dirender karena data besar.', 'error');
                     }
-                }, 100);
-
+                }, 150);
             } else {
                 showToast('Tidak ada data valid. Periksa format CSV.', 'error');
                 els.main.style.display = 'block';
