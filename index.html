@@ -243,17 +243,17 @@
         </div>
     </nav>
 
-    <!-- PLATFORM SELECTOR: pilih dataset; setiap pilihan dimuat otomatis -->
+    <!-- DASHBOARD VIEW: semua dataset sudah dimuat sekali; selector hanya mengganti view -->
     <section id="lazyDataSelector" class="bg-white border-b border-slate-200 px-4 sm:px-6 py-2.5">
         <div class="max-w-[1500px] mx-auto flex flex-col sm:flex-row items-center gap-2">
-            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 shrink-0">Dashboard Source</span>
+            <span class="text-[10px] font-bold uppercase tracking-wider text-slate-500 shrink-0">Dashboard</span>
             <select id="lazyPlatformSelect" class="pro-select text-[11px] w-full sm:w-[240px] p-1.5" aria-label="Pilih dashboard sumber data">
                 <option value="Moka">Moka</option>
                 <option value="GrabFood">GrabFood</option>
                 <option value="GoFood">GoFood</option>
                 <option value="GrabFood+GoFood">Online Sales (GrabFood + GoFood)</option>
             </select>
-            <span id="lazyStatus" class="text-[10px] text-slate-500">Menyiapkan daftar data...</span>
+            <span id="lazyStatus" class="text-[10px] text-slate-500">Menyiapkan semua data...</span>
         </div>
         <div id="onlineDataNote" class="max-w-[1500px] mx-auto mt-1 text-[10px] text-slate-500">Catatan: file ekspor GrabFood/GoFood berisi data penjualan dan transaksi; file yang diberikan tidak memiliki kolom nama item atau quantity.</div>
     </section>
@@ -1504,10 +1504,18 @@
 
 
         // ============================================================
+        // Semua sumber (Moka + GrabFood + GoFood) dimuat SEKALI.
+        // Selector hanya mengganti VIEW, tidak mengunduh ulang CSV.
+        // ============================================================
+        let currentDashboardPlatform = 'Moka';
+
         async function executeFilterAndRender() {
             const sStart = filters.dStart.value; const sEnd = filters.dEnd.value; const sDept = filters.dept.value; const sEvt = filters.eventType.value;
+            const sourcePlatform = currentDashboardPlatform;
             filteredData = rawData.filter(r => {
                 let m = true; const sv = (v) => v ? v.toString().trim() : '';
+                if (sourcePlatform !== 'ALL' && sourcePlatform !== 'GrabFood+GoFood' && sv(r['Platform']) !== sourcePlatform) m = false;
+                if (sourcePlatform === 'GrabFood+GoFood' && !['GrabFood','GoFood'].includes(sv(r['Platform']))) m = false;
                 if (sStart && (!r.DateStr || r.DateStr < sStart)) m = false; if (sEnd && (!r.DateStr || r.DateStr > sEnd)) m = false;
                 if (selectedAreasSet.size > 0 && !selectedAreasSet.has(sv(r['AREA']))) m = false; if (selectedOutletsSet.size > 0 && !selectedOutletsSet.has(sv(r['Outlet']))) m = false;
                 if (sDept !== 'ALL' && sv(r['DEPT']) !== sDept) m = false; if (sEvt !== 'ALL' && sv(r['Event Type']) !== sEvt) m = false;
@@ -1515,36 +1523,42 @@
                 if (selectedDiscountsSet.size > 0 && !selectedDiscountsSet.has(sv(r['Discount Applied']))) m = false;
                 return m;
             });
-            renderDashboard();
+            await yieldToMain();
+            await renderDashboard();
             setTimeout(() => {
                 updateFilterDropdownLists();
                 if(!itemDropdown.classList.contains('hidden')) renderItemDropdown(searchInput.value); if(!outletDropdown.classList.contains('hidden')) renderOutletDropdown(outletSearch.value); if(!areaDropdown.classList.contains('hidden')) renderAreaDropdown(areaSearch.value); if(!discountDropdown.classList.contains('hidden')) renderDiscountDropdown(discountSearch.value);
             }, 10);
         }
 
-        function renderDashboard() {
+        async function renderDashboard() {
             window.currentStats = { gross:0, net:0, coll:0, qty:0, disc:0, tax:0, grat:0, ref:0, tx:0 }; let txSet = new Set();
             let aggDate = {}, aggCat = {}, aggCatQty = {}, aggCatTx = {}, aggItems = {}, aggArea = {}, aggOutlet = {}, aggDept = {};
             let heatMatrix = {}; DAYS.forEach(d => { heatMatrix[d] = {}; HOURS.forEach(h => heatMatrix[d][h] = 0); }); let maxHeatValue = 0;
             const gs = (r,k) => r[k]?r[k].toString().trim():'';
 
-            filteredData.forEach(r => {
-                const rn = getCleanNum(r,'Net Sales'); const rg = getCleanNum(r,'Gross Sales'); const rt = getCleanNum(r,'Tax');
-                const rc = getCleanNum(r,'Total Collected Exc Rounding') || getCleanNum(r,'Total Collected') || (rn + rt);
-                const rq = getCleanNum(r,'Quantity'); const rd = getDiscountValue(r); const rgrat = getGratuityValue(r); const rref = getCleanNum(r,'Refunds');
-                window.currentStats.net += rn; window.currentStats.gross += rg; window.currentStats.coll += rc; window.currentStats.qty += rq; window.currentStats.disc += rd; window.currentStats.tax += rt; window.currentStats.grat += rgrat; window.currentStats.ref += Math.abs(rref);
-                const rec = gs(r,'Receipt Number'); if(rec) txSet.add(rec);
-                const dt = gs(r,'DateStr'); if(dt) { if(!aggDate[dt]) aggDate[dt] = { net: 0, qty: 0, tx: new Set() }; aggDate[dt].net += rn; aggDate[dt].qty += rq; if(rec) aggDate[dt].tx.add(rec); }
-                const cat = gs(r,'Category'); if(cat && cat !== 'Unknown') { if(!aggCat[cat]) aggCat[cat] = 0; if(!aggCatQty[cat]) aggCatQty[cat] = 0; if(!aggCatTx[cat]) aggCatTx[cat] = new Set(); aggCat[cat] += rn; aggCatQty[cat] += rq; if(rec) aggCatTx[cat].add(rec); }
-                const area = gs(r,'AREA'); if(area && area !== 'Unknown') aggArea[area] = (aggArea[area]||0) + rn;
-                const outlet = gs(r,'Outlet'); if(outlet && outlet !== 'Unknown') aggOutlet[outlet] = (aggOutlet[outlet]||0) + rn;
-                const dept = gs(r,'DEPT'); if(dept && dept !== 'Unknown') aggDept[dept] = (aggDept[dept]||0) + rn;
-                const item = gs(r,'Items'); if(item && item !== 'Unknown') { if(!aggItems[item]) aggItems[item] = {q:0, n:0}; aggItems[item].q += rq; aggItems[item].n += rn; }
-                let day = r['ParsedDay']; let hr = r['ParsedHour'];
-                const indoDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
-                if(!DAYS.includes(day)) { const idx = indoDays.indexOf(day); if(idx !== -1) day = DAYS[idx]; }
-                if(day && hr && heatMatrix[day] && heatMatrix[day][hr] !== undefined) { heatMatrix[day][hr] += rn; if(heatMatrix[day][hr] > maxHeatValue) maxHeatValue = heatMatrix[day][hr]; }
-            });
+            for (let start = 0; start < filteredData.length; start += 750) {
+                const end = Math.min(start + 750, filteredData.length);
+                for (let i = start; i < end; i++) {
+                    const r = filteredData[i];
+                    const rn = getCleanNum(r,'Net Sales'); const rg = getCleanNum(r,'Gross Sales'); const rt = getCleanNum(r,'Tax');
+                    const rc = getCleanNum(r,'Total Collected Exc Rounding') || getCleanNum(r,'Total Collected') || (rn + rt);
+                    const rq = getCleanNum(r,'Quantity'); const rd = getDiscountValue(r); const rgrat = getGratuityValue(r); const rref = getCleanNum(r,'Refunds');
+                    window.currentStats.net += rn; window.currentStats.gross += rg; window.currentStats.coll += rc; window.currentStats.qty += rq; window.currentStats.disc += rd; window.currentStats.tax += rt; window.currentStats.grat += rgrat; window.currentStats.ref += Math.abs(rref);
+                    const rec = gs(r,'Receipt Number'); if(rec) txSet.add(rec);
+                    const dt = gs(r,'DateStr'); if(dt) { if(!aggDate[dt]) aggDate[dt] = { net: 0, qty: 0, tx: new Set() }; aggDate[dt].net += rn; aggDate[dt].qty += rq; if(rec) aggDate[dt].tx.add(rec); }
+                    const cat = gs(r,'Category'); if(cat && cat !== 'Unknown') { if(!aggCat[cat]) aggCat[cat] = 0; if(!aggCatQty[cat]) aggCatQty[cat] = 0; if(!aggCatTx[cat]) aggCatTx[cat] = new Set(); aggCat[cat] += rn; aggCatQty[cat] += rq; if(rec) aggCatTx[cat].add(rec); }
+                    const area = gs(r,'AREA'); if(area && area !== 'Unknown') aggArea[area] = (aggArea[area]||0) + rn;
+                    const outlet = gs(r,'Outlet'); if(outlet && outlet !== 'Unknown') aggOutlet[outlet] = (aggOutlet[outlet]||0) + rn;
+                    const dept = gs(r,'DEPT'); if(dept && dept !== 'Unknown') aggDept[dept] = (aggDept[dept]||0) + rn;
+                    const item = gs(r,'Items'); if(item && item !== 'Unknown') { if(!aggItems[item]) aggItems[item] = {q:0, n:0}; aggItems[item].q += rq; aggItems[item].n += rn; }
+                    let day = r['ParsedDay']; let hr = r['ParsedHour'];
+                    const indoDays = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu', 'Minggu'];
+                    if(!DAYS.includes(day)) { const idx = indoDays.indexOf(day); if(idx !== -1) day = DAYS[idx]; }
+                    if(day && hr && heatMatrix[day] && heatMatrix[day][hr] !== undefined) { heatMatrix[day][hr] += rn; if(heatMatrix[day][hr] > maxHeatValue) maxHeatValue = heatMatrix[day][hr]; }
+                }
+                if (end < filteredData.length) await yieldToMain();
+            }
             window.currentStats.tx = txSet.size; const c = window.currentStats;
 
             document.getElementById('kpiGrossSales').innerText = formatRp(c.gross); document.getElementById('kpiNetSales').innerText = formatRp(c.net); document.getElementById('kpiTotalCollected').innerText = formatRp(c.coll);
@@ -2455,16 +2469,16 @@
 
             try {
                 Papa.parse(csvFile, {
-                    worker: false,
+                    worker: true,
                     header: false,
                     // Online exports are padded to Excel's 1,048,576-row limit
                     // with >1 million comma-only rows. PapaParse's greedy mode
                     // removes them via repeated array splices and can stall the UI.
                     // Keep blank rows here; processParsedRows rejects them in O(1)
                     // using the platform status/category columns before any object work.
-                    skipEmptyLines: isMokaFile ? 'greedy' : false,
+                    skipEmptyLines: true,
                     dynamicTyping: false,
-                    chunkSize: 1024 * 1024,
+                    chunkSize: 256 * 1024,
                     chunk: function(results, parser) {
                         try {
                             currentSourceFileName = sourceFileName;
@@ -2536,65 +2550,102 @@
         return addedRows;
     }
 
-    async function loadSelectedGithubData() {
-        const selectEl = document.getElementById('lazyPlatformSelect');
-        const platform = selectEl?.value || 'Moka';
-        const files = lazySelectedFiles();
+    async function loadAllGithubDataOnce() {
         const statusEl = document.getElementById('lazyStatus');
-        if (!files.length) {
-            if (statusEl) statusEl.textContent = `Tidak ada file ${platform} di manifest.json.`;
-            showToast(`Tidak ada file ${platform} untuk dimuat.`, 'error');
-            return;
-        }
+        const selectEl = document.getElementById('lazyPlatformSelect');
 
-        // Prevent overlapping loads that could mix rows from two platforms.
-        if (selectEl) selectEl.disabled = true;
-        // Earlier versions set an inline display:none. Remove it so the active
-        // class can show the overlay whenever the source is switched.
-        els.loadUI.style.removeProperty('display');
-        els.loadUI.classList.add('active');
-        if (statusEl) statusEl.textContent = `Memuat ${platform}: ${files.length} file...`;
-        rawData = [];
-        filteredData = [];
-        txSortedData = [];
-        window.prevDataExport = null;
-
-        // Avoid displaying the old platform's KPI values while a new source loads.
-        document.querySelectorAll('.kpi-value').forEach(el => { el.textContent = '…'; });
         try {
-            for (let i = 0; i < files.length; i++) {
-                const fileName = files[i];
-                const pct = Math.round((i / files.length) * 90);
-                setLoadingProgress(pct, `Memuat ${platform}: ${fileName} (${i + 1}/${files.length})...`);
-                if (statusEl) statusEl.textContent = `Mengunduh ${platform}: ${fileName} (${i + 1}/${files.length})...`;
-                await processGithubCsvFile(fileName);
+            const manifestRes = await fetch(GH_BASE_URL + 'manifest.json?t=' + Date.now(), { cache: 'no-store' });
+            if (!manifestRes.ok) throw new Error('manifest.json tidak ditemukan');
+
+            lazyManifest = await manifestRes.json();
+            lazyFileGroups = { Moka: [], GrabFood: [], GoFood: [] };
+
+            lazyManifest.forEach(fileName => {
+                const p = lazyPlatformOfFile(fileName);
+                lazyFileGroups[p].push(fileName);
+            });
+
+            const allFiles = [
+                ...lazyFileGroups.Moka,
+                ...lazyFileGroups.GrabFood,
+                ...lazyFileGroups.GoFood
+            ].filter(Boolean);
+
+            const uniqueFiles = [...new Set(allFiles)].sort((a, b) =>
+                lazyPeriodKey(a) - lazyPeriodKey(b) || a.localeCompare(b)
+            );
+
+            const counts = `Moka ${lazyFileGroups.Moka.length} file • GrabFood ${lazyFileGroups.GrabFood.length} file • GoFood ${lazyFileGroups.GoFood.length} file`;
+            if (statusEl) statusEl.textContent = `${counts} • memuat semua data...`;
+
+            if (!lazyFileGroups.Moka.length || !lazyFileGroups.GrabFood.length || !lazyFileGroups.GoFood.length) {
+                throw new Error(`Manifest tidak lengkap: ${counts}`);
             }
 
-            setLoadingProgress(95, `Menyiapkan dashboard ${platform}...`);
-            if (statusEl) statusEl.textContent = `${platform}: ${formatNum(rawData.length)} transaksi valid • membangun grafik...`;
-            if (rawData.length > 0) {
-                setupDatePickers();
-                populateDropdowns();
-                populateItemDropdown();
-                els.main.style.display = 'block';
-                els.content.classList.remove('hidden');
-                const navCtrl = document.getElementById('navDashboardControls');
-                navCtrl?.classList.remove('hidden');
-                navCtrl?.classList.add('flex');
+            // Jangan pernah mengosongkan/memuat ulang rawData ketika selector berubah.
+            rawData = [];
+            filteredData = [];
+            txSortedData = [];
+            window.prevDataExport = null;
+
+            els.loadUI.style.removeProperty('display');
+            els.loadUI.classList.add('active');
+            if (selectEl) selectEl.disabled = true;
+
+            for (let i = 0; i < uniqueFiles.length; i++) {
+                const fileName = uniqueFiles[i];
+                const pct = Math.round((i / uniqueFiles.length) * 88);
+                const platform = lazyPlatformOfFile(fileName);
+
+                setLoadingProgress(
+                    pct,
+                    `Memuat semua data: ${platform} — ${fileName} (${i + 1}/${uniqueFiles.length})...`
+                );
+
+                if (statusEl) {
+                    statusEl.textContent = `Mengunduh ${platform}: ${fileName} (${i + 1}/${uniqueFiles.length})...`;
+                }
+
+                await processGithubCsvFile(fileName);
                 await yieldToMain();
-                await executeFilterAndRender();
-                if (statusEl) statusEl.textContent = `${platform} • ${files.length} file • ${formatNum(rawData.length)} transaksi valid • selesai`;
-                setLoadingProgress(100, 'Selesai');
-                showToast(`${platform}: ${formatNum(rawData.length)} transaksi valid berhasil dimuat.`);
-            } else {
-                if (statusEl) statusEl.textContent = `${platform}: tidak ada transaksi valid dalam file yang dimuat.`;
-                document.getElementById('mainContent').style.display = 'block';
-                showToast(`Tidak ada data valid untuk ${platform}.`, 'error');
             }
+
+            if (!rawData.length) {
+                throw new Error('Tidak ada transaksi valid dari seluruh file CSV.');
+            }
+
+            // Default pertama: Moka. Data online tetap sudah ada di memory.
+            currentDashboardPlatform = 'Moka';
+            if (selectEl) selectEl.value = 'Moka';
+
+            setLoadingProgress(92, 'Menyiapkan dashboard semua sumber...');
+            if (statusEl) {
+                statusEl.textContent = `Semua data selesai dimuat • ${formatNum(rawData.length)} transaksi • Moka ${lazyFileGroups.Moka.length} • GrabFood ${lazyFileGroups.GrabFood.length} • GoFood ${lazyFileGroups.GoFood.length}`;
+            }
+
+            setupDatePickers();
+            populateDropdowns();
+            populateItemDropdown();
+
+            els.main.style.display = 'block';
+            els.content.classList.remove('hidden');
+
+            const navCtrl = document.getElementById('navDashboardControls');
+            navCtrl?.classList.remove('hidden');
+            navCtrl?.classList.add('flex');
+
+            await yieldToMain();
+            await executeFilterAndRender();
+
+            setLoadingProgress(100, 'Semua data selesai dimuat');
+            if (statusEl) statusEl.textContent = `ALL DATA LOADED • ${formatNum(rawData.length)} transaksi • pilih dashboard di atas`;
+            showToast(`Semua data berhasil dimuat: ${formatNum(rawData.length)} transaksi.`);
+
         } catch (err) {
             console.error(err);
-            if (statusEl) statusEl.textContent = `GAGAL ${platform}: ${err.message}`;
-            showToast(`Gagal memuat ${platform}: ${err.message}`, 'error');
+            if (statusEl) statusEl.textContent = `GAGAL MEMUAT SEMUA DATA: ${err.message}`;
+            showToast(`Gagal memuat data: ${err.message}`, 'error');
             els.main.style.display = 'block';
         } finally {
             els.loadUI.classList.remove('active');
@@ -2605,687 +2656,44 @@
     }
 
     async function loadAllCsvFromGithub() {
-        try {
-            const manifestRes = await fetch(GH_BASE_URL + 'manifest.json?t=' + Date.now());
-            if (!manifestRes.ok) throw new Error('manifest.json tidak ditemukan');
-            lazyManifest = await manifestRes.json();
-            lazyFileGroups = { Moka: [], GrabFood: [], GoFood: [] };
-            lazyManifest.forEach(fileName => {
-                const p = lazyPlatformOfFile(fileName);
-                lazyFileGroups[p].push(fileName);
-            });
+        await loadAllGithubDataOnce();
 
-            const statusEl = document.getElementById('lazyStatus');
-            const counts = `Moka ${lazyFileGroups.Moka.length} file • GrabFood ${lazyFileGroups.GrabFood.length} file • GoFood ${lazyFileGroups.GoFood.length} file`;
-            if (statusEl) statusEl.textContent = `${counts} tersedia • pilih dashboard`;
-            if (!lazyFileGroups.Moka.length || !lazyFileGroups.GrabFood.length || !lazyFileGroups.GoFood.length) {
-                throw new Error(`Manifest tidak lengkap: ${counts}`);
+        const sourceSelect = document.getElementById('lazyPlatformSelect');
+        const onlineNote = document.getElementById('onlineDataNote');
+        const syncOnlineNote = () => {
+            if (!onlineNote || !sourceSelect) return;
+            onlineNote.style.display = sourceSelect.value === 'Moka' ? 'none' : 'block';
+        };
+
+        syncOnlineNote();
+
+        sourceSelect?.addEventListener('change', async () => {
+            // INI HANYA GANTI VIEW — TIDAK ADA FETCH / DOWNLOAD ULANG.
+            currentDashboardPlatform = sourceSelect.value;
+            syncOnlineNote();
+
+            selectedItemsSet.clear();
+            selectedOutletsSet.clear();
+            selectedAreasSet.clear();
+            selectedDiscountsSet.clear();
+
+            populateDropdowns();
+            populateItemDropdown();
+            setupDatePickers();
+
+            const status = document.getElementById('lazyStatus');
+            if (status) {
+                const label = currentDashboardPlatform === 'GrabFood+GoFood'
+                    ? 'Online Sales (GrabFood + GoFood)'
+                    : currentDashboardPlatform;
+                status.textContent = `Dashboard ${label} • data sudah tersedia di memory • tidak download ulang`;
             }
 
-            // Ganti dashboard akan memuat ulang hanya sumber yang dipilih secara otomatis.
-            // Moka tetap menjadi pilihan awal; file Moka tidak dibuang dari manifest.
-            const sourceSelect = document.getElementById('lazyPlatformSelect');
-            const onlineNote = document.getElementById('onlineDataNote');
-            const syncOnlineNote = () => { if (onlineNote && sourceSelect) onlineNote.style.display = sourceSelect.value === 'Moka' ? 'none' : 'block'; };
-            syncOnlineNote();
-            sourceSelect?.addEventListener('change', () => {
-                syncOnlineNote();
-                selectedItemsSet.clear(); selectedOutletsSet.clear(); selectedAreasSet.clear(); selectedDiscountsSet.clear();
-                const status = document.getElementById('lazyStatus');
-                if (status) status.textContent = 'Memuat ' + sourceSelect.value + '...';
-                loadSelectedGithubData();
-            });
-            await loadSelectedGithubData();
-        } catch (err) {
-            console.error(err);
-            showToast('Gagal membaca manifest: ' + err.message, 'error');
-            els.main.style.display = 'block';
-        }
+            await executeFilterAndRender();
+        });
     }
 
     window.addEventListener('DOMContentLoaded', loadAllCsvFromGithub);
-   // ====================================================
-// FIX GRABFOOD & GOFOOD V4
-// ROBUST HEADER + DATE + STATUS + CATEGORY
-// CSV ASLI TIDAK PERLU DIUBAH
-// ====================================================
-
-const originalProcessParsedRows = window.processParsedRows;
-
-window.processParsedRows = function(rows, headers) {
-    if (!rows || !rows.length || !headers) return;
-
-    const sourceName = String(window.currentSourceFileName || '').toLowerCase();
-
-    const isGrab = sourceName.includes('grabfood');
-    const isGo   = sourceName.includes('gofood');
-
-    // ================================
-    // MOKA -> PAKAI PARSER ASLI
-    // ================================
-    if (!isGrab && !isGo) {
-        if (typeof originalProcessParsedRows === 'function') {
-            return originalProcessParsedRows(rows, headers);
-        }
-        return;
-    }
-
-    // ================================
-    // NORMALIZE HEADER
-    // ================================
-    const normalizeHeader = (value) => {
-        return String(value ?? '')
-            .trim()
-            .toLowerCase()
-            .replace(/\s+/g, ' ')
-            .replace(/[_-]+/g, ' ');
-    };
-
-    const normalizedHeaders = headers.map(normalizeHeader);
-
-    // Cari index dari beberapa kemungkinan nama kolom
-    const getIdx = (...names) => {
-        for (const name of names) {
-            const target = normalizeHeader(name);
-            const idx = normalizedHeaders.indexOf(target);
-
-            if (idx !== -1) return idx;
-        }
-
-        return -1;
-    };
-
-    const getVal = (row, ...names) => {
-        const idx = getIdx(...names);
-        return idx !== -1 ? row[idx] : undefined;
-    };
-
-    // ================================
-    // DEBUG HEADER
-    // ================================
-    console.log(
-        `[${isGrab ? 'GrabFood' : 'GoFood'}] Headers:`,
-        headers
-    );
-
-    // ================================
-    // NUMBER PARSER
-    // ================================
-    const toNum = (val) => {
-
-        if (
-            val === undefined ||
-            val === null ||
-            String(val).trim() === ''
-        ) {
-            return 0;
-        }
-
-        let str = String(val)
-            .trim()
-            .replace(/[^0-9.,-]/g, '');
-
-        if (!str) return 0;
-
-        // 1.234.567,89
-        if (str.includes('.') && str.includes(',')) {
-            str = str.replace(/\./g, '').replace(',', '.');
-        }
-
-        // 1,234.56
-        else if (
-            str.includes(',') &&
-            str.includes('.') &&
-            str.lastIndexOf(',') < str.lastIndexOf('.')
-        ) {
-            str = str.replace(/,/g, '');
-        }
-
-        // 123,45
-        else if (str.includes(',')) {
-            str = str.replace(',', '.');
-        }
-
-        const num = parseFloat(str);
-
-        return Number.isFinite(num) ? num : 0;
-    };
-
-    // ================================
-    // DATE PARSER
-    // ================================
-    const parseDate = (dateStr) => {
-
-        if (!dateStr) {
-            return {
-                iso: '',
-                formatted: ''
-            };
-        }
-
-        let raw = String(dateStr).trim();
-
-        // Hilangkan jam
-        raw = raw.split(' ')[0];
-
-        // Support:
-        // DD/MM/YYYY
-        // D/M/YYYY
-        // DD-MM-YYYY
-        // YYYY-MM-DD
-        // M/D/YY
-        const parts = raw.split(/[\/\-]/);
-
-        if (parts.length !== 3) {
-            return {
-                iso: '',
-                formatted: ''
-            };
-        }
-
-        let p1 = parseInt(parts[0], 10);
-        let p2 = parseInt(parts[1], 10);
-        let p3 = parseInt(parts[2], 10);
-
-        if (
-            Number.isNaN(p1) ||
-            Number.isNaN(p2) ||
-            Number.isNaN(p3)
-        ) {
-            return {
-                iso: '',
-                formatted: ''
-            };
-        }
-
-        let d;
-        let m;
-        let y;
-
-        // YYYY-MM-DD
-        if (p1 >= 2000) {
-
-            y = p1;
-            m = p2;
-            d = p3;
-
-        } else {
-
-            // CSV GoFood = DD/MM/YYYY
-            // M/D/YY juga didukung
-            if (p3 < 100) {
-                p3 = p3 >= 50
-                    ? 1900 + p3
-                    : 2000 + p3;
-            }
-
-            d = p1;
-            m = p2;
-            y = p3;
-        }
-
-        if (
-            d < 1 ||
-            d > 31 ||
-            m < 1 ||
-            m > 12 ||
-            y < 2000
-        ) {
-            return {
-                iso: '',
-                formatted: ''
-            };
-        }
-
-        const dd = String(d).padStart(2, '0');
-        const mm = String(m).padStart(2, '0');
-
-        return {
-            iso: `${y}-${mm}-${dd}`,
-            formatted: `${dd}/${mm}/${y}`
-        };
-    };
-
-    // ================================
-    // COUNTER DEBUG
-    // ================================
-    let totalRows = rows.length;
-    let validRows = 0;
-    let skippedRows = 0;
-
-    // ================================
-    // PROCESS
-    // ================================
-    for (let i = 0; i < rows.length; i++) {
-
-        const row = rows[i];
-
-        if (!row || !row.length) {
-            skippedRows++;
-            continue;
-        }
-
-        // ============================
-        // TRANSACTION ID
-        // ============================
-        let txId = getVal(
-            row,
-            'Transaction ID',
-            'Transaction Id',
-            'Order ID',
-            'Order Id',
-            'Order Number',
-            'Receipt Number'
-        );
-
-        if (txId !== undefined && txId !== null) {
-            txId = String(txId)
-                .replace(/^'/, '')
-                .trim();
-        }
-
-        if (!txId) {
-            skippedRows++;
-            continue;
-        }
-
-        // ============================
-        // STATUS
-        // ============================
-        const status = String(
-            getVal(
-                row,
-                'Status',
-                'Transaction Status',
-                'Order Status'
-            ) || ''
-        )
-        .trim()
-        .toLowerCase();
-
-        // ============================
-        // GRABFOOD FILTER
-        // Category = Payment
-        // Status = Transferred
-        // ============================
-        if (isGrab) {
-
-            const category = String(
-                getVal(
-                    row,
-                    'Category'
-                ) || ''
-            )
-            .trim()
-            .toLowerCase();
-
-            // Hanya Payment
-            if (
-                category &&
-                category !== 'payment'
-            ) {
-                skippedRows++;
-                continue;
-            }
-
-            // Hanya Transferred
-            if (
-                status &&
-                status !== 'transferred'
-            ) {
-                skippedRows++;
-                continue;
-            }
-        }
-
-        // ============================
-        // GOFOOD FILTER
-        // Status = SETTLEMENT
-        // ============================
-        if (isGo) {
-
-            if (
-                status &&
-                status !== 'settlement'
-            ) {
-                skippedRows++;
-                continue;
-            }
-        }
-
-        // ============================
-        // COMPACT DATA
-        // ============================
-        const compact = {};
-
-        const set = (key, value) => {
-
-            if (
-                value !== undefined &&
-                value !== null
-            ) {
-                compact[key] = value;
-            }
-        };
-
-        // ============================
-        // BASIC
-        // ============================
-        set(
-            'Receipt Number',
-            txId
-        );
-
-        set(
-            'Outlet',
-            getVal(
-                row,
-                'Store Name',
-                'Outlet Name',
-                'Outlet name',
-                'Outlet',
-                'Store'
-            ) || 'Unknown'
-        );
-
-        set(
-            'AREA',
-            getVal(
-                row,
-                'AREA',
-                'Area'
-            ) || 'Unknown'
-        );
-
-        set(
-            'DEPT',
-            'Unknown'
-        );
-
-        set(
-            'Event Type',
-            isGrab
-                ? 'GrabFood'
-                : 'GoFood'
-        );
-
-        set(
-            'Platform',
-            isGrab
-                ? 'GrabFood'
-                : 'GoFood'
-        );
-
-        set(
-            'Items',
-            'Unknown'
-        );
-
-        set(
-            'Quantity',
-            1
-        );
-
-        set(
-            'Category',
-            getVal(
-                row,
-                'Category'
-            ) || 'Online Sales'
-        );
-
-        // ============================
-        // SALES
-        // ============================
-
-        const amount = toNum(
-            getVal(
-                row,
-                'Amount',
-                'Gross Sales',
-                'Gross Amount'
-            )
-        );
-
-        const netSales = isGrab
-
-            ? toNum(
-                getVal(
-                    row,
-                    'Net Sales',
-                    'Net sales'
-                )
-            )
-
-            : toNum(
-                getVal(
-                    row,
-                    'Net Amount',
-                    'Net amount'
-                )
-            );
-
-        const total = toNum(
-            getVal(
-                row,
-                'Total',
-                'Total Amount',
-                'Total Collected'
-            )
-        );
-
-        set(
-            'Gross Sales',
-            amount
-        );
-
-        set(
-            'Net Sales',
-            netSales || amount
-        );
-
-        set(
-            'Total Collected',
-            total || netSales || amount
-        );
-
-        // ============================
-        // TAX
-        // ============================
-        set(
-            'Tax',
-            toNum(
-                getVal(
-                    row,
-                    'Tax on Order Value',
-                    'Value Added Tax',
-                    'Value added tax',
-                    'Tax'
-                )
-            )
-        );
-
-        // ============================
-        // DISCOUNT
-        // ============================
-        set(
-            'Discounts',
-            Math.abs(
-                toNum(
-                    getVal(
-                        row,
-                        'Discount (Merchant-Funded)',
-                        'Merchant-Funded Discount',
-                        'GoFood discount',
-                        'Discount'
-                    )
-                )
-            )
-        );
-
-        set(
-            'Refunds',
-            0
-        );
-
-        // ============================
-        // PAYMENT METHOD
-        // ============================
-        set(
-            'Payment Method',
-            getVal(
-                row,
-                'Payment Method',
-                'Payment Type',
-                'Payment type',
-                'Method'
-            ) || '-'
-        );
-
-        // ============================
-        // DATE
-        // ============================
-        let dateStrRaw = getVal(
-            row,
-
-            // utama
-            'Date',
-
-            // kemungkinan GrabFood
-            'Transaction Date',
-            'Order Date',
-            'Order date',
-
-            // kemungkinan GoFood
-            'Payment Date',
-            'Payment date',
-
-            // lainnya
-            'Transaction time',
-            'Transaction Time'
-        );
-
-        let dateObj = parseDate(
-            dateStrRaw
-        );
-
-        if (!dateObj.iso) {
-
-            const fallbackDate = getVal(
-                row,
-                'Created Date',
-                'Created At',
-                'Created at'
-            );
-
-            dateObj = parseDate(
-                fallbackDate
-            );
-        }
-
-        if (!dateObj.iso) {
-
-            skippedRows++;
-            continue;
-        }
-
-        set(
-            'DateStr',
-            dateObj.iso
-        );
-
-        set(
-            'FormattedDate',
-            dateObj.formatted
-        );
-
-        // ============================
-        // TIME
-        // ============================
-        let timeStr = getVal(
-            row,
-            'Time',
-            'Transaction Time',
-            'Transaction time',
-            'Payment Time',
-            'Payment time'
-        ) || '00:00:00';
-
-        timeStr = String(
-            timeStr
-        ).trim();
-
-        const timeMatch = timeStr.match(
-            /(\d{1,2}):(\d{2})(?::(\d{2}))?/
-        );
-
-        if (timeMatch) {
-
-            const hh =
-                timeMatch[1].padStart(2, '0');
-
-            const mm =
-                timeMatch[2];
-
-            const ss =
-                timeMatch[3] || '00';
-
-            set(
-                'ExactTime',
-                `${hh}:${mm}:${ss}`
-            );
-
-            set(
-                'ParsedHour',
-                hh
-            );
-
-        } else {
-
-            set(
-                'ExactTime',
-                '00:00:00'
-            );
-
-            set(
-                'ParsedHour',
-                '00'
-            );
-        }
-
-        // ============================
-        // DAY
-        // ============================
-        set(
-            'ParsedDay',
-            getVal(
-                row,
-                'Day'
-            ) || 'Unknown'
-        );
-
-        // ============================
-        // PUSH
-        // ============================
-        window.rawData.push(
-            compact
-        );
-
-        validRows++;
-    }
-
-    console.log(
-        `[${isGrab ? 'GrabFood' : 'GoFood'}]`,
-        {
-            totalRows,
-            validRows,
-            skippedRows,
-            totalRawData: window.rawData.length
-        }
-    );
-};
-
-// ====================================================
     </script>
 </body>
 </html>
