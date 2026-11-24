@@ -642,7 +642,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
                     </div>
                     <div class="panel p-4">
                         <div class="flex justify-between items-center mb-3">
-                            <div><h3 class="section-title mb-0">Top Performer Item</h3><p class="text-[9px] text-gray-400">Item dengan sales online tertinggi</p></div>
+                            <div><h3 class="section-title mb-0">Top Category / Subcategory</h3><p class="text-[9px] text-gray-400">Category / Subcategory dengan sales online tertinggi</p></div>
                             <span class="text-[9px] font-bold text-purple-700 bg-purple-50 border border-purple-200 rounded px-2 py-1">TOP 10</span>
                         </div>
                         <div class="chart-container" style="height:320px"><canvas id="onlineTopItemChart"></canvas></div>
@@ -1458,7 +1458,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
 
             // Online dashboard owns its own dataset: Online Sales only + shared filters.
             const current = rawData.filter(r => {
-                if (toScalar(r['Sales Channel'],'') !== 'Online Sales') return false;
+                if (toScalar(r['Sales Channel'],'') !== 'Online Sales' && !/^(GrabFood|GoFood)$/i.test(toScalar(r['Platform'],''))) return false;
                 if (filters.dStart.value && (!r.DateStr || r.DateStr < filters.dStart.value)) return false;
                 if (filters.dEnd.value && (!r.DateStr || r.DateStr > filters.dEnd.value)) return false;
                 if (selectedOutletsSet.size > 0 && !selectedOutletsSet.has(gs(r,'Outlet'))) return false;
@@ -1501,15 +1501,16 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
                 rows.forEach(r => {
                     const net=getCleanNum(r,'Net Sales'), qty=getCleanNum(r,'Quantity') || 1, rec=toScalar(r['Receipt Number'],'').trim();
                     const out=toScalar(r['Outlet'],'Unknown').trim() || 'Unknown';
-                    const item=toScalar(r['Items'],'Unknown').trim() || 'Unknown';
+                    const item=toScalar(r['Items'],'').trim();
                     const p=toScalar(r['_OnlinePlatform'] || r['Platform'],'').trim();
+                    const platform = /grabfood/i.test(p) ? 'GrabFood' : (/gofood/i.test(p) ? 'GoFood' : p);
                     const dt=toScalar(r['DateStr'],'').trim();
                     o.sales += net; o.qty += qty; if(rec) o.orders.add(rec);
                     if (!o.outlet[out]) o.outlet[out]={sales:0,orders:new Set(),items:0};
                     o.outlet[out].sales += net; o.outlet[out].items += qty; if(rec)o.outlet[out].orders.add(rec);
                     if (!o.item[item]) o.item[item]={sales:0,qty:0,orders:new Set()};
                     o.item[item].sales += net; o.item[item].qty += qty; if(rec)o.item[item].orders.add(rec);
-                    if (o.platform[p]) { o.platform[p].sales += net; if(rec)o.platform[p].orders.add(rec); }
+                    if (o.platform[platform]) { o.platform[platform].sales += net; if(rec)o.platform[platform].orders.add(rec); }
                     if(dt) { if(!o.days[dt])o.days[dt]={sales:0}; o.days[dt].sales += net; }
                 });
                 o.ordersCount=o.orders.size; o.aov=o.ordersCount?o.sales/o.ordersCount:0;
@@ -1517,6 +1518,14 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             };
 
             const cur=summarize(current), prv=summarize(prev);
+            const onlineStatus=document.getElementById('onlineDataStatus');
+            if(onlineStatus){
+                const grabRows=current.filter(r=>/grabfood/i.test(toScalar(r['_OnlinePlatform']||r['Platform'],''))).length;
+                const goRows=current.filter(r=>/gofood/i.test(toScalar(r['_OnlinePlatform']||r['Platform'],''))).length;
+                const grabSales=current.filter(r=>/grabfood/i.test(toScalar(r['_OnlinePlatform']||r['Platform'],''))).reduce((s,r)=>s+getCleanNum(r,'Net Sales'),0);
+                const goSales=current.filter(r=>/gofood/i.test(toScalar(r['_OnlinePlatform']||r['Platform'],''))).reduce((s,r)=>s+getCleanNum(r,'Net Sales'),0);
+                onlineStatus.textContent=`Rows: ${current.length.toLocaleString()} • GrabFood: ${grabRows.toLocaleString()} (${fmtMoney(grabSales)}) • GoFood: ${goRows.toLocaleString()} (${fmtMoney(goSales)}) • Orders: ${cur.ordersCount.toLocaleString()}`;
+            }
             const salesGrowth=growth(cur.sales,prv.sales), ordersGrowth=growth(cur.ordersCount,prv.ordersCount), aovGrowth=growth(cur.aov,prv.aov);
 
             document.getElementById('onlineKpiSales').innerText=money(cur.sales);
@@ -1529,7 +1538,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             setGrowth('onlineKpiSalesGrowth',salesGrowth); setGrowth('onlineKpiOrdersGrowth',ordersGrowth); setGrowth('onlineKpiAovGrowth',aovGrowth);
 
             const topOutlet=Object.entries(cur.outlet).sort((a,b)=>b[1].sales-a[1].sales)[0];
-            document.getElementById('onlineKpiTopOutlet').innerText=topOutlet ? topOutlet[0] : '-';
+            document.getElementById('onlineKpiTopOutlet').innerText=topOutlet ? toScalar(topOutlet[0], 'Unknown') : '-';
             document.getElementById('onlineKpiTopOutletSales').innerText=topOutlet ? `${money(topOutlet[1].sales)} sales` : 'Rp 0 sales';
 
             const grab=cur.platform.GrabFood.sales, go=cur.platform.GoFood.sales, totalPlat=grab+go;
@@ -1545,8 +1554,8 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
 
             // Sales line: current vs last month, aligned by day-of-month.
             const curDays={}, prevDays={};
-            current.forEach(r=>{const d=sv(r,'DateStr'); if(d)curDays[d]=(curDays[d]||0)+getCleanNum(r,'Net Sales');});
-            prev.forEach(r=>{const d=sv(r,'DateStr'); if(d)prevDays[d]=(prevDays[d]||0)+getCleanNum(r,'Net Sales');});
+            current.forEach(r=>{const d=sv(r['DateStr']); if(d)curDays[d]=(curDays[d]||0)+getCleanNum(r,'Net Sales');});
+            prev.forEach(r=>{const d=sv(r['DateStr']); if(d)prevDays[d]=(prevDays[d]||0)+getCleanNum(r,'Net Sales');});
             const maxDays=Math.max(Object.keys(curDays).length,Object.keys(prevDays).length,1);
             const labels=Array.from({length:Math.max(31,Math.min(31,maxDays))},(_,i)=>String(i+1).padStart(2,'0'));
             const getDay=(obj,day)=>{const k=Object.keys(obj).find(d=>String(parseInt(d.slice(-2),10))===String(day));return k?obj[k]:0;};
@@ -1570,7 +1579,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             const topItems=Object.entries(cur.item).sort((a,b)=>b[1].sales-a[1].sales).slice(0,10);
             if(charts.onlineTopItem)charts.onlineTopItem.destroy();
             charts.onlineTopItem=new Chart(document.getElementById('onlineTopItemChart').getContext('2d'),{
-                type:'bar',data:{labels:topItems.map(x=>x[0]),datasets:[{label:'Online Sales',data:topItems.map(x=>x[1].sales),backgroundColor:'#6366f1'}]},
+                type:'bar',data:{labels:topItems.length?topItems.map(x=>toScalar(x[0],'Unknown')):['Item data tidak tersedia'],datasets:[{label:'Online Sales',data:topItems.length?topItems.map(x=>x[1].sales):[0],backgroundColor:'#6366f1'}]},
                 options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'Rp '+formatRp(v)}}}}
             });
 
@@ -2556,13 +2565,13 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             selectedAreasSet.clear(); selectedDiscountsSet.clear();
             filters.dept.value='ALL'; filters.eventType.value='ALL';
             filters.salesChannel.value='Online Sales';
-            if(backNav) backNav.classList.remove('hidden');
+            if(backNav) { backNav.classList.remove('hidden'); backNav.style.setProperty('display','inline-flex','important'); }
             m.className='dashboard-tab panel p-3 text-left border-2 border-transparent hover:border-blue-300 hover:bg-blue-50 transition-all';
             o.className='dashboard-tab panel p-3 text-left border-2 border-purple-500 bg-purple-50 transition-all';
             mc.classList.add('hidden'); oc.classList.remove('hidden');
         } else {
             filters.salesChannel.value='Moka';
-            if(backNav) backNav.classList.add('hidden');
+            if(backNav) { backNav.classList.add('hidden'); backNav.style.removeProperty('display'); }
             m.className='dashboard-tab panel p-3 text-left border-2 border-fr-blue bg-blue-50 transition-all';
             o.className='dashboard-tab panel p-3 text-left border-2 border-transparent hover:border-purple-300 hover:bg-purple-50 transition-all';
             mc.classList.remove('hidden'); oc.classList.add('hidden');
@@ -2571,6 +2580,10 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
         executeFilterAndRender();
     }
     document.getElementById('dashboardMokaBtn').addEventListener('click',()=>setDashboardTab('moka'));
+    const topMokaBtn=document.getElementById('topMokaDashboardBtn');
+    const topOnlineBtn=document.getElementById('topOnlineDashboardBtn');
+    if(topMokaBtn) topMokaBtn.addEventListener('click',()=>setDashboardTab('moka'));
+    if(topOnlineBtn) topOnlineBtn.addEventListener('click',()=>setDashboardTab('online'));
     document.getElementById('dashboardOnlineBtn').addEventListener('click',()=>setDashboardTab('online'));
     document.getElementById('dashboardBackBtn').addEventListener('click',()=>setDashboardTab('moka'));
         const onlineBackBtn=document.getElementById('onlineBackToMokaBtn'); if(onlineBackBtn) onlineBackBtn.addEventListener('click',()=>setDashboardTab('moka'));
@@ -2583,56 +2596,132 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
 
     // Normalisasi data channel delivery agar kompatibel dengan struktur dashboard Moka.
     function normalizeDeliveryRow(row, source) {
+        const scalar = (v, fallback='') => {
+            if (v === undefined || v === null) return fallback;
+            if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+                const x = String(v).trim();
+                return x || fallback;
+            }
+            if (Array.isArray(v)) {
+                const vals = v.map(x => scalar(x, '')).filter(Boolean);
+                return vals.join(' | ') || fallback;
+            }
+            if (typeof v === 'object') {
+                for (const k of ['name','label','value','text','title','displayName','display_name',
+                                 'outlet_name','store_name','item_name','transaction_id','transactionId',
+                                 'order_id','orderId','id']) {
+                    if (v[k] !== undefined && v[k] !== null) {
+                        const x = scalar(v[k], '');
+                        if (x) return x;
+                    }
+                }
+                return fallback;
+            }
+            return fallback;
+        };
+
+        // Header lookup: exact key first, then case-insensitive normalized key.
+        const normalizedKey = k => String(k ?? '').replace(/\u00a0/g,' ').trim().toLowerCase();
+        const keyMap = {};
+        Object.keys(row || {}).forEach(k => { keyMap[normalizedKey(k)] = k; });
+
         const get = (...keys) => {
             for (const key of keys) {
-                if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') return row[key];
+                if (Object.prototype.hasOwnProperty.call(row, key)) {
+                    const value = scalar(row[key], '');
+                    if (value) return value;
+                }
+                const actual = keyMap[normalizedKey(key)];
+                if (actual !== undefined) {
+                    const value = scalar(row[actual], '');
+                    if (value) return value;
+                }
             }
             return '';
         };
+
         const num = (v) => {
-            if (typeof v === 'number') return v;
-            if (v === undefined || v === null || v === '') return 0;
-            const n = parseFloat(String(v).replace(/,/g, '').replace(/[^0-9.\-]/g, ''));
-            return Number.isFinite(n) ? n : 0;
+            if (typeof v === 'number') return Number.isFinite(v) ? v : 0;
+            const x = scalar(v, '');
+            if (!x) return 0;
+            let n = x.replace(/\s/g,'').replace(/Rp/gi,'');
+            if (n.includes(',') && n.includes('.')) {
+                n = n.lastIndexOf(',') > n.lastIndexOf('.')
+                    ? n.replace(/\./g,'').replace(',', '.')
+                    : n.replace(/,/g,'');
+            } else if (n.includes(',')) {
+                const parts = n.split(',');
+                n = (parts.length === 2 && parts[1].length <= 2)
+                    ? parts[0].replace(/\./g,'') + '.' + parts[1]
+                    : n.replace(/,/g,'');
+            } else {
+                n = n.replace(/,/g,'');
+            }
+            const parsed = parseFloat(n.replace(/[^0-9.\-]/g,''));
+            return Number.isFinite(parsed) ? parsed : 0;
         };
 
         const nr = {};
-        for (const k in row) if (k) nr[String(k).trim()] = row[k];
+        Object.keys(row || {}).forEach(k => { if (k) nr[String(k).trim()] = row[k]; });
 
         const isGo = source === 'GoFood';
-        const sales = num(isGo
-            ? get('Amount', 'Net Amount', 'Net amount', 'Sales', 'Total Amount')
-            : get('Net Sales', 'Net sales', 'Amount', 'Sales'));
-        const date = get(
-            ...(isGo
-                ? ['Payment Date', 'Payment date', 'Order Date', 'Transaction Date', 'Date', 'Created At']
-                : ['Order Date', 'Order date', 'Transaction Date', 'Payment Date', 'Date', 'Created At'])
-        );
 
-        nr['Receipt Number'] = String(get('Transaction ID', 'Transaction Id', 'transaction id', 'Order ID', 'Order Id', 'order id') || '').trim();
-        nr['Outlet'] = String(get(isGo ? 'Outlet Name' : 'Store Name', 'Outlet', 'Store Name', 'Outlet Name') || '').trim();
-        nr['Items'] = String(get('Items', 'Item Name', 'Item', 'Product Name', 'Menu Name', 'Menu') || 'Unknown').trim();
-        nr['Date'] = date;
-        nr['Quantity'] = num(get('Quantity', 'Qty')) || 1;
+        // EXACT GoFood export mapping supplied by the user:
+        // Outlet name | Transaction ID | Amount | Payment Date | Date | Time | Payment Type
+        // There is NO item/product column in this GoFood export.
+        let receipt, outlet, sales, date, paymentType, item = '';
+
+        if (isGo) {
+            outlet = get('Outlet name');
+            receipt = get('Transaction ID', 'Order ID');
+            sales = num(get('Amount'));
+            date = get('Date', 'Payment Date', 'Transaction time', 'Transaction Date');
+            paymentType = get('Payment Type');
+            item = ''; // GoFood export supplied has no item/menu column.
+        } else {
+            // EXACT GrabFood export mapping supplied by the user:
+            // Store Name | Transaction ID | Payment Method | Net Sales | Category | Subcategory | Date | Time | AREA
+            receipt = get('Transaction ID', 'Long Order ID', 'Short Order ID', 'Booking ID');
+            outlet = get('Store Name');
+            sales = num(get('Net Sales'));
+            date = get('Date', 'Transfer Date');
+            paymentType = get('Payment Method');
+            // GrabFood export has no item/menu-name column.
+            // Use Category as the most granular product-like dimension available.
+            item = get('Subcategory', 'Category');
+        }
+
+        nr['Receipt Number'] = receipt;
+        nr['_OnlineOrderId'] = receipt;
+        nr['Outlet'] = outlet || 'Unknown';
+        nr['Items'] = item || '';
+        nr['Date'] = date || '';
+        nr['Time'] = get('Time', 'Transaction time');
+        nr['Quantity'] = 1;
         nr['Net Sales'] = sales;
-        nr['Gross Sales'] = num(get('Gross Sales', 'Gross sales', 'Subtotal', 'Sub Total')) || sales;
-        nr['Tax'] = num(get('Tax', 'Tax Amount', 'Tax amount'));
-        nr['Gratuity'] = num(get('Gratuity', 'Service Fee', 'Service fee'));
-        nr['Discounts'] = num(get('Discounts', 'Discount', 'Discount Amount', 'Discount amount'));
-        nr['Refunds'] = num(get('Refunds', 'Refund', 'Refund Amount', 'Refund amount'));
-        nr['Total Collected'] = num(get('Total Collected', 'Total Amount', 'Net Amount', 'Amount')) || sales;
-        nr['Total Collected Exc Rounding'] = num(get('Total Collected Exc Rounding', 'Net Amount', 'Amount')) || nr['Total Collected'];
-        nr['Payment Method'] = get('Payment Method', 'Payment method', 'Payment Type', 'Payment type') || '-';
-        nr['Platform'] = String(source);
+        nr['Gross Sales'] = num(get('Gross Sales', 'Subtotal', 'Sub Total')) || sales;
+        nr['Tax'] = num(get('Tax', 'Value added tax', 'Restaurant tax', 'Tax Amount'));
+        nr['Gratuity'] = num(get('Gratuity', 'Service Charge', 'Service'));
+        nr['Discounts'] = num(get('Discounts', 'Discount', 'GoFood discount', 'Voucher commission', 'Merchant Promo Contribution'));
+        nr['Refunds'] = num(get('Refunds', 'Refund', 'Refund Amount'));
+        nr['Total Collected'] = sales;
+        nr['Total Collected Exc Rounding'] = sales;
+        nr['Payment Method'] = paymentType || '-';
+
+        nr['Platform'] = source;
         nr['Sales Channel'] = 'Online Sales';
-        nr['_OnlinePlatform'] = String(source);
-        nr['AREA'] = String(get('AREA', 'Area') || 'Unknown').trim();
-        nr['DEPT'] = String(get('DEPT', 'Dept', 'Department') || 'Unknown').trim();
-        nr['Event Type'] = String(get('Event Type', 'Order Type', 'Order Channel', 'Channel') || 'Unknown').trim();
-        nr['Collected By'] = get('Collected By', 'CollectedBy', 'collected by') || '-';
-        nr['Served By'] = get('Served By', 'ServedBy', 'served by') || '-';
-        nr['Customer'] = get('Customer', 'customer', 'CUSTOMER') || '-';
-        nr['Reason of Refund'] = get('Reason of Refund', 'Reason Of Refund', 'ReasonofRefund', 'reason of refund') || '-';
+        nr['_OnlinePlatform'] = source;
+
+        nr['AREA'] = get('AREA', 'Area') || 'Unknown';
+        nr['Category'] = get('Category');
+        nr['Subcategory'] = get('Subcategory');
+        nr['DEPT'] = get('DEPT', 'Dept', 'Department') || 'Online';
+        nr['Event Type'] = 'Online';
+        nr['Collected By'] = '-';
+        nr['Served By'] = '-';
+        nr['Customer'] = '-';
+        nr['Reason of Refund'] = '-';
+
         return nr;
     }
 
@@ -2640,7 +2729,8 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
         const s = (row || []).map(v => String(v ?? '').trim().toLowerCase());
         const has = (...keys) => keys.some(k => s.includes(k.toLowerCase()));
         if (source === 'GoFood') {
-            return has('transaction id') && has('amount', 'net amount') && has('outlet name', 'payment date');
+            // Exact supplied GoFood header: Outlet name, Transaction ID, Amount, Date/Payment Date.
+            return has('transaction id') && has('amount') && has('outlet name') && has('date');
         }
         if (source === 'GrabFood') {
             return has('transaction id') && has('net sales', 'order id') && has('store name', 'order id');
