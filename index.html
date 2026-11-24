@@ -2662,132 +2662,648 @@
     }
 
     window.addEventListener('DOMContentLoaded', loadAllCsvFromGithub);
-            // ====================================================
-        // FIX TOTAL V3: PARSING GRABFOOD & GOFOOD (ANTI BENTROK MOKA)
-        // ====================================================
-        
-        // Simpan fungsi asli Moka kamu
-        const originalProcessParsedRows = window.processParsedRows;
+   // ====================================================
+// FIX GRABFOOD & GOFOOD V4
+// ROBUST HEADER + DATE + STATUS + CATEGORY
+// CSV ASLI TIDAK PERLU DIUBAH
+// ====================================================
 
-        window.processParsedRows = function(rows, headers) {
-            if (!rows || !rows.length || !headers) return;
+const originalProcessParsedRows = window.processParsedRows;
 
-            const sourceName = String(window.currentSourceFileName || '').toLowerCase();
-            const isGrab = sourceName.includes('grabfood');
-            const isGo = sourceName.includes('gofood');
+window.processParsedRows = function(rows, headers) {
+    if (!rows || !rows.length || !headers) return;
 
-            // JIKA INI FILE MOKA, KEMBALIKAN KE FUNGSI ASLI
-            if (!isGrab && !isGo) {
-                if (typeof originalProcessParsedRows === 'function') {
-                    return originalProcessParsedRows(rows, headers);
-                }
-                return;
+    const sourceName = String(window.currentSourceFileName || '').toLowerCase();
+
+    const isGrab = sourceName.includes('grabfood');
+    const isGo   = sourceName.includes('gofood');
+
+    // ================================
+    // MOKA -> PAKAI PARSER ASLI
+    // ================================
+    if (!isGrab && !isGo) {
+        if (typeof originalProcessParsedRows === 'function') {
+            return originalProcessParsedRows(rows, headers);
+        }
+        return;
+    }
+
+    // ================================
+    // NORMALIZE HEADER
+    // ================================
+    const normalizeHeader = (value) => {
+        return String(value ?? '')
+            .trim()
+            .toLowerCase()
+            .replace(/\s+/g, ' ')
+            .replace(/[_-]+/g, ' ');
+    };
+
+    const normalizedHeaders = headers.map(normalizeHeader);
+
+    // Cari index dari beberapa kemungkinan nama kolom
+    const getIdx = (...names) => {
+        for (const name of names) {
+            const target = normalizeHeader(name);
+            const idx = normalizedHeaders.indexOf(target);
+
+            if (idx !== -1) return idx;
+        }
+
+        return -1;
+    };
+
+    const getVal = (row, ...names) => {
+        const idx = getIdx(...names);
+        return idx !== -1 ? row[idx] : undefined;
+    };
+
+    // ================================
+    // DEBUG HEADER
+    // ================================
+    console.log(
+        `[${isGrab ? 'GrabFood' : 'GoFood'}] Headers:`,
+        headers
+    );
+
+    // ================================
+    // NUMBER PARSER
+    // ================================
+    const toNum = (val) => {
+
+        if (
+            val === undefined ||
+            val === null ||
+            String(val).trim() === ''
+        ) {
+            return 0;
+        }
+
+        let str = String(val)
+            .trim()
+            .replace(/[^0-9.,-]/g, '');
+
+        if (!str) return 0;
+
+        // 1.234.567,89
+        if (str.includes('.') && str.includes(',')) {
+            str = str.replace(/\./g, '').replace(',', '.');
+        }
+
+        // 1,234.56
+        else if (
+            str.includes(',') &&
+            str.includes('.') &&
+            str.lastIndexOf(',') < str.lastIndexOf('.')
+        ) {
+            str = str.replace(/,/g, '');
+        }
+
+        // 123,45
+        else if (str.includes(',')) {
+            str = str.replace(',', '.');
+        }
+
+        const num = parseFloat(str);
+
+        return Number.isFinite(num) ? num : 0;
+    };
+
+    // ================================
+    // DATE PARSER
+    // ================================
+    const parseDate = (dateStr) => {
+
+        if (!dateStr) {
+            return {
+                iso: '',
+                formatted: ''
+            };
+        }
+
+        let raw = String(dateStr).trim();
+
+        // Hilangkan jam
+        raw = raw.split(' ')[0];
+
+        // Support:
+        // DD/MM/YYYY
+        // D/M/YYYY
+        // DD-MM-YYYY
+        // YYYY-MM-DD
+        // M/D/YY
+        const parts = raw.split(/[\/\-]/);
+
+        if (parts.length !== 3) {
+            return {
+                iso: '',
+                formatted: ''
+            };
+        }
+
+        let p1 = parseInt(parts[0], 10);
+        let p2 = parseInt(parts[1], 10);
+        let p3 = parseInt(parts[2], 10);
+
+        if (
+            Number.isNaN(p1) ||
+            Number.isNaN(p2) ||
+            Number.isNaN(p3)
+        ) {
+            return {
+                iso: '',
+                formatted: ''
+            };
+        }
+
+        let d;
+        let m;
+        let y;
+
+        // YYYY-MM-DD
+        if (p1 >= 2000) {
+
+            y = p1;
+            m = p2;
+            d = p3;
+
+        } else {
+
+            // CSV GoFood = DD/MM/YYYY
+            // M/D/YY juga didukung
+            if (p3 < 100) {
+                p3 = p3 >= 50
+                    ? 1900 + p3
+                    : 2000 + p3;
             }
 
-            // --- LOGIKA GRABFOOD & GOFOOD DI BAWAH INI ---
-            const getIdx = (name) => headers.findIndex(h => String(h).trim().toLowerCase() === name.toLowerCase().trim());
-            const getVal = (row, name) => {
-                const idx = getIdx(name);
-                return idx !== -1 ? row[idx] : undefined;
+            d = p1;
+            m = p2;
+            y = p3;
+        }
+
+        if (
+            d < 1 ||
+            d > 31 ||
+            m < 1 ||
+            m > 12 ||
+            y < 2000
+        ) {
+            return {
+                iso: '',
+                formatted: ''
             };
+        }
 
-            const toNum = (val) => {
-                if (val === undefined || val === null || val === '') return 0;
-                let str = String(val).replace(/[^0-9.,-]/g, '');
-                if (str.includes(',') && str.includes('.')) {
-                    str = str.replace(/,/g, ''); 
-                } else if (str.includes(',')) {
-                    str = str.replace(/,/g, '.');
-                }
-                const num = parseFloat(str);
-                return isNaN(num) ? 0 : num;
-            };
+        const dd = String(d).padStart(2, '0');
+        const mm = String(m).padStart(2, '0');
 
-            const parseDate = (dateStr) => {
-                if (!dateStr) return { iso: '', formatted: '' };
-                const cleanDate = String(dateStr).trim().split(' ')[0];
-                const parts = cleanDate.split('/');
-                if (parts.length === 3) {
-                    let p1 = parseInt(parts[0], 10), p2 = parseInt(parts[1], 10), p3 = parseInt(parts[2], 10);
-                    let d, m, y;
-                    if (p1 > 2000) { y = p1; m = p2; d = p3; } 
-                    else {
-                        if (p3 < 100) p3 = p3 >= 50 ? 1900 + p3 : 2000 + p3;
-                        d = p1; m = p2; y = p3;
-                    }
-                    const dd = String(d).padStart(2, '0');
-                    const mm = String(m).padStart(2, '0');
-                    return { iso: `${y}-${mm}-${dd}`, formatted: `${dd}/${mm}/${y}` };
-                }
-                return { iso: '', formatted: '' };
-            };
+        return {
+            iso: `${y}-${mm}-${dd}`,
+            formatted: `${dd}/${mm}/${y}`
+        };
+    };
 
-            for (let i = 0; i < rows.length; i++) {
-                const row = rows[i];
-                if (!row || row.length === 0) continue;
+    // ================================
+    // COUNTER DEBUG
+    // ================================
+    let totalRows = rows.length;
+    let validRows = 0;
+    let skippedRows = 0;
 
-                let txId = getVal(row, 'Transaction ID') || getVal(row, 'Order ID');
-                if (txId) txId = String(txId).replace(/'/g, '').trim();
-                if (!txId) continue;
+    // ================================
+    // PROCESS
+    // ================================
+    for (let i = 0; i < rows.length; i++) {
 
-                const status = String(getVal(row, 'Status') || getVal(row, 'Transaction Status') || '').toLowerCase();
-                if (status.includes('cancel') || status.includes('batal') || status.includes('fail')) continue;
+        const row = rows[i];
 
-                const compact = {};
-                const set = (key, value) => { if (value !== undefined && value !== null) compact[key] = value; };
+        if (!row || !row.length) {
+            skippedRows++;
+            continue;
+        }
 
-                set('Receipt Number', txId);
-                set('Outlet', getVal(row, 'Store Name') || getVal(row, 'Outlet name') || 'Unknown');
-                set('AREA', getVal(row, 'AREA') || 'Unknown');
-                set('DEPT', 'Unknown');
-                set('Event Type', isGrab ? 'GrabFood' : 'GoFood');
-                set('Platform', isGrab ? 'GrabFood' : 'GoFood');
-                set('Items', 'Unknown');
-                set('Quantity', 0); 
-                set('Category', getVal(row, 'Category') || 'Online Sales');
+        // ============================
+        // TRANSACTION ID
+        // ============================
+        let txId = getVal(
+            row,
+            'Transaction ID',
+            'Transaction Id',
+            'Order ID',
+            'Order Id',
+            'Order Number',
+            'Receipt Number'
+        );
 
-                const amount = toNum(getVal(row, 'Amount'));
-                const netSales = isGrab ? toNum(getVal(row, 'Net Sales')) : toNum(getVal(row, 'Net Amount'));
-                const total = toNum(getVal(row, 'Total')) || amount;
+        if (txId !== undefined && txId !== null) {
+            txId = String(txId)
+                .replace(/^'/, '')
+                .trim();
+        }
 
-                set('Gross Sales', amount);
-                set('Net Sales', netSales);
-                set('Total Collected', total);
-                set('Tax', toNum(getVal(row, 'Tax on Order Value')) || toNum(getVal(row, 'Value added tax')));
-                set('Discounts', Math.abs(toNum(getVal(row, 'Discount (Merchant-Funded)')) || toNum(getVal(row, 'GoFood discount'))));
-                set('Refunds', 0);
-                set('Payment Method', getVal(row, 'Payment Method') || getVal(row, 'Payment Type') || '-');
-                
-                let dateStrRaw = getVal(row, 'Date');
-                let dateObj = parseDate(dateStrRaw);
-                if (!dateObj.iso) {
-                    const txTime = getVal(row, 'Transaction time');
-                    if (txTime) dateObj = parseDate(txTime);
-                }
-                if (!dateObj.iso) continue; 
+        if (!txId) {
+            skippedRows++;
+            continue;
+        }
 
-                set('DateStr', dateObj.iso);
-                set('FormattedDate', dateObj.formatted);
-                
-                let timeStr = getVal(row, 'Time') || getVal(row, 'Transaction time') || '00:00:00';
-                timeStr = String(timeStr).trim();
-                const timeMatch = timeStr.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
-                if (timeMatch) {
-                    const hh = timeMatch[1].padStart(2, '0');
-                    set('ExactTime', `${hh}:${timeMatch[2]}:${timeMatch[3] || '00'}`);
-                    set('ParsedHour', hh);
-                } else {
-                    set('ExactTime', '00:00:00');
-                    set('ParsedHour', '00');
-                }
-                
-                set('ParsedDay', getVal(row, 'Day') || 'Unknown');
+        // ============================
+        // STATUS
+        // ============================
+        const status = String(
+            getVal(
+                row,
+                'Status',
+                'Transaction Status',
+                'Order Status'
+            ) || ''
+        )
+        .trim()
+        .toLowerCase();
 
-                window.rawData.push(compact);
+        // ============================
+        // GRABFOOD FILTER
+        // Category = Payment
+        // Status = Transferred
+        // ============================
+        if (isGrab) {
+
+            const category = String(
+                getVal(
+                    row,
+                    'Category'
+                ) || ''
+            )
+            .trim()
+            .toLowerCase();
+
+            // Hanya Payment
+            if (
+                category &&
+                category !== 'payment'
+            ) {
+                skippedRows++;
+                continue;
+            }
+
+            // Hanya Transferred
+            if (
+                status &&
+                status !== 'transferred'
+            ) {
+                skippedRows++;
+                continue;
+            }
+        }
+
+        // ============================
+        // GOFOOD FILTER
+        // Status = SETTLEMENT
+        // ============================
+        if (isGo) {
+
+            if (
+                status &&
+                status !== 'settlement'
+            ) {
+                skippedRows++;
+                continue;
+            }
+        }
+
+        // ============================
+        // COMPACT DATA
+        // ============================
+        const compact = {};
+
+        const set = (key, value) => {
+
+            if (
+                value !== undefined &&
+                value !== null
+            ) {
+                compact[key] = value;
             }
         };
-        // ====================================================
-          
+
+        // ============================
+        // BASIC
+        // ============================
+        set(
+            'Receipt Number',
+            txId
+        );
+
+        set(
+            'Outlet',
+            getVal(
+                row,
+                'Store Name',
+                'Outlet Name',
+                'Outlet name',
+                'Outlet',
+                'Store'
+            ) || 'Unknown'
+        );
+
+        set(
+            'AREA',
+            getVal(
+                row,
+                'AREA',
+                'Area'
+            ) || 'Unknown'
+        );
+
+        set(
+            'DEPT',
+            'Unknown'
+        );
+
+        set(
+            'Event Type',
+            isGrab
+                ? 'GrabFood'
+                : 'GoFood'
+        );
+
+        set(
+            'Platform',
+            isGrab
+                ? 'GrabFood'
+                : 'GoFood'
+        );
+
+        set(
+            'Items',
+            'Unknown'
+        );
+
+        set(
+            'Quantity',
+            1
+        );
+
+        set(
+            'Category',
+            getVal(
+                row,
+                'Category'
+            ) || 'Online Sales'
+        );
+
+        // ============================
+        // SALES
+        // ============================
+
+        const amount = toNum(
+            getVal(
+                row,
+                'Amount',
+                'Gross Sales',
+                'Gross Amount'
+            )
+        );
+
+        const netSales = isGrab
+
+            ? toNum(
+                getVal(
+                    row,
+                    'Net Sales',
+                    'Net sales'
+                )
+            )
+
+            : toNum(
+                getVal(
+                    row,
+                    'Net Amount',
+                    'Net amount'
+                )
+            );
+
+        const total = toNum(
+            getVal(
+                row,
+                'Total',
+                'Total Amount',
+                'Total Collected'
+            )
+        );
+
+        set(
+            'Gross Sales',
+            amount
+        );
+
+        set(
+            'Net Sales',
+            netSales || amount
+        );
+
+        set(
+            'Total Collected',
+            total || netSales || amount
+        );
+
+        // ============================
+        // TAX
+        // ============================
+        set(
+            'Tax',
+            toNum(
+                getVal(
+                    row,
+                    'Tax on Order Value',
+                    'Value Added Tax',
+                    'Value added tax',
+                    'Tax'
+                )
+            )
+        );
+
+        // ============================
+        // DISCOUNT
+        // ============================
+        set(
+            'Discounts',
+            Math.abs(
+                toNum(
+                    getVal(
+                        row,
+                        'Discount (Merchant-Funded)',
+                        'Merchant-Funded Discount',
+                        'GoFood discount',
+                        'Discount'
+                    )
+                )
+            )
+        );
+
+        set(
+            'Refunds',
+            0
+        );
+
+        // ============================
+        // PAYMENT METHOD
+        // ============================
+        set(
+            'Payment Method',
+            getVal(
+                row,
+                'Payment Method',
+                'Payment Type',
+                'Payment type',
+                'Method'
+            ) || '-'
+        );
+
+        // ============================
+        // DATE
+        // ============================
+        let dateStrRaw = getVal(
+            row,
+
+            // utama
+            'Date',
+
+            // kemungkinan GrabFood
+            'Transaction Date',
+            'Order Date',
+            'Order date',
+
+            // kemungkinan GoFood
+            'Payment Date',
+            'Payment date',
+
+            // lainnya
+            'Transaction time',
+            'Transaction Time'
+        );
+
+        let dateObj = parseDate(
+            dateStrRaw
+        );
+
+        if (!dateObj.iso) {
+
+            const fallbackDate = getVal(
+                row,
+                'Created Date',
+                'Created At',
+                'Created at'
+            );
+
+            dateObj = parseDate(
+                fallbackDate
+            );
+        }
+
+        if (!dateObj.iso) {
+
+            skippedRows++;
+            continue;
+        }
+
+        set(
+            'DateStr',
+            dateObj.iso
+        );
+
+        set(
+            'FormattedDate',
+            dateObj.formatted
+        );
+
+        // ============================
+        // TIME
+        // ============================
+        let timeStr = getVal(
+            row,
+            'Time',
+            'Transaction Time',
+            'Transaction time',
+            'Payment Time',
+            'Payment time'
+        ) || '00:00:00';
+
+        timeStr = String(
+            timeStr
+        ).trim();
+
+        const timeMatch = timeStr.match(
+            /(\d{1,2}):(\d{2})(?::(\d{2}))?/
+        );
+
+        if (timeMatch) {
+
+            const hh =
+                timeMatch[1].padStart(2, '0');
+
+            const mm =
+                timeMatch[2];
+
+            const ss =
+                timeMatch[3] || '00';
+
+            set(
+                'ExactTime',
+                `${hh}:${mm}:${ss}`
+            );
+
+            set(
+                'ParsedHour',
+                hh
+            );
+
+        } else {
+
+            set(
+                'ExactTime',
+                '00:00:00'
+            );
+
+            set(
+                'ParsedHour',
+                '00'
+            );
+        }
+
+        // ============================
+        // DAY
+        // ============================
+        set(
+            'ParsedDay',
+            getVal(
+                row,
+                'Day'
+            ) || 'Unknown'
+        );
+
+        // ============================
+        // PUSH
+        // ============================
+        window.rawData.push(
+            compact
+        );
+
+        validRows++;
+    }
+
+    console.log(
+        `[${isGrab ? 'GrabFood' : 'GoFood'}]`,
+        {
+            totalRows,
+            validRows,
+            skippedRows,
+            totalRawData: window.rawData.length
+        }
+    );
+};
+
+// ====================================================
     </script>
 </body>
 </html>
