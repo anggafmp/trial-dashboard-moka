@@ -2662,22 +2662,150 @@
     }
 
     window.addEventListener('DOMContentLoaded', loadAllCsvFromGithub);
-            // ... kode-kode kamu sebelumnya ...
-
-        window.addEventListener('DOMContentLoaded', loadAllCsvFromGitHub); // <--- INI BARIS 2664
-
+                   // ====================================================
+        // FIX PAMUNGKAS: CHUNKING & ANTI-FREEZE (TIMPA SEMUA)
         // ====================================================
-        // FIX INSTAN V2: ANTI-FREEZE & BISA LOAD BARENGAN
-        // ====================================================
-        window.loadAllCsvFromGitHub = async function() {
-            // ... (tempel kode panjang yang saya kasih di atas di sini) ...
+        
+        // 1. TIMPA FUNGSI PEMBACA CSV (Agar tidak nge-hang di file besar)
+        window.processExcel = function(file) {
+            return new Promise((res, rej) => {
+                Papa.parse(file, {
+                    header: false,
+                    skipEmptyLines: 'greedy',
+                    worker: true, // <--- KUNCI UTAMA: Pakai Web Worker agar UI tidak freeze
+                    chunkSize: 1024 * 1024, // Baca per 1MB
+                    chunk: function(results) {
+                        const rows = results.data;
+                        if (rows.length === 0) return;
+                        
+                        let headerIdx = -1;
+                        let headers = null;
+                        
+                        // Deteksi Header (khusus CSV Moka)
+                        for (let j = 0; j < Math.min(rows.length, 50); j++) {
+                            const rowStr = (rows[j] || []).join(' ');
+                            if (rowStr.includes('Net Sales') && (rowStr.includes('Receipt Number') || rowStr.includes('SKU'))) {
+                                headerIdx = j;
+                                headers = rows[j];
+                                break;
+                            }
+                        }
+                        
+                        if (headers === null) {
+                            // Jika file GrabFood/GoFood (biasanya header langsung di baris 0)
+                            headers = rows[0];
+                            processParsedRows(rows.slice(1), headers);
+                        } else {
+                            processParsedRows(rows.slice(headerIdx + 1), headers);
+                        }
+                    },
+                    complete: function() { res(); },
+                    error: function(err) { console.error(err); rej(err); }
+                });
+            });
         };
 
-        document.getElementById('lazyPlatformSelect').addEventListener('change', window.loadAllCsvFromGitHub);
-        setTimeout(() => { window.loadAllCsvFromGitHub(); }, 500);
-        // ====================================================
+        // 2. FUNGSI LOAD DATA UTAMA
+        window.loadAllCsvFromGitHub = async function() {
+            const platformSelect = document.getElementById('lazyPlatformSelect');
+            const platform = platformSelect ? platformSelect.value : 'Moka';
+            const statusEl = document.getElementById('lazyStatus');
+            const loadUI = document.getElementById('loadingOverlay');
+            const progressBar = document.getElementById('loadingProgressBar');
+            const loadingSubText = document.getElementById('loadingSubText');
 
-    </script> <!-- <--- INI TAG PENUTUP SCRIPT, BIARKAN DI BAWAHNYA -->
+            let filesToLoad = [];
+            if (platform === 'Moka') {
+                filesToLoad = [
+                    'master_sales_detail_moka_januari_2026.csv', 'master_sales_detail_moka_februari_2026.csv',
+                    'master_sales_detail_moka_maret_2026.csv', 'master_sales_detail_moka_april_2026.csv',
+                    'master_sales_detail_moka_mei_2026.csv', 'master_sales_detail_moka_juni_2026.csv',
+                    'master_sales_detail_moka_juli_2026.csv', 'master_sales_detail_moka_agustus_2026.csv',
+                    'master_sales_detail_moka_september_2026.csv', 'master_sales_detail_moka_oktober_2026.csv'
+                ];
+            } else if (platform === 'GrabFood') {
+                filesToLoad = ['master_sales_grabfood.csv'];
+            } else if (platform === 'GoFood') {
+                filesToLoad = ['master_sales_gofood.csv'];
+            } else if (platform === 'GrabFood+GoFood') {
+                filesToLoad = ['master_sales_grabfood.csv', 'master_sales_gofood.csv'];
+            }
+
+            if (filesToLoad.length === 0) return;
+
+            if(loadUI) loadUI.style.display = 'flex'; 
+            if(statusEl) statusEl.innerText = `Memuat ${platform}...`;
+            if(progressBar) progressBar.style.width = '0%';
+
+            try {
+                window.rawData = [];
+                let totalFiles = filesToLoad.length;
+
+                for (let i = 0; i < totalFiles; i++) {
+                    let fileUrl = filesToLoad[i];
+                    let pct = Math.round((i / totalFiles) * 100);
+                    
+                    if(loadingSubText) loadingSubText.innerText = `Mengunduh: ${fileUrl}...`;
+                    if(progressBar) progressBar.style.width = pct + '%';
+                    
+                    await new Promise(r => setTimeout(r, 50)); 
+
+                    const response = await fetch(fileUrl);
+                    if (!response.ok) continue;
+                    
+                    const blob = await response.blob();
+                    if (blob.size < 10) continue; 
+                    
+                    if(loadingSubText) loadingSubText.innerText = `Memproses data: ${fileUrl}...`;
+                    await new Promise(r => setTimeout(r, 50)); 
+
+                    const file = new File([blob], fileUrl, { type: 'text/csv' });
+                    window.currentSourceFileName = fileUrl;
+                    
+                    if (typeof window.processExcel === 'function') {
+                        await window.processExcel(file);
+                    }
+                    
+                    await new Promise(r => setTimeout(r, 50)); 
+                }
+
+                if(loadingSubText) loadingSubText.innerText = 'Menyiapkan dasbor...';
+                if(progressBar) progressBar.style.width = '95%';
+                await new Promise(r => setTimeout(r, 150));
+
+                if (window.rawData.length > 0) {
+                    if (typeof setupDatePickers === 'function') setupDatePickers();
+                    if (typeof populateDropdowns === 'function') populateDropdowns();
+                    if (typeof populateItemDropdown === 'function') populateItemDropdown();
+                    
+                    if(loadUI) loadUI.style.display = 'none';
+                    document.getElementById('mainContent').style.display = 'block';
+                    document.getElementById('dashboardContent').classList.remove('hidden');
+                    
+                    const navCtrl = document.getElementById('navDashboardControls');
+                    if(navCtrl) { navCtrl.classList.remove('hidden'); navCtrl.classList.add('flex'); }
+                    
+                    if (typeof executeFilterAndRender === 'function') await executeFilterAndRender();
+                    
+                    if(statusEl) statusEl.innerText = `Berhasil memuat ${window.rawData.length.toLocaleString('id-ID')} baris data.`;
+                } else {
+                    if(loadUI) loadUI.style.display = 'none';
+                    if(statusEl) statusEl.innerText = `Gagal: Data kosong / header tidak cocok.`;
+                    alert("Data kosong. Kemungkinan nama kolom (header) di CSV GrabFood/GoFood tidak cocok dengan kode.");
+                }
+            } catch (err) {
+                console.error(err);
+                if(loadUI) loadUI.style.display = 'none';
+                if(statusEl) statusEl.innerText = `Error: ${err.message}`;
+            }
+        };
+
+        // 3. JALANKAN
+        document.getElementById('lazyPlatformSelect').addEventListener('change', window.loadAllCsvFromGitHub);
+        
+        // Beri waktu 1 detik agar fungsi-fungsi lain siap, baru load data
+        setTimeout(() => { window.loadAllCsvFromGitHub(); }, 1000);
+        // ====================================================
 </body>
 </html>
     </script>
