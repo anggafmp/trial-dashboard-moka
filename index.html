@@ -2419,37 +2419,19 @@
         const loadStatus = document.getElementById('loadingSubText');
         if (loadStatus) loadStatus.textContent = `Mengunduh ${sourceFileName} dari GitHub...`;
 
-        const response = await fetch(fileUrl, { cache: 'no-store' });
-        if (!response.ok) throw new Error(`${sourceFileName}: HTTP ${response.status} saat mengunduh dari GitHub`);
-        let csvBlob;
-        if (response.body && typeof response.body.getReader === 'function') {
-            const reader = response.body.getReader();
-            const chunks = [];
-            const totalBytes = Number(response.headers.get('content-length')) || 0;
-            let loadedBytes = 0;
-            let lastUiUpdate = 0;
-            while (true) {
-                const part = await reader.read();
-                if (part.done) break;
-                if (part.value && part.value.byteLength) {
-                    chunks.push(part.value);
-                    loadedBytes += part.value.byteLength;
-                }
-                if (loadedBytes - lastUiUpdate >= 1024 * 1024) {
-                    lastUiUpdate = loadedBytes;
-                    const loadedMb = (loadedBytes / 1048576).toFixed(1);
-                    const totalMb = totalBytes ? (totalBytes / 1048576).toFixed(1) : '?';
-                    const message = `Mengunduh ${platformLabel}: ${loadedMb} / ${totalMb} MB`;
-                    if (lazyStatusEl) lazyStatusEl.textContent = message;
-                    if (loadStatus) loadStatus.textContent = message;
-                    await yieldToMain();
-                }
-            }
-            csvBlob = new Blob(chunks, { type: 'text/csv' });
-            chunks.length = 0;
-        } else {
-            csvBlob = await response.blob();
+        const response = await fetch(fileUrl, {
+            cache: 'no-store'
+        });
+        if (!response.ok) {
+            throw new Error(`${sourceFileName}: HTTP ${response.status} saat mengunduh dari GitHub`);
         }
+
+        // FIX: jangan gunakan Content-Length untuk progress download.
+        // GitHub/CDN dapat mengirim ukuran response terkompresi, sedangkan
+        // stream yang diterima browser sudah terdekompresi. Ini menyebabkan
+        // progress seperti "40.0 / 3.5 MB". Biarkan browser menangani
+        // decompression dan ambil response sebagai Blob secara langsung.
+        const csvBlob = await response.blob();
         if (!csvBlob || !csvBlob.size) throw new Error(`${sourceFileName}: file kosong dari GitHub`);
         const csvFile = new File([csvBlob], sourceFileName, { type: 'text/csv' });
         const csvSizeMb = (csvFile.size / 1048576).toFixed(1);
