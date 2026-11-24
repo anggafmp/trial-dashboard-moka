@@ -1031,14 +1031,35 @@
             // Exclude non-sales accounting events in the supplied platform exports.
             // GrabFood: only transferred Payment records are actual sales transactions.
             // GoFood: only settled transactions are included.
+            // Online exports are not always identical between export dates.
+            // Only apply a status/category filter when the column actually exists
+            // and contains a value. Never reject the entire file just because an
+            // optional column is missing or uses a slightly different label.
             if (isGrabSource) {
-                const sourceType = String(get(row, 'Type') || '').trim().toLowerCase();
-                const sourceCategory = String(get(row, 'Category') || '').trim().toLowerCase();
-                const sourceStatus = String(get(row, 'Status') || '').trim().toLowerCase();
-                if (sourceType !== 'grabfood' || sourceCategory !== 'payment' || sourceStatus !== 'transferred') continue;
+                const typeVal = getAny(row, ['Type','Transaction Type','Order Type']);
+                const categoryVal = getAny(row, ['Category','Transaction Category']);
+                const statusVal = getAny(row, ['Status','Transaction Status','Order Status']);
+
+                if (typeVal) {
+                    const t = String(typeVal).trim().toLowerCase().replace(/\s+/g,'');
+                    if (t && !['grabfood','grabfoodorder','payment'].includes(t)) continue;
+                }
+                if (categoryVal) {
+                    const c = String(categoryVal).trim().toLowerCase();
+                    if (c && c !== 'payment') continue;
+                }
+                if (statusVal) {
+                    const st = String(statusVal).trim().toLowerCase();
+                    if (st && ['cancel','cancelled','canceled','batal','failed','fail','rejected','void'].some(x => st.includes(x))) continue;
+                }
             } else if (isGoSource) {
-                const sourceStatus = String(get(row, 'Transaction Status') || '').trim().toUpperCase();
-                if (sourceStatus !== 'SETTLEMENT') continue;
+                const statusVal = getAny(row, ['Transaction Status','Status','Order Status']);
+                if (statusVal) {
+                    const st = String(statusVal).trim().toUpperCase();
+                    // Keep SETTLEMENT and common successful statuses. If the export
+                    // has no status column/value, the transaction is still allowed.
+                    if (st && !['SETTLEMENT','COMPLETED','COMPLETE','SUCCESS','SUCCESSFUL','PAID'].includes(st)) continue;
+                }
             }
 
             // These exports contain many comma-padded blank lines (Excel row-limit padding).
@@ -1055,9 +1076,11 @@
             // Real source schemas supplied by Angga:
             // GrabFood: Date, Transaction ID, Store Name, Amount, Net Sales.
             // GoFood: Date (DD/MM/YYYY), Transaction ID, Outlet name, Amount, Net Amount.
-            const rawDate = isOnlineSource
-                ? getAny(row, ['Date','Payment Date','Order Date','Transaction Date','Transaction time','Created On','Updated On'])
-                : get(row, 'Date');
+            const rawDate = isGoSource
+                ? getAny(row, ['Payment Date','Date','Order Date','Transaction Date','Transaction time','Created On','Updated On'])
+                : (isGrabSource
+                    ? getAny(row, ['Date','Payment Date','Order Date','Transaction Date','Transaction time','Created On','Updated On'])
+                    : get(row, 'Date'));
             const rawReceipt = isOnlineSource
                 ? getAny(row, ['Transaction ID','Order ID','Receipt Number','Order Number','Transaction Number'])
                 : get(row, 'Receipt Number');
@@ -1193,6 +1216,43 @@
                             formattedDate = `${parts[0].padStart(2,'0')}/${parts[1].padStart(2,'0')}/${yyyy}`;
                         }
                     }
+                }
+            }
+
+            // GrabFood export may show Date/Updated On/Transfer Date as ########
+            // in Excel, while Month/Day/Year columns contain the real date parts.
+            // Use those columns as a reliable fallback so the transaction is not dropped.
+            if (!dateStr && isGrabSource) {
+                const monthVal = getAny(row, ['Month']);
+                const dayVal = getAny(row, ['Day']);
+                const yearVal = getAny(row, ['Year']);
+                const monthNum = parseInt(String(monthVal ?? '').trim(), 10);
+                const dayNum = parseInt(String(dayVal ?? '').trim(), 10);
+                const yearNum = parseInt(String(yearVal ?? '').trim(), 10);
+                if (Number.isFinite(monthNum) && Number.isFinite(dayNum) && Number.isFinite(yearNum) &&
+                    monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31 && yearNum >= 2000) {
+                    const mm = String(monthNum).padStart(2, '0');
+                    const dd = String(dayNum).padStart(2, '0');
+                    dateStr = `${yearNum}-${mm}-${dd}`;
+                    formattedDate = `${dd}/${mm}/${yearNum}`;
+                }
+            }
+
+            // GoFood can also expose the date as Month/Day/Year when the primary
+            // date cell is visually rendered as ######## in spreadsheet exports.
+            if (!dateStr && isGoSource) {
+                const monthVal = getAny(row, ['Month']);
+                const dayVal = getAny(row, ['Day']);
+                const yearVal = getAny(row, ['Year']);
+                const monthNum = parseInt(String(monthVal ?? '').trim(), 10);
+                const dayNum = parseInt(String(dayVal ?? '').trim(), 10);
+                const yearNum = parseInt(String(yearVal ?? '').trim(), 10);
+                if (Number.isFinite(monthNum) && Number.isFinite(dayNum) && Number.isFinite(yearNum) &&
+                    monthNum >= 1 && monthNum <= 12 && dayNum >= 1 && dayNum <= 31 && yearNum >= 2000) {
+                    const mm = String(monthNum).padStart(2, '0');
+                    const dd = String(dayNum).padStart(2, '0');
+                    dateStr = `${yearNum}-${mm}-${dd}`;
+                    formattedDate = `${dd}/${mm}/${yearNum}`;
                 }
             }
 
@@ -2419,38 +2479,44 @@
         const sourceToken = sourceFileName.toLowerCase().replace(/[^a-z0-9]/g, '');
         const isGrabFoodFile = sourceToken.includes('grabfood');
         const isGoFoodFile = sourceToken.includes('gofood');
-        const isMokaFile = !isGrabFoodFile && !isGoFoodFile;
-        const fileUrl = GH_BASE_URL + encodeURIComponent(sourceFileName) + '?t=' + Date.now();
-        let headerFound = false;
-        let headers = null;
-        const parsedRowsBefore = rawData.length;
-
-        // Keep the CSV as a Blob/File instead of converting a 100 MB response
-        // into a large UTF-16 string. Papa Parse reads this File in chunks.
+        const isOnlineFile = isGrabFoodFile || isGoFoodFile;
         const platformLabel = isGrabFoodFile ? 'GrabFood' : (isGoFoodFile ? 'GoFood' : 'Moka');
+        const parsedRowsBefore = rawData.length;
         const lazyStatusEl = document.getElementById('lazyStatus');
-        if (lazyStatusEl) lazyStatusEl.textContent = `Mengunduh ${platformLabel}: ${sourceFileName}...`;
         const loadStatus = document.getElementById('loadingSubText');
+
+        if (lazyStatusEl) lazyStatusEl.textContent = `Mengunduh ${platformLabel}: ${sourceFileName}...`;
         if (loadStatus) loadStatus.textContent = `Mengunduh ${sourceFileName} dari GitHub...`;
 
-        // Jika blob sudah diunduh oleh batch loader, langsung pakai.
-        // Ini membuat semua CSV mulai diunduh bersamaan, bukan satu per satu.
+        const fileUrl = GH_BASE_URL + encodeURIComponent(sourceFileName) + '?t=' + Date.now();
         let csvBlob = prefetchedBlob;
         if (!csvBlob) {
             const response = await fetch(fileUrl, { cache: 'no-store' });
-            if (!response.ok) {
-                throw new Error(`${sourceFileName}: HTTP ${response.status} saat mengunduh dari GitHub`);
-            }
+            if (!response.ok) throw new Error(`${sourceFileName}: HTTP ${response.status}`);
             csvBlob = await response.blob();
         }
         if (!csvBlob || !csvBlob.size) throw new Error(`${sourceFileName}: file kosong dari GitHub`);
-        const csvFile = new File([csvBlob], sourceFileName, { type: 'text/csv' });
-        const csvSizeMb = (csvFile.size / 1048576).toFixed(1);
-        if (loadStatus) loadStatus.textContent = `Parsing ${sourceFileName} • ${csvSizeMb} MB`;
-        if (lazyStatusEl) lazyStatusEl.textContent = `Mengurai ${platformLabel}: ${csvSizeMb} MB • menyiapkan transaksi...`;
 
-        // Stream the File in small asynchronous chunks on the page thread.
-        // Pause/resume yields between chunks, keeping the dashboard responsive.
+        if (loadStatus) loadStatus.textContent = `Parsing ${sourceFileName}...`;
+        if (lazyStatusEl) lazyStatusEl.textContent = `Memproses ${platformLabel}: ${sourceFileName}...`;
+
+        // GrabFood/GoFood exports contain a huge tail of comma-only Excel rows.
+        // Do NOT feed those rows to Papa Parse: parsing ~1 million padded rows is
+        // the reason Chrome freezes even though the real transaction count is small.
+        // These online files are only a few MB, so trimming their raw text first is
+        // substantially lighter than parsing the padded tail.
+        let parseInput = csvBlob;
+        if (isOnlineFile) {
+            let csvText = await csvBlob.text();
+            // Remove UTF-8 BOM and trailing lines made only of commas/whitespace.
+            csvText = csvText.replace(/^\uFEFF/, '');
+            csvText = csvText.replace(/(?:\r?\n)[,\s]*$/g, '');
+            parseInput = csvText;
+        }
+
+        let headerFound = false;
+        let headers = null;
+
         await new Promise((resolve, reject) => {
             let settled = false;
             const fail = (err) => {
@@ -2465,21 +2531,17 @@
             };
 
             try {
-                Papa.parse(csvFile, {
+                Papa.parse(parseInput, {
                     worker: true,
                     header: false,
-                    // Online exports are padded to Excel's 1,048,576-row limit
-                    // with >1 million comma-only rows. PapaParse's greedy mode
-                    // removes them via repeated array splices and can stall the UI.
-                    // Keep blank rows here; processParsedRows rejects them in O(1)
-                    // using the platform status/category columns before any object work.
                     skipEmptyLines: true,
                     dynamicTyping: false,
-                    chunkSize: 256 * 1024,
+                    chunkSize: 64 * 1024,
                     chunk: function(results, parser) {
                         try {
                             currentSourceFileName = sourceFileName;
                             const rows = results && Array.isArray(results.data) ? results.data : [];
+
                             if (!headerFound) {
                                 for (let j = 0; j < Math.min(rows.length, 100); j++) {
                                     const row = rows[j] || [];
@@ -2488,10 +2550,13 @@
                                         .replace(/[^a-z0-9]/g, '')).filter(Boolean));
                                     const has = name => tokens.has(name);
                                     const isMokaHeader = has('netsales') && (has('receiptnumber') || has('sku'));
-                                    // Header names below are verified against the uploaded source CSVs.
-                                    const isGrabHeader = isGrabFoodFile && has('transactionid') && has('storename') && has('netsales') && has('date');
-                                    const isGoHeader = isGoFoodFile && has('transactionid') && has('outletname') && has('amount') && has('date');
-                                    if ((isMokaFile && isMokaHeader) || isGrabHeader || isGoHeader) {
+                                    const hasDate = has('date') || has('transactiondate') || has('orderdate') || has('paymentdate') || has('transactiontime') || has('createddate') || has('createdat');
+                                    const hasGrabOutlet = has('storename') || has('outletname') || has('outlet') || has('orderid');
+                                    const hasGoOutlet = has('outletname') || has('outlet') || has('storename') || has('paymentdate');
+                                    const hasMoney = has('amount') || has('netsales') || has('netamount') || has('total') || has('totalamount');
+                                    const isGrabHeader = isGrabFoodFile && has('transactionid') && hasGrabOutlet && hasMoney && hasDate;
+                                    const isGoHeader = isGoFoodFile && has('transactionid') && hasGoOutlet && hasMoney && hasDate;
+                                    if ((isMokaHeader && !isOnlineFile) || isGrabHeader || isGoHeader) {
                                         headerFound = true;
                                         headers = row;
                                         const firstPayload = rows.slice(j + 1);
@@ -2508,12 +2573,9 @@
                             const topStatus = document.getElementById('lazyStatus');
                             const progressText = headerFound
                                 ? `Memproses ${platformLabel}: ${formatNum(validCount)} transaksi valid...`
-                                : `Mencari header CSV ${sourceFileName}...`;
+                                : `Mencari header ${sourceFileName}...`;
                             if (status) status.textContent = progressText;
                             if (topStatus) topStatus.textContent = progressText;
-                            // Papa Parse's FileStreamer reads each chunk asynchronously.
-                            // Do not pause/resume manually: it can leave older browser
-                            // builds waiting on a parser callback after a large CSV chunk.
                         } catch (err) {
                             if (parser && typeof parser.abort === 'function') parser.abort();
                             fail(new Error(`${sourceFileName}: ${err && err.message ? err.message : err}`));
@@ -2521,20 +2583,18 @@
                     },
                     complete: function() {
                         if (!headerFound) {
-                            fail(new Error(`${sourceFileName}: header tidak dikenali. Pastikan file di GitHub sama dengan CSV sumber.`));
+                            fail(new Error(`${sourceFileName}: header tidak dikenali.`));
                             return;
                         }
                         const addedRows = rawData.length - parsedRowsBefore;
                         if (addedRows <= 0) {
-                            fail(new Error(`${sourceFileName}: 0 transaksi valid terbaca. Periksa file yang tersimpan di GitHub dan filter tahun 2025–2026.`));
+                            fail(new Error(`${sourceFileName}: 0 transaksi valid terbaca.`));
                             return;
                         }
-                        const topStatus = document.getElementById('lazyStatus');
-                        if (topStatus) topStatus.textContent = `${platformLabel}: ${formatNum(addedRows)} transaksi terbaca • menyiapkan dashboard...`;
                         finish();
                     },
                     error: function(err) {
-                        fail(new Error(`${sourceFileName}: gagal diunduh/diparse (${err && err.message ? err.message : 'periksa file GitHub dan koneksi'}).`));
+                        fail(new Error(`${sourceFileName}: gagal diparse (${err && err.message ? err.message : 'periksa file GitHub'}).`));
                     }
                 });
             } catch (err) {
@@ -2542,9 +2602,10 @@
             }
         });
 
-        const addedRows = rawData.length - parsedRowsBefore;
+        // Release temporary online CSV text before the next file.
+        parseInput = null;
         await yieldToMain();
-        return addedRows;
+        return rawData.length - parsedRowsBefore;
     }
 
     async function loadAllGithubDataOnce() {
@@ -2591,40 +2652,30 @@
             if (selectEl) selectEl.disabled = true;
 
             // ====================================================
-            // BATCH DOWNLOAD: semua CSV diunduh bersamaan.
-            // Sebelumnya file diproses dengan await satu-per-satu,
-            // sehingga terasa sangat lama. Setelah semua selesai
-            // diunduh, parsing tetap dilakukan satu per satu agar
-            // browser tidak menjalankan banyak parser berat sekaligus.
+            // STABIL MODE: satu file selesai download + parse, baru lanjut.
+            // Promise.all sebelumnya membuat beberapa Blob/parser besar hidup
+            // bersamaan dan memicu freeze/kehabisan memory di Chrome.
+            // Semua file tetap dimuat otomatis; hanya antreannya dibuat aman.
             // ====================================================
-            setLoadingProgress(3, `Mengunduh semua CSV (${uniqueFiles.length} file)...`);
-            if (statusEl) statusEl.textContent = `Mengunduh semua CSV dari GitHub • ${uniqueFiles.length} file...`;
-
-            const downloaded = await Promise.all(uniqueFiles.map(async (fileName, i) => {
+            for (let i = 0; i < uniqueFiles.length; i++) {
+                const fileName = uniqueFiles[i];
                 const platform = lazyPlatformOfFile(fileName);
+                const pct = Math.round((i / uniqueFiles.length) * 92);
+                setLoadingProgress(pct, `Memuat ${platform}: ${fileName} (${i + 1}/${uniqueFiles.length})...`);
+                if (statusEl) statusEl.textContent = `Memuat ${platform}: ${fileName} (${i + 1}/${uniqueFiles.length})...`;
+
                 const url = GH_BASE_URL + encodeURIComponent(fileName) + '?t=' + Date.now();
                 const response = await fetch(url, { cache: 'no-store' });
-                if (!response.ok) {
-                    throw new Error(`${fileName}: HTTP ${response.status} saat mengunduh dari GitHub`);
-                }
+                if (!response.ok) throw new Error(`${fileName}: HTTP ${response.status} saat mengunduh dari GitHub`);
                 const blob = await response.blob();
                 if (!blob.size) throw new Error(`${fileName}: file kosong dari GitHub`);
-                const pct = Math.round(3 + ((i + 1) / uniqueFiles.length) * 45);
-                setLoadingProgress(pct, `CSV terunduh ${i + 1}/${uniqueFiles.length}: ${platform} — ${fileName}`);
-                return { fileName, blob };
-            }));
 
-            setLoadingProgress(50, `Semua CSV terunduh • mulai parsing ${uniqueFiles.length} file...`);
-
-            for (let i = 0; i < downloaded.length; i++) {
-                const { fileName, blob } = downloaded[i];
-                const platform = lazyPlatformOfFile(fileName);
-                const pct = Math.round(50 + ((i + 1) / downloaded.length) * 42);
-                setLoadingProgress(pct, `Memproses ${platform}: ${fileName} (${i + 1}/${downloaded.length})...`);
-                if (statusEl) statusEl.textContent = `Memproses ${platform}: ${fileName} (${i + 1}/${downloaded.length})...`;
                 await processGithubCsvFile(fileName, blob);
+                // Release the Blob before the next file and give Chrome a frame.
                 await yieldToMain();
             }
+
+            setLoadingProgress(95, 'Semua CSV selesai diproses • menyiapkan dashboard...');
 
             if (!rawData.length) {
                 throw new Error('Tidak ada transaksi valid dari seluruh file CSV.');
