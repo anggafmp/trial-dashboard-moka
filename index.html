@@ -2780,8 +2780,16 @@
                 );
                 if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-                const csvText = await res.text();
+                let csvText = await res.text();
                 if (!csvText || !csvText.trim()) return 0;
+
+                // GrabFood/GoFood exports can contain a huge Excel-style tail of
+                // comma-only rows. Do NOT send that padding to Papa Parse: it is
+                // the main reason the browser becomes unresponsive. Remove only
+                // trailing rows that contain separators/whitespace and no values.
+                if (/grabfood|gofood/i.test(sourceFileName)) {
+                    csvText = csvText.replace(/(?:\r?\n[,\s\"]*)+$/, '');
+                }
 
                 let headerIdx = -1;
                 let headers = null;
@@ -2792,7 +2800,7 @@
                         header: false,
                         skipEmptyLines: 'greedy',
                         delimiter: '',
-                        chunkSize: 256 * 1024,
+                        chunkSize: 128 * 1024,
                         worker: true,
                         chunk: function(results) {
                             currentSourceFileName = sourceFileName;
