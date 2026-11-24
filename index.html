@@ -58,7 +58,20 @@
         
         /* Custom Tooltip Global */
         #customMultiTooltip { position: absolute; background: #1e293b; color: white; padding: 8px 12px; border-radius: 6px; font-size: 11px; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 9999; border: 1px solid #334155; max-height: 250px; overflow-y: auto; width: max-content; max-width: 300px; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); }
-    </style>
+    
+<style id="sales-channel-force-visible">
+#salesChannelContainer {
+    display: none !important;
+    visibility: visible !important;
+    opacity: 1 !important;
+    order: 1 !important;
+}
+#filterSalesChannel {
+    min-width: 145px !important;
+    font-weight: 600;
+}
+</style>
+</style>
 </head>
 <body class="antialiased min-h-screen flex flex-col">
     <div id="toastContainer" class="fixed top-2 right-4 z-[10000] flex flex-col gap-1.5 pointer-events-none"></div>
@@ -232,6 +245,21 @@
     <!-- MAIN CONTENT DISEMBUNYIKAN SEJAK AWAL MENGGUNAKAN INLINE CSS -->
     <main style="display: none;" id="mainContent" class="flex-grow max-w-[1500px] mx-auto w-full px-2 sm:px-4 lg:px-8 py-4 space-y-4">
         <div id="dashboardContent" class="hidden space-y-4">
+            <div id="dashboardMokaContent" class="space-y-4">
+            <!-- DASHBOARD NAVIGATION -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-2">
+                <button id="dashboardMokaBtn" type="button" class="dashboard-tab panel p-3 text-left border-2 border-fr-blue bg-blue-50 transition-all">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-fr-blue">Moka Dashboard</div>
+                    <div class="text-sm font-bold text-gray-800 mt-1">POS / Store Sales</div>
+                    <div class="text-[10px] text-gray-500 mt-0.5">Sales, transaksi, produk, outlet, area &amp; department</div>
+                </button>
+                <button id="dashboardOnlineBtn" type="button" class="dashboard-tab panel p-3 text-left border-2 border-transparent hover:border-purple-300 hover:bg-purple-50 transition-all">
+                    <div class="text-[10px] font-bold uppercase tracking-wider text-purple-700">Online Sales Dashboard</div>
+                    <div class="text-sm font-bold text-gray-800 mt-1">GrabFood + GoFood</div>
+                    <div class="text-[10px] text-gray-500 mt-0.5">Platform performance, orders, outlet, item &amp; channel mix</div>
+                </button>
+            </div>
+
             <!-- GLOBAL FILTERS -->
             <div class="panel p-3 mb-2">
                 <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 pb-2 border-b border-gray-100 relative gap-2">
@@ -287,7 +315,7 @@
                             <div id="monthList" class="p-1 max-h-[350px] overflow-y-auto"></div>
                         </div>
                     </div>
-                    <div class="filter-item flex flex-col shrink-0 w-full lg:w-auto" data-id="channel" id="salesChannelContainer">
+                    <div class="filter-item flex flex-col shrink-0 relative w-full lg:w-auto" data-id="channel" id="salesChannelContainer" style="display:none !important;">
                         <label class="block text-[9px] font-semibold uppercase text-fr-muted mb-1">Sales Channel</label>
                         <select id="filterSalesChannel" class="pro-select text-[11px] p-1.5 w-full lg:w-[135px]">
                             <option value="Moka" selected>Moka</option>
@@ -526,7 +554,46 @@
                     </table>
                 </div>
             </div>
-        </div>
+
+            </div>
+
+            <!-- ONLINE SALES DASHBOARD -->
+            <section id="onlineDashboardContent" class="hidden space-y-3">
+                <div class="panel p-3 border-l-4 border-purple-500 bg-gradient-to-r from-purple-50 to-white">
+                    <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                        <div>
+                            <div class="text-[10px] font-bold uppercase tracking-wider text-purple-700">Online Sales Performance</div>
+                            <h2 class="text-lg font-bold text-gray-800">GrabFood + GoFood</h2>
+                            <p class="text-[10px] text-gray-500">Dashboard khusus penjualan online. Data Moka tidak ikut dihitung.</p>
+                        </div>
+                        <div class="text-[10px] font-semibold text-purple-700 bg-purple-100 border border-purple-200 rounded px-3 py-1.5">ONLINE ONLY</div>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="panel p-3 border-l-4 border-purple-500"><p class="kpi-title">Online Net Sales</p><h3 id="onlineKpiSales" class="kpi-value text-purple-700 text-lg sm:text-xl">Rp 0</h3></div>
+                    <div class="panel p-3 border-l-4 border-indigo-500"><p class="kpi-title">Orders</p><h3 id="onlineKpiOrders" class="kpi-value text-indigo-700 text-lg sm:text-xl">0</h3></div>
+                    <div class="panel p-3 border-l-4 border-blue-500"><p class="kpi-title">Items / Qty</p><h3 id="onlineKpiQty" class="kpi-value text-blue-700 text-lg sm:text-xl">0</h3></div>
+                    <div class="panel p-3 border-l-4 border-gray-500"><p class="kpi-title">Avg Order Value</p><h3 id="onlineKpiAov" class="kpi-value text-gray-700 text-lg sm:text-xl">Rp 0</h3></div>
+                </div>
+                <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                    <div class="panel p-3"><p class="kpi-title">GrabFood Sales</p><h3 id="onlineKpiGrabSales" class="kpi-value text-green-700 text-lg sm:text-xl">Rp 0</h3></div>
+                    <div class="panel p-3"><p class="kpi-title">GoFood Sales</p><h3 id="onlineKpiGoSales" class="kpi-value text-orange-600 text-lg sm:text-xl">Rp 0</h3></div>
+                    <div class="panel p-3"><p class="kpi-title">GrabFood Orders</p><h3 id="onlineKpiGrabOrders" class="kpi-value text-green-700 text-lg sm:text-xl">0</h3></div>
+                    <div class="panel p-3"><p class="kpi-title">GoFood Orders</p><h3 id="onlineKpiGoOrders" class="kpi-value text-orange-600 text-lg sm:text-xl">0</h3></div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-3">
+                    <div class="panel p-3 sm:p-4 lg:col-span-2 flex flex-col"><div class="flex justify-between items-center mb-3"><h3 class="section-title mb-0">Online Sales Trend</h3><span class="text-[9px] font-semibold text-gray-400">GRABFOOD vs GOFOOD</span></div><div class="chart-container flex-grow"><canvas id="onlineTrendChart"></canvas></div></div>
+                    <div class="panel p-3 sm:p-4 flex flex-col"><h3 class="section-title mb-3">Platform Mix</h3><div class="chart-container flex-grow"><canvas id="onlinePlatformChart"></canvas></div></div>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-3">
+                    <div class="panel p-3 sm:p-4 flex flex-col"><h3 class="section-title mb-3">Top Outlet — Online Sales</h3><div class="chart-container" style="height:300px"><canvas id="onlineOutletChart"></canvas></div></div>
+                    <div class="panel p-3 sm:p-4 flex flex-col"><h3 class="section-title mb-3">Top Items — Online Sales</h3><div class="chart-container" style="height:300px"><canvas id="onlineItemChart"></canvas></div></div>
+                </div>
+                <div class="panel p-3 sm:p-4 overflow-x-auto">
+                    <div class="flex justify-between items-center mb-3"><h3 class="section-title mb-0">Platform Performance by Outlet</h3><span class="text-[9px] text-gray-400">NET SALES / ORDERS / AOV</span></div>
+                    <table class="w-full text-[10px]" id="onlineOutletTable"><thead><tr class="text-left border-b border-gray-200"><th class="py-2">Outlet</th><th class="py-2 text-right">GrabFood Sales</th><th class="py-2 text-right">GoFood Sales</th><th class="py-2 text-right">Total Sales</th><th class="py-2 text-right">Orders</th><th class="py-2 text-right">AOV</th></tr></thead><tbody></tbody></table>
+                </div>
+            </section>        </div>
     </main>
 
     <!-- Advanced Compare Modal -->
@@ -581,7 +648,7 @@
 
         Chart.defaults.font.family = "'Inter', sans-serif"; Chart.defaults.color = '#64748b'; Chart.defaults.plugins.tooltip.backgroundColor = '#0f172a'; Chart.defaults.plugins.tooltip.titleFont = {family: "'Inter', sans-serif", weight: '600', size: 11}; Chart.defaults.plugins.tooltip.bodyFont = {family: "'Inter', sans-serif", weight: '400', size: 11}; Chart.defaults.plugins.tooltip.padding = 8; Chart.defaults.plugins.tooltip.cornerRadius = 4; Chart.defaults.plugins.tooltip.borderColor = '#334155'; Chart.defaults.plugins.tooltip.borderWidth = 1;
 
-        let rawData = []; let filteredData = []; let charts = {}; let locationMode = 'area'; let currentAggDate = {}; let trendMode = 'net'; let trendAgg = 'day'; let catMode = 'net'; let rankMode = 'top'; let rankSortBy = 'qty'; let deptChartType = 'bar'; let currentAggArea = {}; let currentAggOutlet = {}; let currentAggDept = {}; let currentAggCat = {}; let showChartLabels = false;
+        let rawData = []; let filteredData = []; let activeDashboard = 'moka'; let charts = {}; let locationMode = 'area'; let currentAggDate = {}; let trendMode = 'net'; let trendAgg = 'day'; let catMode = 'net'; let rankMode = 'top'; let rankSortBy = 'qty'; let deptChartType = 'bar'; let currentAggArea = {}; let currentAggOutlet = {}; let currentAggDept = {}; let currentAggCat = {}; let showChartLabels = false;
         let trendChartType = 'line';
         let txSortCol = 'DateStr'; let txSortAsc = true; let txCurrentPage = 1; let txRowsPerPage = 15; let txSortedData = [];
         let colsConfig = [
@@ -999,8 +1066,23 @@
             });
         }
 
-        function applyFilterVisibility() { filterUIConfig.forEach((f, idx) => { let el = document.querySelector(`.filter-item[data-id="${f.id}"]`); if(el) { el.style.order = idx; if(f.visible) el.classList.remove('hidden'); else el.classList.add('hidden'); } }); }
+        function applyFilterVisibility() {
+    filterUIConfig.forEach((f, idx) => {
+        let el = document.querySelector(`.filter-item[data-id="${f.id}"]`);
+        if(el) {
+            if (f.id === 'channel') {
+                el.classList.remove('hidden');
+                el.style.setProperty('display', 'flex', 'important');
+                el.style.setProperty('order', '1', 'important');
+                return;
+            }
+            el.style.order = idx;
+            if(f.visible) el.classList.remove('hidden'); else el.classList.add('hidden');
+        }
+    });
+}
         document.getElementById('resetFilterOrderBtn').addEventListener('click', () => { const defOrder = ['daterange', 'channel', 'compare', 'search', 'outlet', 'area', 'dept', 'event', 'discount']; filterUIConfig.sort((a,b) => defOrder.indexOf(a.id) - defOrder.indexOf(b.id)); initFilterSettings(); applyFilterVisibility(); });
+        applyFilterVisibility();
         document.getElementById('filterSettingsBtn').addEventListener('click', () => { const menu = document.getElementById('filterSettingsMenu'); menu.classList.toggle('hidden'); if(!menu.classList.contains('hidden')) initFilterSettings(); });
         document.getElementById('closeFilterMenu').addEventListener('click', () => { document.getElementById('filterSettingsMenu').classList.add('hidden'); });
         document.addEventListener('click', (e) => { const menu = document.getElementById('filterSettingsMenu'); const btn = document.getElementById('filterSettingsBtn'); if(!menu.contains(e.target) && !btn.contains(e.target)) { menu.classList.add('hidden'); } });
@@ -1215,11 +1297,7 @@
             const channelLabel = channel === 'Moka' ? 'MOKA' : (channel === 'Online Sales' ? 'ONLINE SALES • GRABFOOD + GOFOOD' : 'ALL SOURCES');
             document.title = `Analytic Performance • ${channelLabel}`;
             const titleEl = document.querySelector('header h1, header h2');
-            if (titleEl) {
-                let badge = document.getElementById('salesChannelBadge');
-                if (!badge) { badge = document.createElement('span'); badge.id = 'salesChannelBadge'; badge.className = 'ml-2 inline-flex items-center px-2 py-1 rounded-full text-[9px] font-bold bg-blue-50 text-blue-700 border border-blue-100 align-middle'; titleEl.appendChild(badge); }
-                badge.textContent = channelLabel;
-            }
+            if (titleEl) titleEl.textContent = 'LA MAISON DE PIERRE BOULANGERIE ANALYTIC PERFORMANCE • MOKA';
             window.currentStats = { gross:0, net:0, coll:0, qty:0, disc:0, tax:0, grat:0, ref:0, tx:0 }; let txSet = new Set(); 
             let aggDate = {}, aggCat = {}, aggCatQty = {}, aggCatTx = {}, aggItems = {}, aggArea = {}, aggOutlet = {}, aggDept = {}; 
             let heatMatrix = {}; DAYS.forEach(d => { heatMatrix[d] = {}; HOURS.forEach(h => heatMatrix[d][h] = 0); }); let maxHeatValue = 0; 
@@ -1254,6 +1332,30 @@
             calculateAndRenderGrowth(); drawTrend(); drawCat(currentAggCat); drawLocationChart(); drawDeptChart(aggDept); drawHeatmap(heatMatrix, maxHeatValue); drawItemsTable(aggItems); applyTableSortAndRender(); 
         }
         
+        function renderOnlineDashboard() {
+            const stats = { sales:0, qty:0, orders:new Set(), grabSales:0, goSales:0, grabOrders:new Set(), goOrders:new Set() };
+            const outlets = {}, items = {}, days = {};
+            const gs = (r,k) => r[k] ? String(r[k]).trim() : '';
+            filteredData.forEach(r => {
+                const p=gs(r,'Platform'), net=getCleanNum(r,'Net Sales'), qty=getCleanNum(r,'Quantity')||1, rec=gs(r,'Receipt Number'), out=gs(r,'Outlet')||'Unknown', it=gs(r,'Items')||'Unknown', dt=gs(r,'DateStr');
+                stats.sales+=net; stats.qty+=qty; if(rec) stats.orders.add(rec);
+                if(p==='GrabFood'){stats.grabSales+=net;if(rec)stats.grabOrders.add(rec);} if(p==='GoFood'){stats.goSales+=net;if(rec)stats.goOrders.add(rec);}
+                if(!outlets[out]) outlets[out]={sales:0,grab:0,go:0,orders:new Set()}; outlets[out].sales+=net;if(rec)outlets[out].orders.add(rec);if(p==='GrabFood')outlets[out].grab+=net;if(p==='GoFood')outlets[out].go+=net;
+                if(!items[it])items[it]={sales:0,qty:0};items[it].sales+=net;items[it].qty+=qty;
+                if(dt){if(!days[dt])days[dt]={grab:0,go:0};if(p==='GrabFood')days[dt].grab+=net;if(p==='GoFood')days[dt].go+=net;}
+            });
+            const orders=stats.orders.size,aov=orders?stats.sales/orders:0;
+            document.getElementById('onlineKpiSales').innerText=formatRp(stats.sales);document.getElementById('onlineKpiOrders').innerText=formatNum(orders);document.getElementById('onlineKpiQty').innerText=formatNum(stats.qty);document.getElementById('onlineKpiAov').innerText=formatRp(aov);
+            document.getElementById('onlineKpiGrabSales').innerText=formatRp(stats.grabSales);document.getElementById('onlineKpiGoSales').innerText=formatRp(stats.goSales);document.getElementById('onlineKpiGrabOrders').innerText=formatNum(stats.grabOrders.size);document.getElementById('onlineKpiGoOrders').innerText=formatNum(stats.goOrders.size);
+            const dates=Object.keys(days).sort();
+            if(charts.onlineTrend)charts.onlineTrend.destroy();charts.onlineTrend=new Chart(document.getElementById('onlineTrendChart').getContext('2d'),{type:'line',data:{labels:dates,datasets:[{label:'GrabFood',data:dates.map(d=>days[d].grab),borderColor:'#16a34a',tension:.25},{label:'GoFood',data:dates.map(d=>days[d].go),borderColor:'#ea580c',tension:.25}]},options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},scales:{y:{ticks:{callback:v=>'Rp '+formatRp(v)}}}}});
+            if(charts.onlinePlatform)charts.onlinePlatform.destroy();charts.onlinePlatform=new Chart(document.getElementById('onlinePlatformChart').getContext('2d'),{type:'doughnut',data:{labels:['GrabFood','GoFood'],datasets:[{data:[stats.grabSales,stats.goSales],backgroundColor:['#16a34a','#ea580c'],borderWidth:1,borderColor:'#fff'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}}}});
+            const topOut=Object.entries(outlets).sort((a,b)=>b[1].sales-a[1].sales).slice(0,10);if(charts.onlineOutlet)charts.onlineOutlet.destroy();charts.onlineOutlet=new Chart(document.getElementById('onlineOutletChart').getContext('2d'),{type:'bar',data:{labels:topOut.map(x=>x[0]),datasets:[{label:'Net Sales',data:topOut.map(x=>x[1].sales),backgroundColor:'#6366f1'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'Rp '+formatRp(v)}}}}});
+            const topItems=Object.entries(items).sort((a,b)=>b[1].sales-a[1].sales).slice(0,10);if(charts.onlineItem)charts.onlineItem.destroy();charts.onlineItem=new Chart(document.getElementById('onlineItemChart').getContext('2d'),{type:'bar',data:{labels:topItems.map(x=>x[0]),datasets:[{label:'Net Sales',data:topItems.map(x=>x[1].sales),backgroundColor:'#8b5cf6'}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'Rp '+formatRp(v)}}}}});
+            document.querySelector('#onlineOutletTable tbody').innerHTML=topOut.map(([name,v])=>{const o=v.orders.size;return `<tr class="border-b border-gray-100"><td class="py-2 font-semibold">${name}</td><td class="py-2 text-right">${formatRp(v.grab)}</td><td class="py-2 text-right">${formatRp(v.go)}</td><td class="py-2 text-right font-bold">${formatRp(v.sales)}</td><td class="py-2 text-right">${formatNum(o)}</td><td class="py-2 text-right">${formatRp(o?v.sales/o:0)}</td></tr>`}).join('');
+            document.title='Analytic Performance • ONLINE SALES';const t=document.querySelector('header h1, header h2');if(t)t.textContent='LA MAISON DE PIERRE BOULANGERIE ANALYTIC PERFORMANCE • ONLINE SALES';
+        }
+
         function calculateAndRenderGrowth() { 
         let dates = filteredData.map(r => r.DateStr).filter(d=>d).sort(); if(dates.length === 0) return renderAllGrowth(0,0,0,0,0,0,0,0,0,0, '',''); 
         function toIsoLocal(d) { let y = d.getFullYear(); let m = String(d.getMonth()+1).padStart(2,'0'); let dt = String(d.getDate()).padStart(2,'0'); return `${y}-${m}-${dt}`; }
@@ -1478,7 +1580,7 @@
     document.getElementById('pageJumpInput').addEventListener('change', (e) => { let totalPages = Math.ceil(txSortedData.length / txRowsPerPage) || 1; let val = parseInt(e.target.value); if (val >= 1 && val <= totalPages) { txCurrentPage = val; renderTablePage(); } else { e.target.value = txCurrentPage; } });
 
     document.getElementById('globalClearBtn').addEventListener('click', () => { document.getElementById('clearAllFiltersBtn').click(); });
-    document.getElementById('clearAllFiltersBtn').addEventListener('click', () => { selectedItemsSet.clear(); updateSelectedItemsUI(); renderItemDropdown(''); selectedOutletsSet.clear(); updateSelectedOutletsUI(); renderOutletDropdown(); selectedAreasSet.clear(); updateSelectedAreasUI(); renderAreaDropdown(''); selectedDiscountsSet.clear(); updateSelectedDiscountsUI(); renderDiscountDropdown(); filters.dept.value = 'ALL'; filters.eventType.value = 'ALL'; if (filters.salesChannel) filters.salesChannel.value = 'Moka'; if(rawData.length > 0) setupDatePickers(); executeFilterAndRender(); showToast('Filter di-reset ke Moka'); });
+    document.getElementById('clearAllFiltersBtn').addEventListener('click', () => { selectedItemsSet.clear(); updateSelectedItemsUI(); renderItemDropdown(''); selectedOutletsSet.clear(); updateSelectedOutletsUI(); renderOutletDropdown(); selectedAreasSet.clear(); updateSelectedAreasUI(); renderAreaDropdown(''); selectedDiscountsSet.clear(); updateSelectedDiscountsUI(); renderDiscountDropdown(); filters.dept.value = 'ALL'; filters.eventType.value = 'ALL'; if (filters.salesChannel) filters.salesChannel.value = (activeDashboard === 'online' ? 'Online Sales' : 'Moka'); if(rawData.length > 0) setupDatePickers(); executeFilterAndRender(); showToast(activeDashboard === 'online' ? 'Filter di-reset ke Online Sales' : 'Filter di-reset ke Moka'); });
 
     function drawItemsTable(data) { 
         let arr = Object.keys(data).map(k=>({k,...data[k]})); if(rankSortBy === 'qty') { arr.sort((a,b)=> rankMode === 'top' ? b.q-a.q : a.q-b.q); } else { arr.sort((a,b)=> rankMode === 'top' ? b.n-a.n : a.n-b.n); } arr = arr.slice(0, 20); let tb = document.getElementById('topItemsTableBody'); tb.innerHTML = ''; 
@@ -2209,6 +2311,16 @@
     });
 
     // ============================================================
+    function setDashboardTab(mode) {
+        activeDashboard=mode;
+        const m=document.getElementById('dashboardMokaBtn'),o=document.getElementById('dashboardOnlineBtn'),mc=document.getElementById('dashboardMokaContent'),oc=document.getElementById('onlineDashboardContent');
+        if(mode==='online'){filters.salesChannel.value='Online Sales';m.className='dashboard-tab panel p-3 text-left border-2 border-transparent hover:border-blue-300 hover:bg-blue-50 transition-all';o.className='dashboard-tab panel p-3 text-left border-2 border-purple-500 bg-purple-50 transition-all';mc.classList.add('hidden');oc.classList.remove('hidden');}
+        else{filters.salesChannel.value='Moka';m.className='dashboard-tab panel p-3 text-left border-2 border-fr-blue bg-blue-50 transition-all';o.className='dashboard-tab panel p-3 text-left border-2 border-transparent hover:border-purple-300 hover:bg-purple-50 transition-all';mc.classList.remove('hidden');oc.classList.add('hidden');}
+        executeFilterAndRender();
+    }
+    document.getElementById('dashboardMokaBtn').addEventListener('click',()=>setDashboardTab('moka'));
+    document.getElementById('dashboardOnlineBtn').addEventListener('click',()=>setDashboardTab('online'));
+
     // AUTO-LOAD CSV DARI GITHUB
     // ============================================================
     const GH_USER = 'anggafmp';
