@@ -1468,27 +1468,35 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
         function onlineOutletAlias(name) {
             const raw = String(name ?? '').trim();
             if (!raw || /^unknown$/i.test(raw)) return 'Unknown';
+
             const s = raw.replace(/\s+/g, ' ').trim();
             const lower = s.toLowerCase();
+
             const aliases = [
-                ['central market pik', 'Central Market PIK'],
-                ['green lake city', 'Green Lake City'],
-                ['mall of indonesia', 'Mall of Indonesia'],
-                ['harapan indah', 'Harapan Indah'],
-                ['radio dalam', 'Radio Dalam'],
-                ['citraland', 'Citraland'],
-                ['sanur', 'Sanur'],
-                ['renon', 'Renon'],
-                ['scbd', 'SCBD'],
+                ['radio dalam', 'RADIO DALAM'],
                 ['bsd', 'BSD'],
-                ['bintaro', 'Bintaro'],
-                ['kemang', 'Kemang'],
-                ['cipete', 'Cipete'],
-                ['pik', 'PIK']
+                ['scbd', 'SCBD'],
+                ['mall of indonesia', 'MOI'],
+                ['moi', 'MOI'],
+                ['harapan indah', 'HARAPAN INDAH'],
+                ['green lake city', 'GREEN LAKE CITY'],
+                ['central market pik', 'PIK'],
+                ['pantai indah kapuk', 'PIK'],
+                ['pik', 'PIK'],
+                ['sanur', 'SANUR'],
+                ['sunset', 'SUNSET'],
+                ['udayana', 'UDAYANA'],
+                ['renon', 'RENON'],
+                ['taman tekno', 'TAMAN TEKNO'],
+                ['citraland', 'CITRALAND'],
+                ['pakuwon', 'PAKUWON']
             ];
-            for (const [needle, label] of aliases) if (lower.includes(needle)) return label;
-            const parts = s.split(/\s+-\s+/);
-            return parts.length > 1 ? parts[parts.length - 1].trim() : s;
+
+            for (const [needle, label] of aliases) {
+                if (lower.includes(needle)) return label;
+            }
+
+            return 'OTHER';
         }
 
         function setupOnlineDateControls(rows) {
@@ -1501,11 +1509,10 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             const first=new Date(latest.getFullYear(),latest.getMonth(),1);
             const last=new Date(latest.getFullYear(),latest.getMonth()+1,0);
             const iso=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-            if(!startEl.value || !endEl.value || !quickEl.dataset.initialized){
-                let a=iso(first), b=iso(last);
-                if(a<dates[0]) a=dates[0]; if(b>dates[dates.length-1]) b=dates[dates.length-1];
-                startEl.value=a; endEl.value=b; quickEl.value='this_month'; quickEl.dataset.initialized='1';
-            }
+            let a=iso(first), b=iso(last);
+            if(a<dates[0]) a=dates[0]; if(b>dates[dates.length-1]) b=dates[dates.length-1];
+            startEl.value=a; endEl.value=b;
+            quickEl.value='this_month';
             if(!quickEl.dataset.bound){
                 quickEl.addEventListener('change',()=>{
                     const nowDate=new Date(dates[dates.length-1]+'T00:00:00'); let st,en;
