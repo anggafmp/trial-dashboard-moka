@@ -1467,38 +1467,55 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
 
         function onlineOutletAlias(name) {
             const raw = String(name ?? '').trim();
-            if (!raw || /^unknown$/i.test(raw)) return 'Unknown';
+            if (!raw || /^unknown$/i.test(raw)) return 'UNKNOWN';
 
-            const s = raw.replace(/\s+/g, ' ').trim();
+            // Normalize source outlet names from both GoFood and GrabFood
+            // into one consistent alias used by ALL / GrabFood / GoFood.
+            const s = raw
+                .replace(/\u00A0/g, ' ')
+                .replace(/\s+/g, ' ')
+                .trim();
+
             const lower = s.toLowerCase();
+            const compact = lower.replace(/[^a-z0-9]/g, '');
 
+            // IMPORTANT:
+            // Check the specific location names, not the full merchant name.
+            // This prevents names such as "La Maison De Pierre Boulangerie..."
+            // from appearing in Top Performer.
             const aliases = [
-                ['radio dalam', 'RADIO DALAM'],
-                ['bsd', 'BSD'],
-                ['scbd', 'SCBD'],
-                ['mall of indonesia', 'MOI'],
-                ['moi', 'MOI'],
-                ['harapan indah', 'HARAPAN INDAH'],
-                ['green lake city', 'GREEN LAKE CITY'],
                 ['central market pik', 'PIK'],
+                ['pik 2', 'PIK'],
                 ['pantai indah kapuk', 'PIK'],
-                ['pik', 'PIK'],
-                ['sanur', 'SANUR'],
-                ['sunset', 'SUNSET'],
-                ['udayana', 'UDAYANA'],
-                ['renon', 'RENON'],
+                ['mall of indonesia', 'MOI'],
+                ['radio dalam', 'RADIO DALAM'],
+                ['green lake city', 'GREEN LAKE CITY'],
+                ['harapan indah', 'HARAPAN INDAH'],
                 ['taman tekno', 'TAMAN TEKNO'],
                 ['citraland', 'CITRALAND'],
-                ['pakuwon', 'PAKUWON']
+                ['pakuwon', 'PAKUWON'],
+                ['udayana', 'UDAYANA'],
+                ['sunset', 'SUNSET'],
+                ['renon', 'RENON'],
+                ['scbd', 'SCBD'],
+                ['bsd', 'BSD'],
+                ['sanur', 'SANUR']
             ];
 
             for (const [needle, label] of aliases) {
                 if (lower.includes(needle)) return label;
             }
 
-            return 'OTHER';
-        }
+            // GrabFood sometimes exports "TamanTekno" without a space.
+            if (compact.includes('tamantekno')) return 'TAMAN TEKNO';
 
+            // Short location names that can appear by themselves.
+            if (/\bpik\b/i.test(lower)) return 'PIK';
+            if (/\bmoi\b/i.test(lower)) return 'MOI';
+
+            // Never expose the long merchant name in Online Sales.
+            return 'UNKNOWN';
+        }
         function setupOnlineDateControls(rows) {
             const startEl=document.getElementById('onlineDateStart'), endEl=document.getElementById('onlineDateEnd'), quickEl=document.getElementById('onlineQuickDate');
             if(!startEl || !endEl || !quickEl) return;
@@ -2769,7 +2786,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             item = ''; // GoFood export supplied has no item/menu column.
         } else {
             receipt = get('Transaction ID', 'Order ID', 'Long Order ID', 'Short Order ID', 'Booking ID', 'Partner transaction ID 1');
-            outlet = get('Store Name', 'Outlet Name', 'Outlet', 'Store');
+            outlet = get('NICKNAME', 'Nickname') || get('Store Name', 'Outlet Name', 'Outlet', 'Store');
             sales = num(get('Net Sales', 'Amount', 'Net Amount', 'Sales'));
             date = get('Order Date', 'Transaction Date', 'Payment Date', 'Date', 'Created At', 'Created On');
             paymentType = get('Payment Method', 'Payment Type');
