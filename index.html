@@ -1465,61 +1465,62 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
 
         let onlinePlatformFilter = 'ALL';
 
+        // ONLINE SALES RESET: gunakan HANYA referensi outlet yang diberikan.
         const ONLINE_ALIAS_ORDER = [
             'RADIO DALAM','BSD','SCBD','MOI','HARAPAN INDAH','GREEN LAKE CITY',
             'PIK','SANUR','SUNSET','UDAYANA','RENON','TAMAN TEKNO','CITRALAND','PAKUWON'
         ];
 
-        function onlineOutletAlias(name) {
-            const raw = String(name ?? '').trim();
-            if (!raw || /^unknown$/i.test(raw)) return null;
+        const ONLINE_EXACT_OUTLET_MAP = new Map([
+            // GoFood
+            ['la maison de pierre boulangerie & bistro, pik 2', 'PIK'],
+            ['la maison de pierre boulangerie, radio dalam', 'RADIO DALAM'],
+            ['la maison de pierre boulangerie, moi', 'MOI'],
+            ['la maison de pierre boulangerie, scbd', 'SCBD'],
+            ['la maison de pierre boulangerie & cafe, renon', 'RENON'],
+            ['la maison de pierre boulangerie & cafe, pakuwon', 'PAKUWON'],
+            ['la maison de pierre boulangerie, sanur', 'SANUR'],
+            ['la maison de pierre boulangerie & cafe, sunset', 'SUNSET'],
+            ['la maison de pierre boulangerie, bsd', 'BSD'],
+            ['la maison de pierre boulangerie & cafe, udayana', 'UDAYANA'],
+            ['la maison de pierre boulangerie & cafe, harapan indah', 'HARAPAN INDAH'],
+            ['la maison de pierre boulangerie & cafe, citraland', 'CITRALAND'],
+            ['la maison de pierre boulangerie & cafe, green lake city', 'GREEN LAKE CITY'],
+            ['la maison de pierre boulangerie & cafe, sanur', 'SANUR'],
+            ['la maison de pierre boulangerie & cafe, taman tekno', 'TAMAN TEKNO'],
 
-            // Normalize source outlet names from both GoFood and GrabFood
-            // into one consistent alias used by ALL / GrabFood / GoFood.
-            const s = raw
+            // GrabFood
+            ['la maison de pierre boulangerie - taman tekno', 'TAMAN TEKNO'],
+            ['la maison de pierre boulangerie & cafe - tamantekno', 'TAMAN TEKNO'],
+            ['la maison de pierre boulangerie & cafe - pakuwon', 'PAKUWON'],
+            ['la maison de pierre boulangerie - scbd', 'SCBD'],
+            ['la maison de pierre boulangerie - bsd', 'BSD'],
+            ['la maison de pierre boulangerie - mall of indonesia', 'MOI'],
+            ['la maison de pierre boulangerie - radio dalam', 'RADIO DALAM'],
+            ['la maison de pierre boulangerie & cafe - renon', 'RENON'],
+            ['la maison de pierre boulangerie - sunset', 'SUNSET'],
+            ['la maison de pierre boulangerie & cafe - udayana', 'UDAYANA'],
+            ['la maison de pierre boulangerie & cafe - harapan indah', 'HARAPAN INDAH'],
+            ['la maison de pierre boulangerie & cafe - citraland', 'CITRALAND'],
+            ['la maison de pierre boulangerie & cafe - green lake city cipondoh', 'GREEN LAKE CITY'],
+            ['la maison de pierre boulangerie & bistro - central market pik', 'PIK'],
+            ['la maison de pierre boulangerie & cafe - sanur', 'SANUR'],
+            ['la maison de pierre boulangerie - sanur', 'SANUR'],
+            ['la maison de pierre boulangerie & cafe - sunset', 'SUNSET']
+        ]);
+
+        function normalizeOnlineOutletName(name) {
+            return String(name ?? '')
                 .replace(/\u00A0/g, ' ')
                 .replace(/\s+/g, ' ')
-                .trim();
+                .trim()
+                .toLowerCase();
+        }
 
-            const lower = s.toLowerCase();
-            const compact = lower.replace(/[^a-z0-9]/g, '');
-
-            // IMPORTANT:
-            // Check the specific location names, not the full merchant name.
-            // This prevents names such as "La Maison De Pierre Boulangerie..."
-            // from appearing in Top Performer.
-            const aliases = [
-                ['central market pik', 'PIK'],
-                ['pik 2', 'PIK'],
-                ['pantai indah kapuk', 'PIK'],
-                ['mall of indonesia', 'MOI'],
-                ['radio dalam', 'RADIO DALAM'],
-                ['green lake city', 'GREEN LAKE CITY'],
-                ['harapan indah', 'HARAPAN INDAH'],
-                ['taman tekno', 'TAMAN TEKNO'],
-                ['citraland', 'CITRALAND'],
-                ['pakuwon', 'PAKUWON'],
-                ['udayana', 'UDAYANA'],
-                ['sunset', 'SUNSET'],
-                ['renon', 'RENON'],
-                ['scbd', 'SCBD'],
-                ['bsd', 'BSD'],
-                ['sanur', 'SANUR']
-            ];
-
-            for (const [needle, label] of aliases) {
-                if (lower.includes(needle)) return label;
-            }
-
-            // GrabFood sometimes exports "TamanTekno" without a space.
-            if (compact.includes('tamantekno')) return 'TAMAN TEKNO';
-
-            // Short location names that can appear by themselves.
-            if (/\bpik\b/i.test(lower)) return 'PIK';
-            if (/\bmoi\b/i.test(lower)) return 'MOI';
-
-            // Never expose the long merchant name in Online Sales.
-            return null;
+        function onlineOutletAlias(name) {
+            const key = normalizeOnlineOutletName(name);
+            if (!key || key === 'unknown' || key === 'undefined' || key === 'null') return null;
+            return ONLINE_EXACT_OUTLET_MAP.get(key) || null;
         }
         function setupOnlineDateControls(rows) {
             const startEl=document.getElementById('onlineDateStart'), endEl=document.getElementById('onlineDateEnd'), quickEl=document.getElementById('onlineQuickDate');
@@ -1679,9 +1680,9 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
 
             const topOut=ONLINE_ALIAS_ORDER
                 .map(alias => [alias, cur.outlet[alias]])
-                .filter(([,v]) => v && (v.sales !== 0 || v.orders.size !== 0))
+                .filter(([alias,v]) => ONLINE_ALIAS_ORDER.includes(alias) && v && (v.sales !== 0 || v.orders.size !== 0))
                 .sort((a,b)=>b[1].sales-a[1].sales)
-                .slice(0,14);
+                .slice(0,10);
 
             const topOutlet=topOut[0];
             document.getElementById('onlineKpiTopOutlet').innerText=topOutlet ? topOutlet[0] : '-';
@@ -2839,7 +2840,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
         // outlet name can ever reach the Online Sales chart/table.
         if (source === 'GrabFood' || source === 'GoFood') {
             const canonicalOutlet = onlineOutletAlias(outlet);
-            nr['Outlet'] = canonicalOutlet || '';
+            nr['Outlet'] = canonicalOutlet && ONLINE_ALIAS_ORDER.includes(canonicalOutlet) ? canonicalOutlet : '';
         } else {
             nr['Outlet'] = outlet || 'Unknown';
         }
