@@ -1465,9 +1465,14 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
 
         let onlinePlatformFilter = 'ALL';
 
+        const ONLINE_ALIAS_ORDER = [
+            'RADIO DALAM','BSD','SCBD','MOI','HARAPAN INDAH','GREEN LAKE CITY',
+            'PIK','SANUR','SUNSET','UDAYANA','RENON','TAMAN TEKNO','CITRALAND','PAKUWON'
+        ];
+
         function onlineOutletAlias(name) {
             const raw = String(name ?? '').trim();
-            if (!raw || /^unknown$/i.test(raw)) return 'UNKNOWN';
+            if (!raw || /^unknown$/i.test(raw)) return null;
 
             // Normalize source outlet names from both GoFood and GrabFood
             // into one consistent alias used by ALL / GrabFood / GoFood.
@@ -1514,7 +1519,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             if (/\bmoi\b/i.test(lower)) return 'MOI';
 
             // Never expose the long merchant name in Online Sales.
-            return 'UNKNOWN';
+            return null;
         }
         function setupOnlineDateControls(rows) {
             const startEl=document.getElementById('onlineDateStart'), endEl=document.getElementById('onlineDateEnd'), quickEl=document.getElementById('onlineQuickDate');
@@ -1610,20 +1615,45 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
                 const o = { sales:0, qty:0, orders:new Set(), outlet:{}, item:{}, platform:{GrabFood:{sales:0,orders:new Set()},GoFood:{sales:0,orders:new Set()}}, days:{} };
                 rows.forEach(r => {
                     const net=getCleanNum(r,'Net Sales'), qty=getCleanNum(r,'Quantity') || 1, rec=toScalar(r['Receipt Number'],'').trim();
-                    const out=toScalar(r['Outlet'],'Unknown').trim() || 'Unknown';
+                    const out=toScalar(r['Outlet'],'').trim();
+                    const alias=onlineOutletAlias(out);
+
+                    // Online Sales hanya memakai 14 alias resmi.
+                    // Outlet yang tidak terpetakan tidak boleh masuk ke chart/table sebagai UNKNOWN/UNMAPPED/Other.
+                    if (!ONLINE_ALIAS_ORDER.includes(alias)) return;
+
                     const item=toScalar(r['Items'],'').trim();
                     const p=toScalar(r['_OnlinePlatform'] || r['Platform'],'').trim();
                     const platform = /grabfood/i.test(p) ? 'GrabFood' : (/gofood/i.test(p) ? 'GoFood' : p);
                     const dt=toScalar(r['DateStr'],'').trim();
-                    o.sales += net; o.qty += qty; if(rec) o.orders.add(rec);
-                    if (!o.outlet[out]) o.outlet[out]={sales:0,orders:new Set(),items:0};
-                    o.outlet[out].sales += net; o.outlet[out].items += qty; if(rec)o.outlet[out].orders.add(rec);
-                    if (!o.item[item]) o.item[item]={sales:0,qty:0,orders:new Set()};
-                    o.item[item].sales += net; o.item[item].qty += qty; if(rec)o.item[item].orders.add(rec);
-                    if (o.platform[platform]) { o.platform[platform].sales += net; if(rec)o.platform[platform].orders.add(rec); }
-                    if(dt) { if(!o.days[dt])o.days[dt]={sales:0}; o.days[dt].sales += net; }
+
+                    o.sales += net;
+                    o.qty += qty;
+                    if(rec) o.orders.add(rec);
+
+                    if (!o.outlet[alias]) o.outlet[alias]={sales:0,orders:new Set(),items:0};
+                    o.outlet[alias].sales += net;
+                    o.outlet[alias].items += qty;
+                    if(rec) o.outlet[alias].orders.add(rec);
+
+                    if (item) {
+                        if(!o.item[item]) o.item[item]={sales:0,qty:0,orders:new Set()};
+                        o.item[item].sales += net;
+                        o.item[item].qty += qty;
+                        if(rec)o.item[item].orders.add(rec);
+                    }
+
+                    if (o.platform[platform]) {
+                        o.platform[platform].sales += net;
+                        if(rec)o.platform[platform].orders.add(rec);
+                    }
+                    if(dt) {
+                        if(!o.days[dt])o.days[dt]={sales:0};
+                        o.days[dt].sales += net;
+                    }
                 });
-                o.ordersCount=o.orders.size; o.aov=o.ordersCount?o.sales/o.ordersCount:0;
+                o.ordersCount=o.orders.size;
+                o.aov=o.ordersCount?o.sales/o.ordersCount:0;
                 return o;
             };
 
@@ -1647,8 +1677,14 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             const setGrowth=(id,v)=>{const el=document.getElementById(id);el.innerText=growthHtml(v);el.className=`text-[10px] mt-2 ${v===null?'text-gray-400':v>=0?'text-green-600':'text-red-500'}`;};
             setGrowth('onlineKpiSalesGrowth',salesGrowth); setGrowth('onlineKpiOrdersGrowth',ordersGrowth); setGrowth('onlineKpiAovGrowth',aovGrowth);
 
-            const topOutlet=Object.entries(cur.outlet).sort((a,b)=>b[1].sales-a[1].sales)[0];
-            document.getElementById('onlineKpiTopOutlet').innerText=topOutlet ? onlineOutletAlias(topOutlet[0]) : '-';
+            const topOut=ONLINE_ALIAS_ORDER
+                .map(alias => [alias, cur.outlet[alias]])
+                .filter(([,v]) => v && (v.sales !== 0 || v.orders.size !== 0))
+                .sort((a,b)=>b[1].sales-a[1].sales)
+                .slice(0,14);
+
+            const topOutlet=topOut[0];
+            document.getElementById('onlineKpiTopOutlet').innerText=topOutlet ? topOutlet[0] : '-';
             document.getElementById('onlineKpiTopOutletSales').innerText=topOutlet ? `${money(topOutlet[1].sales)} sales` : 'Rp 0 sales';
 
             const grab=cur.platform.GrabFood.sales, go=cur.platform.GoFood.sales, totalPlat=grab+go;
@@ -1679,10 +1715,13 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
                 options:{responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:false}},scales:{x:{title:{display:true,text:'Day of Month'}},y:{beginAtZero:true,ticks:{callback:v=>'Rp '+formatRp(v)}}}}
             });
 
-            const topOut=Object.entries(cur.outlet).sort((a,b)=>b[1].sales-a[1].sales).slice(0,10);
             if(charts.onlineTopOutlet)charts.onlineTopOutlet.destroy();
             charts.onlineTopOutlet=new Chart(document.getElementById('onlineTopOutletChart').getContext('2d'),{
-                type:'bar',data:{labels:topOut.map(x=>onlineOutletAlias(x[0])),datasets:[{label:'Online Sales',data:topOut.map(x=>x[1].sales),backgroundColor:'#8b5cf6'}]},
+                type:'bar',
+                data:{
+                    labels:topOut.map(x=>x[0]),
+                    datasets:[{label:'Online Sales',data:topOut.map(x=>x[1].sales),backgroundColor:'#8b5cf6'}]
+                },
                 options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{callback:v=>'Rp '+formatRp(v)}}}}
             });
 
@@ -1690,7 +1729,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             document.querySelector('#onlineOutletTable tbody').innerHTML=topOut.map(([name,v],i)=>{
                 const prevSales=prevOut[name]?.sales||0, g=growth(v.sales,prevSales), orders=v.orders.size, aov=orders?v.sales/orders:0;
                 return `<tr class="border-b border-gray-100 hover:bg-gray-50">
-                    <td class="py-2 font-bold">${i+1}</td><td class="py-2 font-semibold">${onlineOutletAlias(name)}</td>
+                    <td class="py-2 font-bold">${i+1}</td><td class="py-2 font-semibold">${name}</td>
                     <td class="py-2 text-right font-bold">${money(v.sales)}</td><td class="py-2 text-right">${money(prevSales)}</td>
                     <td class="py-2 text-right font-semibold ${g===null?'text-gray-400':g>=0?'text-green-600':'text-red-500'}">${g===null?'—':pct(g)}</td>
                     <td class="py-2 text-right">${formatNum(orders)}</td><td class="py-2 text-right">${money(aov)}</td>
@@ -2786,7 +2825,7 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
             item = ''; // GoFood export supplied has no item/menu column.
         } else {
             receipt = get('Transaction ID', 'Order ID', 'Long Order ID', 'Short Order ID', 'Booking ID', 'Partner transaction ID 1');
-            outlet = get('NICKNAME', 'Nickname') || get('Store Name', 'Outlet Name', 'Outlet', 'Store');
+            outlet = get('Store Name', 'Outlet Name', 'Outlet', 'Store');
             sales = num(get('Net Sales', 'Amount', 'Net Amount', 'Sales'));
             date = get('Order Date', 'Transaction Date', 'Payment Date', 'Date', 'Created At', 'Created On');
             paymentType = get('Payment Method', 'Payment Type');
