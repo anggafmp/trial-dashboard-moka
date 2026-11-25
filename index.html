@@ -2834,7 +2834,15 @@ body.online-mode #dashboardBackBtn { display: inline-flex !important; }
 
         nr['Receipt Number'] = receipt;
         nr['_OnlineOrderId'] = receipt;
-        nr['Outlet'] = outlet || 'Unknown';
+
+        // ONLINE SALES: canonicalize outlet immediately so no raw/UNKNOWN
+        // outlet name can ever reach the Online Sales chart/table.
+        if (source === 'GrabFood' || source === 'GoFood') {
+            const canonicalOutlet = onlineOutletAlias(outlet);
+            nr['Outlet'] = canonicalOutlet || '';
+        } else {
+            nr['Outlet'] = outlet || 'Unknown';
+        }
         nr['Items'] = item || '';
         nr['Date'] = date || '';
         nr['Time'] = get('Time', 'Transaction time');
